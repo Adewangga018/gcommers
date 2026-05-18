@@ -17,7 +17,16 @@ var app = builder.Build();
 
 app.UseCors("AllowAll");
 
-await AuthDatabase.EnsureSchemaAsync(app.Configuration);
+try
+{
+    await AuthDatabase.EnsureSchemaAsync(app.Configuration);
+}
+catch (Exception ex)
+{
+    // Allow API to start even if DB is temporarily unreachable.
+    app.Logger.LogError(ex, "Failed to ensure database schema on startup.");
+}
+
 
 var auth = app.MapGroup("/auth");
 

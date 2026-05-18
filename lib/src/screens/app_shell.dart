@@ -28,14 +28,14 @@ class _AppShellState extends State<AppShell> {
     if (!mounted) return;
 
     if (session != null) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => HomeScreen(session: session)),
+      Navigator.of(context).pushReplacementNamed(
+        '/home',
+        arguments: session,
       );
     } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      );
+      Navigator.of(context).pushReplacementNamed('/login');
     }
+
   }
 
   @override
@@ -43,3 +43,4 @@ class _AppShellState extends State<AppShell> {
     return const SplashScreen();
   }
 }
+
