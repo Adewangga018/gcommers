@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Gcommers.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2c7e90698e9c2e828e601a949ec1f0c52ef3d7bd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+97e7b7827185639a16c57c3e4ee4ebff6dfff366")]
 [assembly: System.Reflection.AssemblyProductAttribute("Gcommers.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Gcommers.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
