@@ -7,7 +7,6 @@ import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/auth_widgets.dart';
-import 'home_screen.dart';
 
 class KioskRegisterStep2Screen extends StatefulWidget {
   const KioskRegisterStep2Screen({
@@ -96,12 +95,7 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
       
       await sessionManager.saveSession(session);
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(
-          builder: (_) => HomeScreen(session: session),
-        ),
-        (route) => false,
-      );
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

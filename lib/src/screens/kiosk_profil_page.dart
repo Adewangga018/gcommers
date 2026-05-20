@@ -16,7 +16,7 @@ class KiosProfilePage extends StatelessWidget {
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: primaryPurple),
-          onPressed: () {},
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'GCommers',
@@ -26,7 +26,7 @@ class KiosProfilePage extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none, color: Colors.grey),
-            onPressed: () {},
+            onPressed: () {Navigator.of(context).pushNamed('/notifications');},
           )
         ],
       ),
@@ -198,12 +198,16 @@ class KiosProfilePage extends StatelessWidget {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
         BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Pesanan'),
-        BottomNavigationBarItem(icon: Icon(Icons.layers_outlined), label: 'Produk'),
+        BottomNavigationBarItem(icon: Icon(Icons.history_outlined), label: 'Riwayat'),
         BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
       ],
       onTap: (index) {
         if (index == 0) {
           Navigator.of(context).pushNamed('/home');
+        } else if (index == 1) {
+          Navigator.of(context).pushNamed('/orders');
+        } else if (index == 2) {
+          Navigator.of(context).pushNamed('/history');
         }
       },
     );

@@ -53,23 +53,29 @@ class KiosDashboardPage extends StatelessWidget {
                     ),
                     Row(
                       children: [
-                        Stack(
-                          children: [
-                            const Icon(Icons.notifications_none, color: Colors.white, size: 28),
-                            Positioned(
-                              right: 2,
-                              top: 2,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                              ),
-                            )
-                          ],
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pushNamed('/notifications'),
+                          child: Stack(
+                            children: [
+                              const Icon(Icons.notifications_none, color: Colors.white, size: 28),
+                              Positioned(
+                                right: 2,
+                                top: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                ),
+                              )
+                            ],
+                          ),
                         ),
                         const SizedBox(width: 15),
-                        const CircleAvatar(
-                          backgroundColor: Colors.white24,
-                          child: Icon(Icons.person, color: Colors.white),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pushNamed('/profile'),
+                          child: const CircleAvatar(
+                            backgroundColor: Colors.white24,
+                            child: Icon(Icons.person, color: Colors.white),
+                          ),
                         ),
                       ],
                     )
@@ -85,9 +91,21 @@ class KiosDashboardPage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildQuickActionCard(Icons.shopping_cart_outlined, 'Buat PO', primaryPurple),
-                    _buildQuickActionCard(Icons.receipt_long_outlined, 'Tagihan', primaryPurple),
-                    _buildQuickActionCard(Icons.qr_code_scanner_rounded, 'Scan QR', primaryPurple),
+                    _buildQuickActionCard(
+                      context,
+                      Icons.shopping_cart_outlined,
+                      'Pesanan',
+                      primaryPurple,
+                      onTap: () => Navigator.of(context).pushNamed('/orders'),
+                    ),
+                    _buildQuickActionCard(
+                      context,
+                      Icons.history_outlined,
+                      'Riwayat',
+                      primaryPurple,
+                      onTap: () => Navigator.of(context).pushNamed('/history'),
+                    ),
+                    _buildQuickActionCard(context, Icons.check_circle_outlined, 'Konfirmasi', primaryPurple),
                   ],
                 ),
               ),
@@ -190,24 +208,35 @@ class KiosDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionCard(IconData icon, String label, Color color) {
-    return Container(
-      width: 105,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        children: [
-          CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
-            child: Icon(icon, color: color),
+  Widget _buildQuickActionCard(
+    BuildContext context,
+    IconData icon,
+    String label,
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey[200]!),
           ),
-          const SizedBox(height: 10),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        ],
+          child: Column(
+            children: [
+              CircleAvatar(
+                backgroundColor: color.withOpacity(0.1),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(height: 10),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -305,12 +334,18 @@ Widget _buildBottomNavBar(BuildContext context, int currentIndex, Color primaryC
     items: const [
       BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
       BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Pesanan'),
-      BottomNavigationBarItem(icon: Icon(Icons.layers_outlined), label: 'Produk'),
+      BottomNavigationBarItem(icon: Icon(Icons.history_outlined), label: 'Riwayat'),
       BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
     ],
     onTap: (index) {
       switch (index) {
         case 0:
+          break;
+        case 1:
+          Navigator.of(context).pushNamed('/orders');
+          break;
+        case 2:
+          Navigator.of(context).pushNamed('/history');
           break;
         case 3:
           Navigator.of(context).pushNamed('/profile');
