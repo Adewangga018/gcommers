@@ -8,6 +8,7 @@ import 'src/screens/payment_page.dart';
 import 'src/screens/payment_success_page.dart';
 import 'src/screens/history_page.dart';
 import 'src/screens/order_page.dart';
+import 'src/screens/order_history_detail_page.dart';
 import 'src/screens/scan_qr_page.dart';
 import 'src/screens/received_goods_page.dart';
 import 'src/screens/notification_page.dart';
@@ -30,6 +31,10 @@ class GCommersApp extends StatelessWidget {
       routes: <String, WidgetBuilder>{
         '/home': (context) => const KiosDashboardPage(),
         '/history': (context) => const HistoryPage(),
+        '/history-detail': (context) {
+          final poNumber = ModalRoute.of(context)?.settings.arguments as String? ?? 'PO-2026-10-9842';
+          return OrderHistoryDetailPage(poNumber: poNumber);
+        },
         '/orders': (context) => const OrderPage(),
         '/scan-qr': (context) => const ScanQrPage(),
         '/received-goods': (context) => const ReceivedGoodsPage(),
@@ -42,4 +47,3 @@ class GCommersApp extends StatelessWidget {
     );
   }
 }
-

@@ -1,82 +1,78 @@
 import 'package:flutter/material.dart';
 
-class OrderProduct {
-  const OrderProduct({
-    required this.iconBg,
-    required this.icon,
-    required this.name,
-    required this.description,
-    required this.category,
-    required this.price,
-    required this.stock,
-    required this.minimumOrder,
-    required this.unit,
-    required this.quantity,
-    required this.showStepper,
-  });
+import '../models/commerce_models.dart';
+import '../services/commerce_service.dart';
+import '../utils/formatters.dart';
 
-  final Color iconBg;
-  final IconData icon;
-  final String name;
-  final String description;
-  final String category;
-  final String price;
-  final String stock;
-  final String minimumOrder;
-  final String unit;
-  final int quantity;
-  final bool showStepper;
+class OrderPage extends StatefulWidget {
+  const OrderPage({super.key});
+
+  @override
+  State<OrderPage> createState() => _OrderPageState();
 }
 
-class OrderPage extends StatelessWidget {
-  const OrderPage({super.key});
+class _OrderPageState extends State<OrderPage> {
+  final _commerceService = CommerceService();
+  final _searchController = TextEditingController();
+  late Future<List<Product>> _productsFuture;
+  final Map<int, int> _quantities = {};
+  List<Product> _products = const [];
+  String _selectedCategory = 'Subsidi';
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _productsFuture = _commerceService.getProducts(category: _selectedCategory);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _loadCategory(String category) {
+    setState(() {
+      _selectedCategory = category;
+      _productsFuture = _commerceService.getProducts(category: category);
+    });
+  }
+
+  void _changeQuantity(Product product, int delta) {
+    final current = _quantities[product.id] ?? 0;
+    final next = (current + delta).clamp(0, product.stock);
+    setState(() => _quantities[product.id] = next);
+  }
+
+  Future<void> _confirmOrder() async {
+    final selected = Map<int, int>.fromEntries(_quantities.entries.where((entry) => entry.value > 0));
+    if (selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih minimal satu produk terlebih dahulu.')),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      final order = await _commerceService.createOrder(quantities: selected);
+      if (!mounted) return;
+      Navigator.of(context).pushNamed('/payment', arguments: order.poNumber);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuat pesanan: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     const Color primaryPurple = Color(0xFF4A3AFF);
     const Color bgLight = Color(0xFFF9F9FF);
-
-    const products = <OrderProduct>[
-      OrderProduct(
-        iconBg: Color(0xFFE5F0FF),
-        icon: Icons.water_drop_outlined,
-        name: 'Pupuk Urea Prill 50kg',
-        description: 'Pupuk nitrogen tinggi untuk mempercepat pertumbuhan vegetatif tanaman dan meningkatkan hasil panen.',
-        category: 'Subsidi',
-        price: 'Rp 112.500',
-        stock: '120',
-        minimumOrder: '1',
-        unit: 'Karung (50kg)',
-        quantity: 10,
-        showStepper: true,
-      ),
-      OrderProduct(
-        iconBg: Color(0xFFF0E2CF),
-        icon: Icons.eco_outlined,
-        name: 'NPK Phonska 15-15-15',
-        description: 'Pupuk majemuk seimbang yang membantu pertumbuhan akar, batang, dan kualitas hasil panen.',
-        category: 'Subsidi',
-        price: 'Rp 115.000',
-        stock: '85',
-        minimumOrder: '1',
-        unit: 'Karung (50kg)',
-        quantity: 3,
-        showStepper: true,
-      ),
-      OrderProduct(
-        iconBg: Color(0xFFDDF3EA),
-        icon: Icons.spa_outlined,
-        name: 'Benih Padi Inpari 32',
-        description: 'Varietas benih unggul dengan daya hasil tinggi dan adaptif untuk berbagai kondisi lahan sawah.',
-        category: 'Retail',
-        price: 'Rp 65.000',
-        stock: '40',
-        minimumOrder: '1',
-        unit: 'Pack (5kg)',
-        quantity: 0,
-        showStepper: false,
-      ),
-    ];
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -89,98 +85,111 @@ class OrderPage extends StatelessWidget {
         ),
         title: const Text(
           'Buat Pesanan',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                height: 40,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE9E5F7),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: _TabChip(label: 'Subsidi', selected: true),
+        child: FutureBuilder<List<Product>>(
+          future: _productsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text('Gagal memuat produk: ${snapshot.error}'));
+            }
+
+            final products = snapshot.data!;
+            _products = products;
+            final query = _searchController.text.trim().toLowerCase();
+            final visibleProducts = query.isEmpty
+                ? products
+                : products.where((product) => product.name.toLowerCase().contains(query)).toList();
+
+            return Column(
+              children: [
+                const SizedBox(height: 18),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE9E5F7),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    const Expanded(
-                      child: _TabChip(label: 'Retail', selected: false),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _TabChip(
+                            label: 'Subsidi',
+                            selected: _selectedCategory == 'Subsidi',
+                            onTap: () => _loadCategory('Subsidi'),
+                          ),
+                        ),
+                        Expanded(
+                          child: _TabChip(
+                            label: 'Retail',
+                            selected: _selectedCategory == 'Retail',
+                            onTap: () => _loadCategory('Retail'),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Cari nama produk atau SKU...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFCFC8E5)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFCFC8E5)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: primaryPurple, width: 1.4),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
-                children: [
-                  _ProductCard(
-                    product: products[0],
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ProductDetailPage(product: products[0]),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Cari nama produk atau SKU...',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFCFC8E5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFCFC8E5)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: primaryPurple, width: 1.4),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  _ProductCard(
-                    product: products[1],
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ProductDetailPage(product: products[1]),
-                      ),
-                    ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
+                    itemCount: visibleProducts.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      final product = visibleProducts[index];
+                      return _ProductCard(
+                        product: product,
+                        quantity: _quantities[product.id] ?? 0,
+                        onAdd: () => _changeQuantity(product, 1),
+                        onRemove: () => _changeQuantity(product, -1),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ProductDetailPage(product: product),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 14),
-                  _ProductCard(
-                    product: products[2],
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ProductDetailPage(product: products[2]),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
       bottomNavigationBar: SafeArea(
@@ -193,25 +202,19 @@ class OrderPage extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '3 item dipilih',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                      ),
+                      '${_selectedCount()} item dipilih',
+                      style: const TextStyle(color: Colors.black54, fontSize: 12),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Rp 1.470.000',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      formatCurrency(_estimatedTotal()),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
@@ -219,18 +222,16 @@ class OrderPage extends StatelessWidget {
               SizedBox(
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pushNamed('/scan-qr'),
+                  onPressed: _submitting ? null : _confirmOrder,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryPurple,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text(
-                    'KONFIRMASI PESANAN',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                  child: Text(
+                    _submitting ? 'MEMPROSES...' : 'KONFIRMASI PESANAN',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -240,29 +241,44 @@ class OrderPage extends StatelessWidget {
       ),
     );
   }
+
+  int _selectedCount() => _quantities.values.where((quantity) => quantity > 0).length;
+
+  num _estimatedTotal() {
+    var total = 0.0;
+    for (final product in _products) {
+      total += product.price * (_quantities[product.id] ?? 0);
+    }
+    return total;
+  }
 }
 
 class _TabChip extends StatelessWidget {
-  const _TabChip({required this.label, required this.selected});
+  const _TabChip({required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     const Color primaryPurple = Color(0xFF4A3AFF);
 
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: selected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: selected ? primaryPurple : Colors.black54,
-          fontWeight: FontWeight.w700,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? primaryPurple : Colors.black54,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -272,11 +288,17 @@ class _TabChip extends StatelessWidget {
 class _ProductCard extends StatelessWidget {
   const _ProductCard({
     required this.product,
+    required this.quantity,
     required this.onTap,
+    required this.onAdd,
+    required this.onRemove,
   });
 
-  final OrderProduct product;
+  final Product product;
+  final int quantity;
   final VoidCallback onTap;
+  final VoidCallback onAdd;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -300,10 +322,10 @@ class _ProductCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: product.iconBg,
+                  color: _iconBg(product.iconName),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(product.icon, color: primaryPurple, size: 26),
+                child: Icon(_productIcon(product.iconName), color: primaryPurple, size: 26),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -312,78 +334,42 @@ class _ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       product.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
-                      ),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, height: 1.15),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${product.unit} • Stok: ${product.stock}',
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                      ),
+                      '${product.unit} - Stok: ${product.stock}',
+                      style: const TextStyle(color: Colors.black54, fontSize: 12),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      product.price,
-                      style: const TextStyle(
-                        color: primaryPurple,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      formatCurrency(product.price),
+                      style: const TextStyle(color: primaryPurple, fontSize: 14, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 10),
-              product.showStepper
-                  ? Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3EFFB),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          _StepperButton(icon: Icons.remove, color: Colors.grey[700]!),
-                          Container(
-                            width: 34,
-                            alignment: Alignment.center,
-                            child: Text(
-                              '${product.quantity}',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          _StepperButton(icon: Icons.add, color: primaryPurple, filled: true),
-                        ],
-                      ),
-                    )
-                  : SizedBox(
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: onTap,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF3EFFB),
-                          foregroundColor: primaryPurple,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          'Tambah',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
+              Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3EFFB),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    _StepperButton(icon: Icons.remove, color: Colors.grey[700]!, onTap: onRemove),
+                    Container(
+                      width: 34,
+                      alignment: Alignment.center,
+                      child: Text('$quantity', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                     ),
+                    _StepperButton(icon: Icons.add, color: primaryPurple, filled: true, onTap: onAdd),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -395,7 +381,7 @@ class _ProductCard extends StatelessWidget {
 class ProductDetailPage extends StatelessWidget {
   const ProductDetailPage({super.key, required this.product});
 
-  final OrderProduct product;
+  final Product product;
 
   @override
   Widget build(BuildContext context) {
@@ -411,14 +397,7 @@ class ProductDetailPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: primaryPurple),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Detail Produk',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
-        ),
+        title: const Text('Detail Produk', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -442,24 +421,17 @@ class ProductDetailPage extends StatelessWidget {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: product.iconBg,
+                        color: _iconBg(product.iconName),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Icon(product.icon, color: primaryPurple, size: 34),
+                      child: Icon(_productIcon(product.iconName), color: primaryPurple, size: 34),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            product.name,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              height: 1.15,
-                            ),
-                          ),
+                          Text(product.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.15)),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 8,
@@ -478,14 +450,7 @@ class ProductDetailPage extends StatelessWidget {
               const SizedBox(height: 18),
               _DetailSection(
                 title: 'Deskripsi',
-                child: Text(
-                  product.description,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.6,
-                    color: Colors.black87,
-                  ),
-                ),
+                child: Text(product.description, style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87)),
               ),
               const SizedBox(height: 16),
               _DetailSection(
@@ -493,87 +458,11 @@ class ProductDetailPage extends StatelessWidget {
                 child: Column(
                   children: [
                     _DetailRow(label: 'Kategori', value: product.category),
-                    _DetailRow(label: 'Harga', value: product.price),
-                    _DetailRow(label: 'Stok', value: product.stock),
-                    _DetailRow(label: 'Minimal Pembelian', value: product.minimumOrder),
+                    _DetailRow(label: 'Harga', value: formatCurrency(product.price)),
+                    _DetailRow(label: 'Stok', value: '${product.stock}'),
+                    _DetailRow(label: 'Minimal Pembelian', value: '${product.minimumOrder}'),
                     _DetailRow(label: 'Satuan', value: product.unit),
                   ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              _DetailSection(
-                title: 'Ringkasan Pembelian',
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _SummaryBox(
-                        label: 'Kategori',
-                        value: product.category,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _SummaryBox(
-                        label: 'Stok Tersedia',
-                        value: product.stock,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Color(0xFFE2DDF1))),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Harga Produk',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      product.price,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: const Text(
-                    'Tambah ke Pesanan',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
                 ),
               ),
             ],
@@ -600,20 +489,11 @@ class _DetailSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFD3CCE8)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 14),
+        child,
+      ]),
     );
   }
 }
@@ -631,65 +511,14 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 4,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.black54,
-                fontSize: 13,
-              ),
-            ),
-          ),
+          Expanded(flex: 4, child: Text(label, style: const TextStyle(color: Colors.black54, fontSize: 13))),
           const SizedBox(width: 12),
           Expanded(
             flex: 6,
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
               textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryBox extends StatelessWidget {
-  const _SummaryBox({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F6FD),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -707,39 +536,51 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3EFFB),
-        borderRadius: BorderRadius.circular(999),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFF3EFFB), borderRadius: BorderRadius.circular(999)),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFF4A3AFF),
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+        style: const TextStyle(color: Color(0xFF4A3AFF), fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }
 }
 
 class _StepperButton extends StatelessWidget {
-  const _StepperButton({required this.icon, required this.color, this.filled = false});
+  const _StepperButton({required this.icon, required this.color, required this.onTap, this.filled = false});
 
   final IconData icon;
   final Color color;
+  final VoidCallback onTap;
   final bool filled;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 40,
-      decoration: BoxDecoration(
-        color: filled ? color : Colors.white,
-        borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 34,
+        height: 40,
+        decoration: BoxDecoration(
+          color: filled ? color : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: filled ? Colors.white : color, size: 18),
       ),
-      child: Icon(icon, color: filled ? Colors.white : color, size: 18),
     );
   }
 }
+
+IconData _productIcon(String iconName) => switch (iconName) {
+      'water_drop' => Icons.water_drop_outlined,
+      'eco' => Icons.eco_outlined,
+      'spa' => Icons.spa_outlined,
+      _ => Icons.inventory_2_outlined,
+    };
+
+Color _iconBg(String iconName) => switch (iconName) {
+      'water_drop' => const Color(0xFFE5F0FF),
+      'eco' => const Color(0xFFF0E2CF),
+      'spa' => const Color(0xFFDDF3EA),
+      _ => const Color(0xFFF0EEF7),
+    };
