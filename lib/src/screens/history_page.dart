@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 
-import 'order_history_detail_page.dart';
+import '../models/commerce_models.dart';
+import '../services/commerce_service.dart';
+import '../utils/formatters.dart';
 
-class HistoryPage extends StatelessWidget {
+class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
+
+  @override
+  State<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  final _commerceService = CommerceService();
+  late Future<List<OrderSummary>> _ordersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _ordersFuture = _commerceService.getOrders();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,17 +37,13 @@ class HistoryPage extends StatelessWidget {
         ),
         title: const Text(
           'Status Pesanan',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20),
         ),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.add_circle_outline, color: primaryPurple),
-            onPressed: () {Navigator.of(context).pushNamed('/orders');},
+            onPressed: () => Navigator.of(context).pushNamed('/orders'),
           ),
         ],
       ),
@@ -39,10 +51,10 @@ class HistoryPage extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                children: const [
+                children: [
                   Expanded(child: _FilterChip(label: 'Semua', selected: true)),
                   SizedBox(width: 10),
                   Expanded(child: _FilterChip(label: 'Pending', selected: false)),
@@ -55,62 +67,40 @@ class HistoryPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                children: [
-                  _HistoryCard(
-                    poNumber: 'PO-2026-10-9842',
-                    date: '24 Okt 2026 • 14:30',
-                    total: 'Rp 13.736.500',
-                    status: 'DIPROSES',
-                    statusColor: const Color(0xFF4A3AFF),
-                    timeline: const [
-                      _TimelineItem(
-                        title: 'Pesanan Dibuat',
-                        subtitle: '24 Okt, 14:30',
-                        icon: Icons.check_circle,
-                        active: true,
-                      ),
-                      _TimelineItem(
-                        title: 'Pembayaran Berhasil',
-                        subtitle: '24 Okt, 15:10 - Bank Transfer',
-                        icon: Icons.check_circle,
-                        active: true,
-                      ),
-                      _TimelineItem(
-                        title: 'Dalam Perjalanan',
-                        subtitle: 'Estimasi kirim: 25 Okt',
-                        icon: Icons.local_shipping,
-                        active: true,
-                      ),
-                    ],
-                    actionLabel: 'Lihat Detail',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const OrderHistoryDetailPage(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _PendingCard(
-                    poNumber: 'PO-2310-090B',
-                    date: '25 Okt 2026 • 09:15',
-                    total: 'Rp 12.000.000',
-                    onPay: () {},
-                  ),
-                  const SizedBox(height: 14),
-                  _CompletedCard(
-                    poNumber: 'PO-2310-075C',
-                    date: '20 Okt 2026 • 11:00',
-                    total: 'Rp 8.750.000',
-                  ),
-                ],
+              child: FutureBuilder<List<OrderSummary>>(
+                future: _ordersFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Gagal memuat riwayat: ${snapshot.error}'));
+                  }
+
+                  final orders = snapshot.data!;
+                  if (orders.isEmpty) {
+                    return const Center(child: Text('Belum ada riwayat pesanan.'));
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                    itemCount: orders.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      final order = orders[index];
+                      return _HistoryCard(
+                        order: order,
+                        onTap: () => Navigator.of(context).pushNamed('/history-detail', arguments: order.poNumber),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: _HistoryBottomBar(currentIndex: 2),
+      bottomNavigationBar: const _HistoryBottomBar(currentIndex: 2),
     );
   }
 }
@@ -147,135 +137,16 @@ class _FilterChip extends StatelessWidget {
 
 class _HistoryCard extends StatelessWidget {
   const _HistoryCard({
-    required this.poNumber,
-    required this.date,
-    required this.total,
-    required this.status,
-    required this.statusColor,
-    required this.timeline,
-    required this.actionLabel,
+    required this.order,
     required this.onTap,
   });
 
-  final String poNumber;
-  final String date;
-  final String total;
-  final String status;
-  final Color statusColor;
-  final List<_TimelineItem> timeline;
-  final String actionLabel;
+  final OrderSummary order;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFD1CBE4)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        poNumber,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        date,
-                        style: const TextStyle(
-                          color: Colors.black54,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    status,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              total,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF3F35A6),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            ...timeline.map((item) => _TimelineTile(item: item)),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: OutlinedButton(
-                onPressed: onTap,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black87,
-                  side: const BorderSide(color: Color(0xFF9F97C8)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text(
-                  actionLabel,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PendingCard extends StatelessWidget {
-  const _PendingCard({
-    required this.poNumber,
-    required this.date,
-    required this.total,
-    required this.onPay,
-  });
-
-  final String poNumber;
-  final String date;
-  final String total;
-  final VoidCallback onPay;
-
-  @override
-  Widget build(BuildContext context) {
+    final statusColor = _statusColor(order.status);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -287,37 +158,35 @@ class _PendingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(poNumber, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text(date, style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(order.poNumber, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(formatDateTime(order.createdAt), style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                  ],
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8E3FF),
+                  color: statusColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Text(
-                  'PENDING',
-                  style: TextStyle(
-                    color: Color(0xFF4A3AFF),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
+                child: Text(
+                  order.statusLabel,
+                  style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 12),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
-            total,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF2B2A3A)),
+            formatCurrency(order.totalAmount),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF3F35A6)),
           ),
           const SizedBox(height: 12),
           const Divider(height: 1),
@@ -325,143 +194,20 @@ class _PendingCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Menunggu Pembayaran', style: TextStyle(color: Colors.black54)),
+              Text('${order.itemCount} item - ${order.paymentMethod}', style: const TextStyle(color: Colors.black54)),
               SizedBox(
                 height: 38,
-                child: ElevatedButton(
-                  onPressed: onPay,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A3AFF),
-                    foregroundColor: Colors.white,
+                child: OutlinedButton(
+                  onPressed: onTap,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.black87,
+                    side: const BorderSide(color: Color(0xFF9F97C8)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text('Bayar', style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text('Lihat Detail', style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompletedCard extends StatelessWidget {
-  const _CompletedCard({required this.poNumber, required this.date, required this.total});
-
-  final String poNumber;
-  final String date;
-  final String total;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFD1CBE4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(poNumber, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text(date, style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDDF0E7),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'SELESAI',
-                  style: TextStyle(
-                    color: Color(0xFF2C9C78),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            total,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF2B2A3A)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimelineItem {
-  const _TimelineItem({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.active,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool active;
-}
-
-class _TimelineTile extends StatelessWidget {
-  const _TimelineTile({required this.item});
-
-  final _TimelineItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = item.active ? const Color(0xFF4A3AFF) : const Color(0xFFB8B1D1);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(item.icon, color: Colors.white, size: 16),
-              ),
-              if (item != item) const SizedBox.shrink(),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item.subtitle,
-                  style: TextStyle(color: item.active ? Colors.black54 : Colors.black45, fontSize: 12),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -501,4 +247,13 @@ class _HistoryBottomBar extends StatelessWidget {
       },
     );
   }
+}
+
+Color _statusColor(String status) {
+  return switch (status) {
+    'pending_payment' => const Color(0xFF4A3AFF),
+    'paid' || 'shipping' => const Color(0xFF2F77C4),
+    'received' || 'completed' => const Color(0xFF2C9C78),
+    _ => Colors.grey,
+  };
 }

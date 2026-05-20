@@ -5,6 +5,7 @@ class ScanQrPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final poNumber = ModalRoute.of(context)?.settings.arguments as String? ?? 'PO-2026-10-9842';
     const Color bg = Color(0xFF1F203A);
     const Color primaryPurple = Color(0xFF4A3AFF);
     const Color accent = Color(0xFF6A5CF7);
@@ -139,18 +140,18 @@ class ScanQrPage extends StatelessWidget {
                       child: const Icon(Icons.inventory_2_outlined, color: accent),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             'Menunggu Pindai',
                             style: TextStyle(color: Colors.white54, fontSize: 13),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            'PO-2026-10-9842',
-                            style: TextStyle(
+                            poNumber,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
@@ -212,7 +213,7 @@ class ScanQrPage extends StatelessWidget {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pushNamed('/received-goods'),
+                  onPressed: () => Navigator.of(context).pushNamed('/received-goods', arguments: poNumber),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1BBE8E),
                     foregroundColor: Colors.white,
