@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "E:\\Kuliah\\Magang\\GCS\\grantee\\gcommers\\backend-dotnet\\Gcommers.Api.csproj": {}
+    "C:\\Users\\ASUS TUF\\Downloads\\flutter\\gcommerce\\backend-dotnet\\Gcommers.Api.csproj": {}
   },
   "projects": {
-    "E:\\Kuliah\\Magang\\GCS\\grantee\\gcommers\\backend-dotnet\\Gcommers.Api.csproj": {
+    "C:\\Users\\ASUS TUF\\Downloads\\flutter\\gcommerce\\backend-dotnet\\Gcommers.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\Kuliah\\Magang\\GCS\\grantee\\gcommers\\backend-dotnet\\Gcommers.Api.csproj",
+        "projectUniqueName": "C:\\Users\\ASUS TUF\\Downloads\\flutter\\gcommerce\\backend-dotnet\\Gcommers.Api.csproj",
         "projectName": "Gcommers.Api",
-        "projectPath": "E:\\Kuliah\\Magang\\GCS\\grantee\\gcommers\\backend-dotnet\\Gcommers.Api.csproj",
-        "packagesPath": "C:\\Users\\Arjuna\\.nuget\\packages\\",
-        "outputPath": "E:\\Kuliah\\Magang\\GCS\\grantee\\gcommers\\backend-dotnet\\obj\\",
+        "projectPath": "C:\\Users\\ASUS TUF\\Downloads\\flutter\\gcommerce\\backend-dotnet\\Gcommers.Api.csproj",
+        "packagesPath": "C:\\Users\\ASUS TUF\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\ASUS TUF\\Downloads\\flutter\\gcommerce\\backend-dotnet\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Arjuna\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\ASUS TUF\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
@@ -68,7 +68,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.204/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
