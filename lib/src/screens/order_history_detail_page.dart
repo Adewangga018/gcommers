@@ -239,7 +239,7 @@ class OrderHistoryDetailPage extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => Navigator.of(context).pushNamed('/scan-qr'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0E9AA7),
                     foregroundColor: Colors.white,

@@ -219,7 +219,7 @@ class OrderPage extends StatelessWidget {
               SizedBox(
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pushNamed('/scan-qr'),
+                  onPressed: () => Navigator.of(context).pushNamed('/payment'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryPurple,
                     foregroundColor: Colors.white,

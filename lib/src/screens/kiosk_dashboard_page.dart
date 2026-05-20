@@ -105,7 +105,7 @@ class KiosDashboardPage extends StatelessWidget {
                       primaryPurple,
                       onTap: () => Navigator.of(context).pushNamed('/history'),
                     ),
-                    _buildQuickActionCard(context, Icons.check_circle_outlined, 'Konfirmasi', primaryPurple),
+              
                   ],
                 ),
               ),
