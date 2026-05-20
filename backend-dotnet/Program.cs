@@ -20,6 +20,7 @@ app.UseCors("AllowAll");
 try
 {
     await AuthDatabase.EnsureSchemaAsync(app.Configuration);
+    await CommerceDatabase.EnsureSchemaAsync(app.Configuration);
 }
 catch (Exception ex)
 {
@@ -210,8 +211,112 @@ auth.MapPost("/reset-password", async (ResetPasswordRequest request, IConfigurat
     return Results.Ok(new { message = "Password berhasil diperbarui." });
 });
 
-// Note: KTP file upload endpoint can be added later with cloud storage (Azure Blob, S3)
-// For now, KTP filename is stored in registration via licenseImageName field
+auth.MapPost("/upload-ktp", async (HttpRequest request, IWebHostEnvironment environment, CancellationToken cancellationToken) =>
+{
+    if (!request.HasFormContentType)
+    {
+        return Results.BadRequest(new { message = "Request harus multipart/form-data." });
+    }
+
+    var form = await request.ReadFormAsync(cancellationToken);
+    var file = form.Files["file"];
+    if (file is null || file.Length == 0)
+    {
+        return Results.BadRequest(new { message = "File KTP wajib diunggah." });
+    }
+
+    var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+    if (extension is not ".jpg" and not ".jpeg" and not ".png")
+    {
+        return Results.BadRequest(new { message = "Format file harus JPG atau PNG." });
+    }
+
+    const long maxFileSize = 5 * 1024 * 1024;
+    if (file.Length > maxFileSize)
+    {
+        return Results.BadRequest(new { message = "Ukuran file maksimal 5MB." });
+    }
+
+    var uploadRoot = Path.Combine(environment.ContentRootPath, "uploads", "ktp");
+    Directory.CreateDirectory(uploadRoot);
+
+    var safeName = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}{extension}";
+    var destination = Path.Combine(uploadRoot, safeName);
+
+    await using var stream = File.Create(destination);
+    await file.CopyToAsync(stream, cancellationToken);
+
+    return Results.Ok(new UploadKtpResponse(safeName, $"/uploads/ktp/{safeName}"));
+});
+
+app.MapGet("/dashboard/summary", async (IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var summary = await CommerceDatabase.GetDashboardSummaryAsync(configuration, cancellationToken);
+    return Results.Ok(summary);
+});
+
+app.MapGet("/products", async (string? category, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var products = await CommerceDatabase.GetProductsAsync(configuration, category, cancellationToken);
+    return Results.Ok(products);
+});
+
+var orders = app.MapGroup("/orders");
+
+orders.MapGet("/", async (string? userEmail, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var data = await CommerceDatabase.GetOrdersAsync(configuration, userEmail, cancellationToken);
+    return Results.Ok(data);
+});
+
+orders.MapPost("/", async (CreateOrderRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var validationError = request.Validate();
+    if (validationError is not null)
+    {
+        return Results.BadRequest(new { message = validationError });
+    }
+
+    try
+    {
+        var order = await CommerceDatabase.CreateOrderAsync(configuration, request, cancellationToken);
+        return Results.Ok(order);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+orders.MapGet("/{poNumber}", async (string poNumber, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var order = await CommerceDatabase.GetOrderDetailAsync(configuration, poNumber, cancellationToken);
+    return order is null
+        ? Results.NotFound(new { message = "Pesanan tidak ditemukan." })
+        : Results.Ok(order);
+});
+
+orders.MapPost("/{poNumber}/payment", async (string poNumber, PaymentRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var payment = await CommerceDatabase.PayOrderAsync(configuration, poNumber, request, cancellationToken);
+    return payment is null
+        ? Results.NotFound(new { message = "Pesanan tidak ditemukan." })
+        : Results.Ok(payment);
+});
+
+orders.MapPost("/{poNumber}/confirm-received", async (string poNumber, ConfirmReceivedRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var ok = await CommerceDatabase.ConfirmReceivedAsync(configuration, poNumber, request, cancellationToken);
+    return ok
+        ? Results.Ok(new { message = "Konfirmasi penerimaan barang tersimpan." })
+        : Results.NotFound(new { message = "Pesanan tidak ditemukan." });
+});
+
+app.MapGet("/notifications", async (IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var notifications = await CommerceDatabase.GetNotificationsAsync(configuration, cancellationToken);
+    return Results.Ok(notifications);
+});
 
 app.MapGet("/", () => Results.Ok(new
 {
