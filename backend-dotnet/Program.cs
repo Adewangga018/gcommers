@@ -312,10 +312,22 @@ orders.MapPost("/{poNumber}/confirm-received", async (string poNumber, ConfirmRe
         : Results.NotFound(new { message = "Pesanan tidak ditemukan." });
 });
 
-app.MapGet("/notifications", async (IConfiguration configuration, CancellationToken cancellationToken) =>
+app.MapGet("/notifications", async (string? userEmail, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
-    var notifications = await CommerceDatabase.GetNotificationsAsync(configuration, cancellationToken);
+    var notifications = await CommerceDatabase.GetNotificationsAsync(configuration, userEmail, cancellationToken);
     return Results.Ok(notifications);
+});
+
+app.MapPost("/notifications/mark-all-read", async (string? userEmail, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    await CommerceDatabase.MarkAllNotificationsReadAsync(configuration, userEmail, cancellationToken);
+    return Results.Ok(new { message = "Semua notifikasi ditandai dibaca." });
+});
+
+app.MapPost("/notifications/{id}/mark-read", async (int id, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    await CommerceDatabase.MarkNotificationReadAsync(configuration, id, cancellationToken);
+    return Results.Ok(new { message = "Notifikasi ditandai dibaca." });
 });
 
 app.MapGet("/", () => Results.Ok(new

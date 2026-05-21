@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: _obscure,
                         suffixIcon: Icon(
                           _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF938DA8),
+                          color: AppTheme.border,
                         ),
                         onSuffixTap: () => setState(() => _obscure = !_obscure),
                       ),
@@ -135,12 +135,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 22),
                       Row(
                         children: [
-                          const Expanded(child: Divider(color: Color(0xFFD9D3E9))),
+                          Expanded(child: Divider(color: AppTheme.border)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text('Atau', style: TextStyle(color: Colors.grey.shade600)),
                           ),
-                          const Expanded(child: Divider(color: Color(0xFFD9D3E9))),
+                          Expanded(child: Divider(color: AppTheme.border)),
                         ],
                       ),
                       const SizedBox(height: 16),

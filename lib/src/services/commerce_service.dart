@@ -98,12 +98,28 @@ class CommerceService {
     _ensureOk(response);
   }
 
-  Future<List<AppNotification>> getNotifications() async {
-    final response = await http.get(_uri('/notifications'));
+  Future<List<AppNotification>> getNotifications({String? userEmail}) async {
+    final response = await http.get(_uri('/notifications', {'userEmail': userEmail}));
     _ensureOk(response);
     return (jsonDecode(response.body) as List<dynamic>)
         .map((item) => AppNotification.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<void> markAllNotificationsRead({String? userEmail}) async {
+    final response = await http.post(
+      _uri('/notifications/mark-all-read', {'userEmail': userEmail}),
+      headers: const {'Content-Type': 'application/json'},
+    );
+    _ensureOk(response);
+  }
+
+  Future<void> markNotificationRead(int id) async {
+    final response = await http.post(
+      _uri('/notifications/$id/mark-read'),
+      headers: const {'Content-Type': 'application/json'},
+    );
+    _ensureOk(response);
   }
 
   void _ensureOk(http.Response response) {

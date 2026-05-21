@@ -26,7 +26,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
   @override
   Widget build(BuildContext context) {
     const Color primaryBlue = Color(0xFF2F77C4);
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
     const Color bgLight = Color(0xFFF9F9FF);
 
     return Scaffold(
@@ -234,7 +234,7 @@ class _StatusStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.isActive ? const Color(0xFF4A3AFF) : const Color(0xFFC8C1DE);
+    final color = item.isActive ? const Color(0xFF3B309E) : const Color(0xFFC8C1DE);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -293,7 +293,7 @@ class _ItemRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           formatCurrency(item.totalPrice),
-          style: const TextStyle(color: Color(0xFF4A3AFF), fontSize: 14, fontWeight: FontWeight.w800),
+          style: const TextStyle(color: Color(0xFF3B309E), fontSize: 14, fontWeight: FontWeight.w800),
         ),
       ],
     );

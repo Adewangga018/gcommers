@@ -87,11 +87,17 @@ static class CommerceDatabase
             CREATE TABLE dbo.Notifications
             (
                 Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Notifications PRIMARY KEY,
+                UserEmail NVARCHAR(256) NULL,
                 Title NVARCHAR(200) NOT NULL,
                 Description NVARCHAR(500) NOT NULL,
                 IsRead BIT NOT NULL CONSTRAINT DF_Notifications_IsRead DEFAULT 0,
                 CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Notifications_CreatedAt DEFAULT SYSUTCDATETIME()
             );
+        END
+        ELSE IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Notifications') AND name = 'UserEmail')
+        BEGIN
+            -- Migration to add UserEmail if table exists from previous version
+            ALTER TABLE dbo.Notifications ADD UserEmail NVARCHAR(256) NULL;
         END
         """);
 
@@ -361,7 +367,7 @@ static class CommerceDatabase
                 PaymentMethod = @PaymentMethod,
                 PaidAt = COALESCE(PaidAt, SYSUTCDATETIME()),
                 UpdatedAt = SYSUTCDATETIME()
-            OUTPUT INSERTED.Id, INSERTED.TotalAmount
+            OUTPUT INSERTED.Id, INSERTED.TotalAmount, INSERTED.UserEmail
             WHERE PoNumber = @PoNumber;
             """;
         command.Parameters.AddWithValue("@PoNumber", poNumber);
@@ -376,10 +382,11 @@ static class CommerceDatabase
 
         var orderId = reader.GetInt32(0);
         var total = reader.GetDecimal(1);
+        var userEmail = reader.IsDBNull(2) ? null : reader.GetString(2);
         await reader.CloseAsync();
 
         await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId, "Pembayaran Berhasil", $"Metode {method}", "paid", true, 20, cancellationToken);
-        await AddNotificationAsync(connection, (SqlTransaction)transaction, "Pembayaran berhasil", $"Pembayaran {poNumber} melalui {method} telah diterima.", cancellationToken);
+        await AddNotificationAsync(connection, (SqlTransaction)transaction, "Pembayaran berhasil", $"Pembayaran {poNumber} melalui {method} telah diterima.", userEmail, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return new PaymentResponse(poNumber, method, BuildVirtualAccount(method, poNumber), total, "paid");
@@ -403,25 +410,28 @@ static class CommerceDatabase
             SET Status = @Status,
                 DeliveredAt = CASE WHEN @Accepted = 1 THEN COALESCE(DeliveredAt, SYSUTCDATETIME()) ELSE DeliveredAt END,
                 UpdatedAt = SYSUTCDATETIME()
-            OUTPUT INSERTED.Id
+            OUTPUT INSERTED.Id, INSERTED.UserEmail
             WHERE PoNumber = @PoNumber;
             """;
         command.Parameters.AddWithValue("@PoNumber", poNumber);
         command.Parameters.AddWithValue("@Accepted", request.Accepted);
         command.Parameters.AddWithValue("@Status", request.Accepted ? "received" : "delivery_issue");
 
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        if (result is null)
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
         {
             await transaction.RollbackAsync(cancellationToken);
             return false;
         }
 
-        var orderId = Convert.ToInt32(result);
+        var orderId = reader.GetInt32(0);
+        var userEmail = reader.IsDBNull(1) ? null : reader.GetString(1);
+        await reader.CloseAsync();
+
         var title = request.Accepted ? "Barang Diterima" : "Barang Bermasalah";
         var subtitle = string.IsNullOrWhiteSpace(request.Notes) ? "Konfirmasi dari kios" : request.Notes!;
         await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId, title, subtitle, "received", true, 40, cancellationToken);
-        await AddNotificationAsync(connection, (SqlTransaction)transaction, title, $"{poNumber}: {subtitle}", cancellationToken);
+        await AddNotificationAsync(connection, (SqlTransaction)transaction, title, $"{poNumber}: {subtitle}", userEmail, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return true;
     }
@@ -439,6 +449,7 @@ static class CommerceDatabase
 
     public static async Task<IReadOnlyList<NotificationDto>> GetNotificationsAsync(
         IConfiguration configuration,
+        string? userEmail,
         CancellationToken cancellationToken)
     {
         var items = new List<NotificationDto>();
@@ -448,10 +459,12 @@ static class CommerceDatabase
 
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT TOP 30 Id, Title, Description, CreatedAt, IsRead
+            SELECT TOP 50 Id, Title, Description, CreatedAt, IsRead
             FROM dbo.Notifications
+            WHERE UserEmail IS NULL OR UserEmail = @UserEmail
             ORDER BY CreatedAt DESC;
             """;
+        command.Parameters.AddWithValue("@UserEmail", string.IsNullOrWhiteSpace(userEmail) ? DBNull.Value : userEmail);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -465,6 +478,31 @@ static class CommerceDatabase
         }
 
         return items;
+    }
+
+    public static async Task MarkNotificationReadAsync(IConfiguration configuration, int id, CancellationToken cancellationToken)
+    {
+        var connectionString = ConnectionStringFactory.Build(configuration);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE dbo.Notifications SET IsRead = 1 WHERE Id = @Id;";
+        command.Parameters.AddWithValue("@Id", id);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public static async Task MarkAllNotificationsReadAsync(IConfiguration configuration, string? userEmail, CancellationToken cancellationToken)
+    {
+        var connectionString = ConnectionStringFactory.Build(configuration);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE dbo.Notifications SET IsRead = 1 
+            WHERE UserEmail IS NULL OR UserEmail = @UserEmail;
+            """;
+        command.Parameters.AddWithValue("@UserEmail", string.IsNullOrWhiteSpace(userEmail) ? DBNull.Value : userEmail);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task<IReadOnlyList<OrderItemDto>> GetOrderItemsAsync(SqlConnection connection, int orderId, CancellationToken cancellationToken)
@@ -603,16 +641,18 @@ static class CommerceDatabase
         SqlTransaction transaction,
         string title,
         string description,
+        string? userEmail,
         CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO dbo.Notifications (Title, Description)
-            VALUES (@Title, @Description);
+            INSERT INTO dbo.Notifications (Title, Description, UserEmail)
+            VALUES (@Title, @Description, @UserEmail);
             """;
         command.Parameters.AddWithValue("@Title", title);
         command.Parameters.AddWithValue("@Description", description);
+        command.Parameters.AddWithValue("@UserEmail", (object?)userEmail ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
