@@ -3,12 +3,18 @@ class AuthSession {
     required this.email,
     required this.role,
     required this.displayName,
+    this.phone,
+    this.address,
+    this.picName,
     this.token,
   });
 
   final String email;
   final String role;
   final String displayName;
+  final String? phone;
+  final String? address;
+  final String? picName;
   final String? token;
 }
 

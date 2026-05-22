@@ -7,6 +7,9 @@ class SessionManager {
   static const _keyRole = 'session_role';
   static const _keyDisplayName = 'session_display_name';
   static const _keyToken = 'session_token';
+  static const _keyPhone = 'session_phone';
+  static const _keyAddress = 'session_address';
+  static const _keyPicName = 'session_pic_name';
 
   late final SharedPreferences _prefs;
   bool _initialized = false;
@@ -24,6 +27,9 @@ class SessionManager {
       _prefs.setString(_keyRole, session.role),
       _prefs.setString(_keyDisplayName, session.displayName),
       _prefs.setString(_keyToken, session.token ?? ''),
+      _prefs.setString(_keyPhone, session.phone ?? ''),
+      _prefs.setString(_keyAddress, session.address ?? ''),
+      _prefs.setString(_keyPicName, session.picName ?? ''),
     ]);
   }
 
@@ -33,6 +39,9 @@ class SessionManager {
     final role = _prefs.getString(_keyRole);
     final displayName = _prefs.getString(_keyDisplayName);
     final token = _prefs.getString(_keyToken);
+    final phone = _prefs.getString(_keyPhone);
+    final address = _prefs.getString(_keyAddress);
+    final picName = _prefs.getString(_keyPicName);
 
     if (email == null || role == null || displayName == null) {
       return null;
@@ -43,6 +52,9 @@ class SessionManager {
       role: role,
       displayName: displayName,
       token: token,
+      phone: phone,
+      address: address,
+      picName: picName,
     );
   }
 
@@ -53,6 +65,9 @@ class SessionManager {
       _prefs.remove(_keyRole),
       _prefs.remove(_keyDisplayName),
       _prefs.remove(_keyToken),
+      _prefs.remove(_keyPhone),
+      _prefs.remove(_keyAddress),
+      _prefs.remove(_keyPicName),
     ]);
   }
 
