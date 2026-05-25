@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../models/auth_models.dart';
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
+import '../services/session_manager.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
 class KiosDashboardPage extends StatefulWidget {
@@ -14,16 +17,47 @@ class KiosDashboardPage extends StatefulWidget {
 class _KiosDashboardPageState extends State<KiosDashboardPage> {
   final _commerceService = CommerceService();
   late final Future<DashboardSummary> _summaryFuture;
+  AuthSession? _session;
+  int _unreadNotifications = 0;
 
   @override
   void initState() {
     super.initState();
     _summaryFuture = _commerceService.getDashboardSummary();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await _loadSession();
+    await _loadUnreadCount();
+  }
+
+  Future<void> _loadSession() async {
+    final session = await sessionManager.getSession();
+    if (!mounted) return;
+    setState(() {
+      _session = session;
+    });
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      debugPrint('KiosDashboardPage: Loading unread count for user: ${_session?.email}');
+      final notifications = await _commerceService.getNotifications(userEmail: _session?.email);
+      if (!mounted) return;
+      setState(() {
+        _unreadNotifications = notifications.where((item) => !item.isRead).length;
+      });
+      debugPrint('KiosDashboardPage: Unread notifications count: $_unreadNotifications');
+    } catch (e) {
+      // Ignore notification load error here; dashboard still works.
+      debugPrint('KiosDashboardPage: Error loading unread count: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    final Color primaryPurple = AppTheme.primary;
     const Color bgLight = Color(0xFFF9F9FF);
 
     return Scaffold(
@@ -47,9 +81,13 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(
-                      color: primaryPurple,
-                      borderRadius: BorderRadius.only(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF534AB7), Color(0xFF3C3489)],
+                      ),
+                      borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(20),
                         bottomRight: Radius.circular(20),
                       ),
@@ -60,9 +98,9 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Halo, PT Kios Berkah',
-                              style: TextStyle(
+                            Text(
+                              'Halo, ${_session?.displayName ?? 'PT Kios Berkah'}',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -78,17 +116,27 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                         Row(
                           children: [
                             GestureDetector(
-                              onTap: () => Navigator.of(context).pushNamed('/notifications'),
+                              onTap: () async {
+                                await Navigator.of(context).pushNamed('/notifications');
+                                _loadUnreadCount(); // Refresh jumlah saat kembali
+                              },
                               child: Stack(
+                                clipBehavior: Clip.none,
                                 children: [
                                   const Icon(Icons.notifications_none, color: Colors.white, size: 28),
-                                  if (summary.activeOrderCount > 0)
+                                  if (_unreadNotifications > 0)
                                     Positioned(
-                                      right: 2,
-                                      top: 2,
+                                      right: -4,
+                                      top: -4,
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                        child: Text(
+                                          '$_unreadNotifications',
+                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                          textAlign: TextAlign.center,
+                                        ),
                                       ),
                                     )
                                 ],
@@ -171,7 +219,7 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                         const Text('Pesanan Terbaru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         TextButton(
                           onPressed: () => Navigator.of(context).pushNamed('/history'),
-                          child: const Text('Lihat Semua', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.bold)),
+                          child: Text('Lihat Semua', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -243,7 +291,9 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
   }
 
   Widget _buildSummaryCard({required IconData icon, required String title, required String value, required Widget subWidget}) {
-    return Container(
+    return SizedBox(
+      height: 115, // Memberikan tinggi tetap agar ukuran container sama
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -257,15 +307,25 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
             children: [
               Icon(icon, color: Colors.grey[600], size: 20),
               const SizedBox(width: 6),
-              Expanded(child: Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 14))),
+              Expanded(
+                child: Text(
+                  title, 
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+          Text(
+            value, 
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          ),
           const SizedBox(height: 6),
           subWidget,
         ],
-      ),
+      ),),
     );
   }
 
@@ -346,10 +406,10 @@ class _ErrorState extends StatelessWidget {
 
 Color _statusColor(String status) {
   return switch (status) {
-    'pending_payment' => const Color(0xFF4A3AFF),
-    'paid' => const Color(0xFF2F77C4),
-    'shipping' => const Color(0xFF2F77C4),
-    'received' || 'completed' => const Color(0xFF2C9C78),
+    'pending_payment' => AppTheme.primary,
+    'paid' => AppTheme.primaryDark,
+    'shipping' => AppTheme.primaryDark,
+    'received' || 'completed' => AppTheme.primaryDark,
     _ => Colors.grey,
   };
 }

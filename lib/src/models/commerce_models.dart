@@ -249,4 +249,20 @@ class AppNotification {
   final String description;
   final DateTime createdAt;
   final bool isRead;
+
+  AppNotification copyWith({
+    int? id,
+    String? title,
+    String? description,
+    DateTime? createdAt,
+    bool? isRead,
+  }) {
+    return AppNotification(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      isRead: isRead ?? this.isRead,
+    );
+  }
 }

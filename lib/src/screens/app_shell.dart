@@ -15,12 +15,19 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    // Ensure session storage is initialized before reading it,
+    // to avoid transient null sessions during hot reload.
+    sessionManager.init();
     _checkSession();
   }
 
   Future<void> _checkSession() async {
     await Future<void>.delayed(const Duration(milliseconds: 1800));
     if (!mounted) return;
+
+    // Ensure SharedPreferences is ready in case this runs right after hot reload.
+    await sessionManager.init();
+
 
     final session = await sessionManager.getSession();
     if (!mounted) return;

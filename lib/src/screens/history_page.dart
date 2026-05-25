@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -23,7 +24,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    final Color primaryPurple = AppTheme.primary;
     const Color bgLight = Color(0xFFF9F9FF);
 
     return Scaffold(
@@ -32,7 +33,7 @@ class _HistoryPageState extends State<HistoryPage> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: primaryPurple),
+          icon: Icon(Icons.arrow_back, color: primaryPurple),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -40,12 +41,7 @@ class _HistoryPageState extends State<HistoryPage> {
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: primaryPurple),
-            onPressed: () => Navigator.of(context).pushNamed('/orders'),
-          ),
-        ],
+        actions: [],
       ),
       body: SafeArea(
         child: Column(
@@ -113,7 +109,7 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
 
     return Container(
       height: 36,
@@ -121,7 +117,7 @@ class _FilterChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: selected ? primaryPurple : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: selected ? primaryPurple : const Color(0xFFD1CBE4)),
+        border: Border.all(color: selected ? primaryPurple : AppTheme.border),
       ),
       child: Text(
         label,
@@ -152,7 +148,7 @@ class _HistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFD1CBE4)),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +197,7 @@ class _HistoryCard extends StatelessWidget {
                   onPressed: onTap,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black87,
-                    side: const BorderSide(color: Color(0xFF9F97C8)),
+                    side: BorderSide(color: AppTheme.border),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: const Text('Lihat Detail', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -222,7 +218,7 @@ class _HistoryBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
 
     return BottomNavigationBar(
       currentIndex: currentIndex,
@@ -251,9 +247,9 @@ class _HistoryBottomBar extends StatelessWidget {
 
 Color _statusColor(String status) {
   return switch (status) {
-    'pending_payment' => const Color(0xFF4A3AFF),
-    'paid' || 'shipping' => const Color(0xFF2F77C4),
-    'received' || 'completed' => const Color(0xFF2C9C78),
+    'pending_payment' => AppTheme.primary,
+    'paid' || 'shipping' => AppTheme.primaryDark,
+    'received' || 'completed' => AppTheme.primaryDark,
     _ => Colors.grey,
   };
 }

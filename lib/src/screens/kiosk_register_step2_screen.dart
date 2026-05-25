@@ -34,6 +34,7 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
   bool _accepted = false;
   bool _loading = false;
   String? _selectedRegion;
+  bool _canSubmit = false;
   XFile? _ktpImage;
   Uint8List? _ktpImageBytes;
   final _regions = ['Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'DKI Jakarta', 'Banten'];
@@ -42,6 +43,10 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
   void dispose() {
     _addressController.dispose();
     super.dispose();
+  }
+
+  void _updateSubmitState() {
+    _canSubmit = _addressController.text.trim().isNotEmpty && _selectedRegion != null && _ktpImage != null && _accepted;
   }
 
   Future<void> _pickKtpImage() async {
@@ -58,6 +63,7 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
         setState(() {
           _ktpImage = image;
           _ktpImageBytes = bytes;
+          _updateSubmitState();
         });
       }
     } catch (e) {
@@ -132,6 +138,7 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                         hintText: 'Masukkan alamat lengkap kios (Jalan, RT/RW, Patokan)',
                         labelText: 'Alamat Lengkap',
                         maxLines: 3,
+                        onChanged: (_) => setState(_updateSubmitState),
                       ),
                       const SizedBox(height: 14),
                       Column(
@@ -149,7 +156,10 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (value) => setState(() => _selectedRegion = value),
+                            onChanged: (value) => setState(() {
+                            _selectedRegion = value;
+                            _updateSubmitState();
+                          }),
                             decoration: const InputDecoration(
                               hintText: 'Pilih Provinsi / Kota',
                             ),
@@ -173,7 +183,7 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: const Color(0xFFB8B1D1),
+                              color: AppTheme.border,
                               style: BorderStyle.solid,
                               width: 1.4,
                             ),
@@ -242,7 +252,10 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         value: _accepted,
-                        onChanged: (value) => setState(() => _accepted = value ?? false),
+                        onChanged: (value) => setState(() {
+                          _accepted = value ?? false;
+                          _updateSubmitState();
+                        }),
                         controlAffinity: ListTileControlAffinity.leading,
                         title: RichText(
                           text: const TextSpan(
@@ -271,7 +284,7 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
               PrimaryButton(
                 label: 'Daftar',
                 isLoading: _loading,
-                onPressed: _submit,
+                onPressed: _canSubmit && !_loading ? _submit : null,
               ),
             ],
           ),

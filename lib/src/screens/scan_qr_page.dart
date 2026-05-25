@@ -215,13 +215,13 @@ class ScanQrPage extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pushNamed('/received-goods', arguments: poNumber),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1BBE8E),
+                    backgroundColor: const Color(0xFF6A5CF7),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: 12,
-                    shadowColor: const Color(0xFF1BBE8E).withOpacity(0.45),
+                    shadowColor: const Color(0xFF6A5CF7).withOpacity(0.45),
                   ),
                   child: const Text(
                     'Lanjut Verifikasi →',
