@@ -115,6 +115,22 @@ class AuthService {
     return _decodeAuthSession(response);
   }
 
+  Future<AuthSession> registerTransportir(TransportirRegistrationDraft draft) async {
+    final response = await http.post(
+      _uri('/auth/register-transportir'),
+      headers: _headers,
+      body: jsonEncode({
+        'transportirName': draft.transportirName,
+        'phone': draft.phone,
+        'email': draft.email,
+        'password': draft.password,
+        'termsAccepted': draft.termsAccepted,
+      }),
+    );
+
+    return _decodeAuthSession(response);
+  }
+
   AuthSession _decodeAuthSession(http.Response response) {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;

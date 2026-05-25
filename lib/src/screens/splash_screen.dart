@@ -1,26 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import 'login_screen.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1800), () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      );
-    });
-  }
 
   @override
   Widget build(BuildContext context) {

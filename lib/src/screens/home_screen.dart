@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/auth_models.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
-import 'login_screen.dart';
+import 'role_selection_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.session});
@@ -42,6 +42,8 @@ class HomeScreen extends StatelessWidget {
               session.email,
               style: const TextStyle(color: AppTheme.muted),
             ),
+            const SizedBox(height: 10),
+            _RoleBadge(role: session.role),
             const SizedBox(height: 24),
             _InfoCard(
               title: 'Sistem autentikasi siap',
@@ -69,13 +71,53 @@ class HomeScreen extends StatelessWidget {
               await sessionManager.clearSession();
               if (!context.mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+                MaterialPageRoute<void>(builder: (_) => const RoleSelectionScreen()),
                 (_) => false,
               );
             },
             child: const Text('Logout'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RoleBadge extends StatelessWidget {
+  const _RoleBadge({required this.role});
+
+  final String role;
+
+  String get _label {
+    switch (role.toLowerCase()) {
+      case 'kiosk':
+        return 'Kiosk';
+      case 'transportir':
+        return 'Transportir';
+      case 'admin':
+        return 'Admin';
+      default:
+        return role;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color.fromARGB(26, 74, 58, 255),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          _label,
+          style: const TextStyle(
+            color: AppTheme.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }

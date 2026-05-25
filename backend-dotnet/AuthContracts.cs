@@ -38,6 +38,37 @@ public sealed record RegisterKioskRequest(
     }
 }
 
+public sealed record RegisterTransportirRequest(
+    string TransportirName,
+    string Phone,
+    string Email,
+    string Password,
+    bool TermsAccepted)
+{
+    public string? Validate()
+    {
+        if (string.IsNullOrWhiteSpace(TransportirName) ||
+            string.IsNullOrWhiteSpace(Phone) ||
+            string.IsNullOrWhiteSpace(Email) ||
+            string.IsNullOrWhiteSpace(Password))
+        {
+            return "Semua field wajib diisi.";
+        }
+
+        if (Password.Length < 8)
+        {
+            return "Password minimal 8 karakter.";
+        }
+
+        if (!TermsAccepted)
+        {
+            return "Anda harus menyetujui syarat dan ketentuan.";
+        }
+
+        return null;
+    }
+}
+
 public sealed record ForgotPasswordRequest(string Email);
 public sealed record ForgotPasswordResponse(string Email, string Otp, int ExpiresInSeconds);
 public sealed record VerifyOtpRequest(string Email, string Otp);
