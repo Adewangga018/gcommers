@@ -32,10 +32,21 @@ static class AuthDatabase
                 ResetOtpExpiresAt DATETIMEOFFSET NULL,
                 ResetOtpVerifiedAt DATETIMEOFFSET NULL,
                 CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Users_CreatedAt DEFAULT SYSUTCDATETIME(),
-                UpdatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Users_UpdatedAt DEFAULT SYSUTCDATETIME()
+                UpdatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Users_UpdatedAt DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'))
             );
 
             CREATE UNIQUE INDEX UX_Users_Email ON dbo.Users(Email);
+        END
+        ELSE IF NOT EXISTS (
+            SELECT 1
+            FROM sys.check_constraints
+            WHERE name = N'CK_Users_Role'
+              AND parent_object_id = OBJECT_ID(N'dbo.Users')
+        )
+        BEGIN
+            ALTER TABLE dbo.Users
+            ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'));
         END
         """;
 
@@ -83,10 +94,11 @@ static class AuthDatabase
             reader.IsDBNull(9) ? null : reader.GetFieldValue<DateTimeOffset>(9));
     }
 
-    public static async Task<AuthSession> CreateKioskUserAsync(
+    public static async Task<AuthSession> CreateUserAsync(
         SqlConnection connection,
         RegisterKioskRequest request,
         string normalizedEmail,
+        string role,
         CancellationToken cancellationToken)
     {
         var displayName = request.KioskName.Trim();
@@ -132,7 +144,7 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@Email", normalizedEmail);
         command.Parameters.AddWithValue("@PasswordHash", passwordHash);
         command.Parameters.AddWithValue("@PasswordSalt", passwordSalt);
-        command.Parameters.AddWithValue("@Role", "kiosk");
+        command.Parameters.AddWithValue("@Role", role);
         command.Parameters.AddWithValue("@DisplayName", displayName);
         command.Parameters.AddWithValue("@KioskName", request.KioskName.Trim());
         command.Parameters.AddWithValue("@PicName", request.PicName.Trim());
@@ -145,6 +157,75 @@ static class AuthDatabase
         if (!await reader.ReadAsync(cancellationToken))
         {
             throw new InvalidOperationException("Failed to create kiosk user.");
+        }
+
+        return new AuthSession(normalizedEmail, reader.GetString(2), reader.GetString(3), Guid.NewGuid().ToString("N"));
+    }
+
+    public static Task<AuthSession> CreateKioskUserAsync(
+        SqlConnection connection,
+        RegisterKioskRequest request,
+        string normalizedEmail,
+        CancellationToken cancellationToken)
+        => CreateUserAsync(connection, request, normalizedEmail, "kiosk", cancellationToken);
+
+    public static async Task<AuthSession> CreateTransportirUserAsync(
+        SqlConnection connection,
+        RegisterTransportirRequest request,
+        string normalizedEmail,
+        CancellationToken cancellationToken)
+    {
+        var displayName = request.TransportirName.Trim();
+        var (passwordSalt, passwordHash) = PasswordHasher.Hash(request.Password);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO dbo.Users
+            (
+                Email,
+                PasswordHash,
+                PasswordSalt,
+                Role,
+                DisplayName,
+                KioskName,
+                PicName,
+                Phone,
+                Address,
+                Region,
+                LicenseImageName,
+                CreatedAt,
+                UpdatedAt
+            )
+            OUTPUT INSERTED.Id, INSERTED.Email, INSERTED.Role, INSERTED.DisplayName
+            VALUES
+            (
+                @Email,
+                @PasswordHash,
+                @PasswordSalt,
+                @Role,
+                @DisplayName,
+                NULL,
+                NULL,
+                @Phone,
+                NULL,
+                NULL,
+                NULL,
+                SYSUTCDATETIME(),
+                SYSUTCDATETIME()
+            );
+            """;
+
+        command.Parameters.AddWithValue("@Email", normalizedEmail);
+        command.Parameters.AddWithValue("@PasswordHash", passwordHash);
+        command.Parameters.AddWithValue("@PasswordSalt", passwordSalt);
+        command.Parameters.AddWithValue("@Role", "transportir");
+        command.Parameters.AddWithValue("@DisplayName", displayName);
+        command.Parameters.AddWithValue("@Phone", request.Phone.Trim());
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw new InvalidOperationException("Failed to create transportir user.");
         }
 
         return new AuthSession(normalizedEmail, reader.GetString(2), reader.GetString(3), Guid.NewGuid().ToString("N"));

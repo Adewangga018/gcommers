@@ -5,17 +5,17 @@ import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/auth_widgets.dart';
 import 'forgot_password_screen.dart';
-import 'kiosk_register_step1_screen.dart';
 import 'role_selection_screen.dart';
+import 'transportir_register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class TransportirLoginScreen extends StatefulWidget {
+  const TransportirLoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<TransportirLoginScreen> createState() => _TransportirLoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _TransportirLoginScreenState extends State<TransportirLoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
@@ -37,13 +37,18 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
 
-      if (session.role.toLowerCase() != 'kiosk') {
-        throw Exception('Akun ini bukan role kiosk. Gunakan login transportir.');
+      final role = session.role.toLowerCase();
+      if (role != 'transportir' && role != 'admin') {
+        throw Exception('Akun ini bukan role transportir. Gunakan login kiosk.');
       }
 
       await sessionManager.saveSession(session);
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/home');
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/transportir-home',
+        (_) => false,
+        arguments: session,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -94,12 +99,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const SizedBox(height: 4),
                       const Text(
-                        'Masuk Kiosk',
+                        'Masuk Transportir',
                         style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Masuk ke akun GCommers untuk role kiosk',
+                        'Masuk ke akun GCommers untuk role transportir atau admin',
                         style: TextStyle(color: AppTheme.muted, fontSize: 15),
                       ),
                       const SizedBox(height: 18),
@@ -117,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: _obscure,
                         suffixIcon: Icon(
                           _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: AppTheme.border,
+                          color: const Color(0xFF938DA8),
                         ),
                         onSuffixTap: () => setState(() => _obscure = !_obscure),
                       ),
@@ -137,30 +142,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         isLoading: _loading,
                         onPressed: _submit,
                       ),
-                      const SizedBox(height: 22),
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: AppTheme.border)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text('Atau', style: TextStyle(color: Colors.grey.shade600)),
-                          ),
-                          Expanded(child: Divider(color: AppTheme.border)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
                       Center(
                         child: TextActionLink(
-                          label: 'Daftar sebagai Kios →',
+                          label: 'Belum punya akun? Daftar Transportir',
                           onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(builder: (_) => const KioskRegisterStep1Screen()),
+                            MaterialPageRoute<void>(builder: (_) => const TransportirRegisterScreen()),
                           ),
                         ),
                       ),
                       const SizedBox(height: 10),
                       Center(
                         child: TextActionLink(
-                          label: 'Pilih role lain',
+                          label: 'Pilih Role Lain',
                           onTap: () => Navigator.of(context).pushReplacement(
                             MaterialPageRoute<void>(builder: (_) => const RoleSelectionScreen()),
                           ),
@@ -189,7 +183,7 @@ class _LogoCircle extends StatelessWidget {
       width: size,
       height: size,
       decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-      child: const Icon(Icons.store_rounded, size: 46, color: AppTheme.primary),
+      child: const Icon(Icons.local_shipping_rounded, size: 44, color: AppTheme.primary),
     );
   }
 }

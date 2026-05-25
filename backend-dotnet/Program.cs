@@ -125,6 +125,29 @@ auth.MapPost("/register-kiosk", async (RegisterKioskRequest request, IConfigurat
     return Results.Ok(session);
 });
 
+auth.MapPost("/register-transportir", async (RegisterTransportirRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var validationError = request.Validate();
+    if (validationError is not null)
+    {
+        return Results.BadRequest(new { message = validationError });
+    }
+
+    var connectionString = ConnectionStringFactory.Build(configuration);
+    await using var connection = new SqlConnection(connectionString);
+    await connection.OpenAsync(cancellationToken);
+
+    var email = NormalizeEmail(request.Email);
+    var existing = await AuthDatabase.FindUserByEmailAsync(connection, email, cancellationToken);
+    if (existing is not null)
+    {
+        return Results.Conflict(new { message = "Email sudah terdaftar." });
+    }
+
+    var session = await AuthDatabase.CreateTransportirUserAsync(connection, request, email, cancellationToken);
+    return Results.Ok(session);
+});
+
 auth.MapPost("/forgot-password", async (ForgotPasswordRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
     var email = NormalizeEmail(request.Email);

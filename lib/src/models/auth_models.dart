@@ -42,6 +42,22 @@ class KioskRegistrationDraft {
   final String? licenseImageName;
 }
 
+class TransportirRegistrationDraft {
+  const TransportirRegistrationDraft({
+    required this.transportirName,
+    required this.phone,
+    required this.email,
+    required this.password,
+    required this.termsAccepted,
+  });
+
+  final String transportirName;
+  final String phone;
+  final String email;
+  final String password;
+  final bool termsAccepted;
+}
+
 class PasswordResetChallenge {
   const PasswordResetChallenge({
     required this.email,
