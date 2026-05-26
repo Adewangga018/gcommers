@@ -123,7 +123,7 @@ public sealed record AuthSession(
             user.CompanyName,
             user.PoliceNumber,
             user.VehicleType,
-            user.AvatarImageBase64);
+            user.AvatarImage is { Length: > 0 } bytes ? Convert.ToBase64String(bytes) : null);
 }
 
 public sealed record AuthUserRecord(
@@ -145,4 +145,4 @@ public sealed record AuthUserRecord(
     byte[]? ResetOtpSalt,
     DateTimeOffset? ResetOtpExpiresAt,
     DateTimeOffset? ResetOtpVerifiedAt,
-    string? AvatarImageBase64 = null);
+    byte[]? AvatarImage = null);

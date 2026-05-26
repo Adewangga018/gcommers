@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
@@ -85,12 +86,22 @@ static class AuthDatabase
             ALTER TABLE dbo.Users ADD CompanyName NVARCHAR(200) NULL;
         END
 
-        -- Add AvatarImage column if missing
+        -- Migrate AvatarImage from NVARCHAR(MAX) to VARBINARY(MAX) if it was added with wrong type
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND EXISTS (
+            SELECT 1 FROM sys.columns c
+            JOIN sys.types t ON c.user_type_id = t.user_type_id
+            WHERE c.object_id = OBJECT_ID(N'dbo.Users') AND c.name = N'AvatarImage' AND t.name = N'nvarchar'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users DROP COLUMN AvatarImage;
+        END
+
+        -- Add AvatarImage as VARBINARY(MAX) if missing
         IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
             SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'AvatarImage'
         )
         BEGIN
-            ALTER TABLE dbo.Users ADD AvatarImage NVARCHAR(MAX) NULL;
+            ALTER TABLE dbo.Users ADD AvatarImage VARBINARY(MAX) NULL;
         END
         """;
 
@@ -153,7 +164,7 @@ static class AuthDatabase
             reader.IsDBNull(15) ? null : (byte[])reader[15],
             reader.IsDBNull(16) ? null : reader.GetFieldValue<DateTimeOffset>(16),
             reader.IsDBNull(17) ? null : reader.GetFieldValue<DateTimeOffset>(17),
-            reader.IsDBNull(18) ? null : reader.GetString(18));  // AvatarImageBase64
+            reader.IsDBNull(18) ? null : (byte[])reader[18]);    // AvatarImage
     }
 
     public static async Task<AuthSession> CreateUserAsync(
@@ -404,7 +415,19 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@PicName", (object?)request.PicName?.Trim() ?? DBNull.Value);
         command.Parameters.AddWithValue("@Phone", (object?)request.Phone?.Trim() ?? DBNull.Value);
         command.Parameters.AddWithValue("@Address", (object?)request.Address?.Trim() ?? DBNull.Value);
-        command.Parameters.AddWithValue("@AvatarImage", (object?)request.AvatarImageBase64 ?? DBNull.Value);
+
+        // Use explicit VarBinary(MAX) — AddWithValue can silently truncate large base64 strings
+        var avatarParam = command.Parameters.Add("@AvatarImage", SqlDbType.VarBinary, -1);
+        if (!string.IsNullOrEmpty(request.AvatarImageBase64))
+        {
+            try { avatarParam.Value = Convert.FromBase64String(request.AvatarImageBase64); }
+            catch { avatarParam.Value = DBNull.Value; }
+        }
+        else
+        {
+            avatarParam.Value = DBNull.Value;
+        }
+
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
