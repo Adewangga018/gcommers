@@ -50,7 +50,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
     const Color bgLight = Color(0xFFF9F9FF);
 
     return Scaffold(
@@ -206,7 +206,7 @@ class _PaymentMethodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
 
     return Material(
       color: Colors.transparent,

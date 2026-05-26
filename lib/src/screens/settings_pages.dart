@@ -5,8 +5,26 @@ import '../services/commerce_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 
-class AccountInfoPage extends StatelessWidget {
+class AccountInfoPage extends StatefulWidget {
   const AccountInfoPage({super.key});
+
+  @override
+  State<AccountInfoPage> createState() => _AccountInfoPageState();
+}
+
+class _AccountInfoPageState extends State<AccountInfoPage> {
+  AuthSession? _session;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final session = await sessionManager.getSession();
+    if (mounted) setState(() => _session = session);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,15 +57,21 @@ class AccountInfoPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.grey[200]!),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
-                    _InfoTile(label: 'Nama Akun', value: 'PT Kios Berkah'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Email', value: 'user@contoh.com'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Jenis Akun', value: 'Kios Mitra'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Status Verifikasi', value: 'Terverifikasi'),
+                    _InfoTile(label: 'Nama Akun', value: _session?.displayName ?? '-'),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    _InfoTile(label: 'Email', value: _session?.email ?? '-'),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    _InfoTile(label: 'Jenis Akun', value: _session?.role == 'kiosk' ? 'Kios Mitra' : 'Administrator'),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    _InfoTile(label: 'PIC', value: _session?.picName ?? '-'),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    _InfoTile(label: 'Nomor Telepon', value: _session?.phone ?? '-'),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    _InfoTile(label: 'Alamat Kios', value: _session?.address ?? '-'),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    const _InfoTile(label: 'Status Verifikasi', value: 'Terverifikasi'),
                   ],
                 ),
               ),
@@ -59,8 +83,26 @@ class AccountInfoPage extends StatelessWidget {
   }
 }
 
-class SecurityPage extends StatelessWidget {
+class SecurityPage extends StatefulWidget {
   const SecurityPage({super.key});
+
+  @override
+  State<SecurityPage> createState() => _SecurityPageState();
+}
+
+class _SecurityPageState extends State<SecurityPage> {
+  AuthSession? _session;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final session = await sessionManager.getSession();
+    if (mounted) setState(() => _session = session);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,13 +135,13 @@ class SecurityPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.grey[200]!),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
-                    _InfoTile(label: 'Password', value: '••••••••'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Otentikasi 2 Langkah', value: 'Nonaktif'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Pemulihan Akun', value: 'Email terdaftar'),
+                    const _InfoTile(label: 'Password', value: '••••••••'),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    const _InfoTile(label: 'Otentikasi 2 Langkah', value: 'Nonaktif'),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    _InfoTile(label: 'Pemulihan Akun', value: _session?.email ?? 'Email terdaftar'),
                   ],
                 ),
               ),

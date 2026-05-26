@@ -71,7 +71,7 @@ class _OrderPageState extends State<OrderPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
     const Color bgLight = Color(0xFFF9F9FF);
 
     return Scaffold(
@@ -262,7 +262,7 @@ class _TabChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
 
     return InkWell(
       onTap: onTap,
@@ -302,7 +302,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
 
     return Material(
       color: Colors.transparent,
@@ -385,7 +385,7 @@ class ProductDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
     const Color bgLight = Color(0xFFF9F9FF);
 
     return Scaffold(
@@ -539,7 +539,7 @@ class _InfoChip extends StatelessWidget {
       decoration: BoxDecoration(color: const Color(0xFFF3EFFB), borderRadius: BorderRadius.circular(999)),
       child: Text(
         text,
-        style: const TextStyle(color: Color(0xFF4A3AFF), fontSize: 12, fontWeight: FontWeight.w700),
+        style: const TextStyle(color: Color(0xFF3B309E), fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }

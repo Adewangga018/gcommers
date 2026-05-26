@@ -11,6 +11,9 @@ class SessionManager {
   static const _keyPoliceNumber = 'session_police_number';
   static const _keyVehicleType = 'session_vehicle_type';
   static const _keyToken = 'session_token';
+  static const _keyPhone = 'session_phone';
+  static const _keyAddress = 'session_address';
+  static const _keyPicName = 'session_pic_name';
 
   late final SharedPreferences _prefs;
   bool _initialized = false;
@@ -32,6 +35,9 @@ class SessionManager {
       _prefs.setString(_keyPoliceNumber, session.policeNumber ?? ''),
       _prefs.setString(_keyVehicleType, session.vehicleType ?? ''),
       _prefs.setString(_keyToken, session.token ?? ''),
+      _prefs.setString(_keyPhone, session.phone ?? ''),
+      _prefs.setString(_keyAddress, session.address ?? ''),
+      _prefs.setString(_keyPicName, session.picName ?? ''),
     ]);
   }
 
@@ -45,6 +51,9 @@ class SessionManager {
     final policeNumber = _prefs.getString(_keyPoliceNumber);
     final vehicleType = _prefs.getString(_keyVehicleType);
     final token = _prefs.getString(_keyToken);
+    final phone = _prefs.getString(_keyPhone);
+    final address = _prefs.getString(_keyAddress);
+    final picName = _prefs.getString(_keyPicName);
 
     if (email == null || role == null || displayName == null) {
       return null;
@@ -59,6 +68,9 @@ class SessionManager {
       policeNumber: policeNumber?.isNotEmpty == true ? policeNumber : null,
       vehicleType: vehicleType?.isNotEmpty == true ? vehicleType : null,
       token: token,
+      phone: phone,
+      address: address,
+      picName: picName,
     );
   }
 
@@ -73,6 +85,9 @@ class SessionManager {
       _prefs.remove(_keyPoliceNumber),
       _prefs.remove(_keyVehicleType),
       _prefs.remove(_keyToken),
+      _prefs.remove(_keyPhone),
+      _prefs.remove(_keyAddress),
+      _prefs.remove(_keyPicName),
     ]);
   }
 

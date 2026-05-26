@@ -8,8 +8,8 @@ class PaymentSuccessPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF4A3AFF);
-    const Color bgLight = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
+    const Color bgLight = Color(0xFF3B309E);
     final args = ModalRoute.of(context)?.settings.arguments;
     final result = args is PaymentResult ? args : null;
 

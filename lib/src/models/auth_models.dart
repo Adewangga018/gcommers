@@ -7,6 +7,9 @@ class AuthSession {
     this.companyName,
     this.policeNumber,
     this.vehicleType,
+    this.phone,
+    this.address,
+    this.picName,
     this.token,
   });
 
@@ -17,6 +20,9 @@ class AuthSession {
   final String? companyName;
   final String? policeNumber;
   final String? vehicleType;
+  final String? phone;
+  final String? address;
+  final String? picName;
   final String? token;
 }
 

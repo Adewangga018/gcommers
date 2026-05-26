@@ -7,7 +7,7 @@ class ScanQrPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final poNumber = ModalRoute.of(context)?.settings.arguments as String? ?? 'PO-2026-10-9842';
     const Color bg = Color(0xFF1F203A);
-    const Color primaryPurple = Color(0xFF4A3AFF);
+    const Color primaryPurple = Color(0xFF3B309E);
     const Color accent = Color(0xFF6A5CF7);
 
     return Scaffold(
