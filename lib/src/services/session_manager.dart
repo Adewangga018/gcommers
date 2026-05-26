@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/auth_models.dart';
@@ -10,6 +13,8 @@ class SessionManager {
   static const _keyPhone = 'session_phone';
   static const _keyAddress = 'session_address';
   static const _keyPicName = 'session_pic_name';
+  static const _keyRegion = 'session_region';
+  static const _keyAvatarB64 = 'session_avatar_b64';
 
   late final SharedPreferences _prefs;
   bool _initialized = false;
@@ -30,6 +35,7 @@ class SessionManager {
       _prefs.setString(_keyPhone, session.phone ?? ''),
       _prefs.setString(_keyAddress, session.address ?? ''),
       _prefs.setString(_keyPicName, session.picName ?? ''),
+      _prefs.setString(_keyRegion, session.region ?? ''),
     ]);
   }
 
@@ -42,6 +48,7 @@ class SessionManager {
     final phone = _prefs.getString(_keyPhone);
     final address = _prefs.getString(_keyAddress);
     final picName = _prefs.getString(_keyPicName);
+    final region = _prefs.getString(_keyRegion);
 
     if (email == null || role == null || displayName == null) {
       return null;
@@ -52,10 +59,23 @@ class SessionManager {
       role: role,
       displayName: displayName,
       token: token,
-      phone: phone,
-      address: address,
-      picName: picName,
+      phone: phone?.isEmpty == true ? null : phone,
+      address: address?.isEmpty == true ? null : address,
+      picName: picName?.isEmpty == true ? null : picName,
+      region: region?.isEmpty == true ? null : region,
     );
+  }
+
+  Future<void> saveAvatarBytes(Uint8List bytes) async {
+    await _ensureInit();
+    await _prefs.setString(_keyAvatarB64, base64Encode(bytes));
+  }
+
+  Future<Uint8List?> loadAvatarBytes() async {
+    await _ensureInit();
+    final str = _prefs.getString(_keyAvatarB64);
+    if (str == null || str.isEmpty) return null;
+    return base64Decode(str);
   }
 
   Future<void> clearSession() async {
@@ -68,6 +88,8 @@ class SessionManager {
       _prefs.remove(_keyPhone),
       _prefs.remove(_keyAddress),
       _prefs.remove(_keyPicName),
+      _prefs.remove(_keyRegion),
+      _prefs.remove(_keyAvatarB64),
     ]);
   }
 

@@ -6,6 +6,7 @@ class AuthSession {
     this.phone,
     this.address,
     this.picName,
+    this.region,
     this.token,
   });
 
@@ -15,6 +16,7 @@ class AuthSession {
   final String? phone;
   final String? address;
   final String? picName;
+  final String? region;
   final String? token;
 }
 

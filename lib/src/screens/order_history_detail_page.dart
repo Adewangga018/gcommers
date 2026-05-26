@@ -184,20 +184,36 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.of(context).pushNamed('/scan-qr', arguments: order.poNumber),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0E9AA7),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  if (order.status == 'pending_payment')
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).pushNamed('/payment', arguments: order.poNumber),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B309E),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.payment_rounded),
+                        label: const Text('BAYAR SEKARANG', style: TextStyle(fontWeight: FontWeight.w800)),
                       ),
-                      icon: const Icon(Icons.qr_code_scanner_rounded),
-                      label: const Text('SCAN QR KONFIRMASI', style: TextStyle(fontWeight: FontWeight.w800)),
+                    )
+                  else if (order.status == 'paid' || order.status == 'shipping')
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).pushNamed('/scan-qr', arguments: order.poNumber),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0E9AA7),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        label: const Text('SCAN QR KONFIRMASI', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
                     ),
-                  ),
                 ],
               ),
             );

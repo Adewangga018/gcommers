@@ -66,6 +66,10 @@ static class AuthDatabase
                 PasswordSalt,
                 Role,
                 DisplayName,
+                Phone,
+                PicName,
+                Address,
+                Region,
                 ResetOtpHash,
                 ResetOtpSalt,
                 ResetOtpExpiresAt,
@@ -88,10 +92,14 @@ static class AuthDatabase
             (byte[])reader[3],
             reader.GetString(4),
             reader.GetString(5),
-            reader.IsDBNull(6) ? null : (byte[])reader[6],
-            reader.IsDBNull(7) ? null : (byte[])reader[7],
-            reader.IsDBNull(8) ? null : reader.GetFieldValue<DateTimeOffset>(8),
-            reader.IsDBNull(9) ? null : reader.GetFieldValue<DateTimeOffset>(9));
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8),
+            reader.IsDBNull(9) ? null : reader.GetString(9),
+            reader.IsDBNull(10) ? null : (byte[])reader[10],
+            reader.IsDBNull(11) ? null : (byte[])reader[11],
+            reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12),
+            reader.IsDBNull(13) ? null : reader.GetFieldValue<DateTimeOffset>(13));
     }
 
     public static async Task<AuthSession> CreateUserAsync(
@@ -288,6 +296,48 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@PasswordHash", hash);
         command.Parameters.AddWithValue("@PasswordSalt", salt);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public static async Task UpdateProfileAsync(
+        SqlConnection connection,
+        string email,
+        UpdateProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE dbo.Users
+            SET DisplayName = @DisplayName,
+                KioskName   = @DisplayName,
+                PicName     = @PicName,
+                Phone       = @Phone,
+                Address     = @Address,
+                UpdatedAt   = SYSUTCDATETIME()
+            WHERE Email = @Email;
+            """;
+        command.Parameters.AddWithValue("@Email", email);
+        command.Parameters.AddWithValue("@DisplayName", request.DisplayName.Trim());
+        command.Parameters.AddWithValue("@PicName", (object?)request.PicName?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Phone", (object?)request.Phone?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Address", (object?)request.Address?.Trim() ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public static async Task<bool> ChangePasswordAsync(
+        SqlConnection connection,
+        string email,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken)
+    {
+        var user = await FindUserByEmailAsync(connection, email, cancellationToken);
+        if (user is null) return false;
+
+        if (!PasswordHasher.Verify(currentPassword, user.PasswordSalt, user.PasswordHash))
+            return false;
+
+        await UpdatePasswordAsync(connection, user.Id, newPassword, cancellationToken);
+        return true;
     }
 }
 

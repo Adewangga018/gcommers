@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
@@ -6,6 +8,7 @@ import '../services/commerce_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
+import 'settings_pages.dart';
 
 class KiosDashboardPage extends StatefulWidget {
   const KiosDashboardPage({super.key});
@@ -18,41 +21,23 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
   final _commerceService = CommerceService();
   late final Future<DashboardSummary> _summaryFuture;
   AuthSession? _session;
-  int _unreadNotifications = 0;
+  Uint8List? _avatarBytes;
 
   @override
   void initState() {
     super.initState();
     _summaryFuture = _commerceService.getDashboardSummary();
-    _initData();
-  }
-
-  Future<void> _initData() async {
-    await _loadSession();
-    await _loadUnreadCount();
+    _loadSession();
   }
 
   Future<void> _loadSession() async {
     final session = await sessionManager.getSession();
+    final avatar = await sessionManager.loadAvatarBytes();
     if (!mounted) return;
     setState(() {
       _session = session;
+      _avatarBytes = avatar;
     });
-  }
-
-  Future<void> _loadUnreadCount() async {
-    try {
-      debugPrint('KiosDashboardPage: Loading unread count for user: ${_session?.email}');
-      final notifications = await _commerceService.getNotifications(userEmail: _session?.email);
-      if (!mounted) return;
-      setState(() {
-        _unreadNotifications = notifications.where((item) => !item.isRead).length;
-      });
-      debugPrint('KiosDashboardPage: Unread notifications count: $_unreadNotifications');
-    } catch (e) {
-      // Ignore notification load error here; dashboard still works.
-      debugPrint('KiosDashboardPage: Error loading unread count: $e');
-    }
   }
 
   @override
@@ -115,39 +100,25 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                         ),
                         Row(
                           children: [
+                            const NotificationBadge(iconColor: Colors.white),
                             GestureDetector(
                               onTap: () async {
-                                await Navigator.of(context).pushNamed('/notifications');
-                                _loadUnreadCount(); // Refresh jumlah saat kembali
+                                await Navigator.of(context).pushNamed('/profile');
+                                _loadSession();
                               },
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  const Icon(Icons.notifications_none, color: Colors.white, size: 28),
-                                  if (_unreadNotifications > 0)
-                                    Positioned(
-                                      right: -4,
-                                      top: -4,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                                        child: Text(
-                                          '$_unreadNotifications',
-                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    )
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 15),
-                            GestureDetector(
-                              onTap: () => Navigator.of(context).pushNamed('/profile'),
-                              child: const CircleAvatar(
+                              child: CircleAvatar(
+                                radius: 20,
                                 backgroundColor: Colors.white24,
-                                child: Icon(Icons.person, color: Colors.white),
+                                child: _avatarBytes != null
+                                    ? ClipOval(
+                                        child: Image.memory(
+                                          _avatarBytes!,
+                                          width: 40,
+                                          height: 40,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : const Icon(Icons.person_rounded, color: Colors.white, size: 22),
                               ),
                             ),
                           ],

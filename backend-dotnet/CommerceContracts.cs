@@ -74,7 +74,9 @@ public sealed record PaymentResponse(
     string Method,
     string VirtualAccount,
     decimal TotalAmount,
-    string Status);
+    string Status,
+    DateTimeOffset ExpiredAt,
+    IReadOnlyList<string> Instructions);
 
 public sealed record ConfirmReceivedRequest(bool Accepted, string? Notes);
 

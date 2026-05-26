@@ -1,5 +1,4 @@
 using Microsoft.Data.SqlClient;
-using System.Data;
 
 static class CommerceDatabase
 {
@@ -37,6 +36,8 @@ static class CommerceDatabase
                 Status NVARCHAR(50) NOT NULL,
                 Vendor NVARCHAR(200) NOT NULL,
                 PaymentMethod NVARCHAR(100) NOT NULL,
+                VirtualAccount NVARCHAR(30) NULL,
+                VaExpiredAt DATETIMEOFFSET NULL,
                 Subtotal DECIMAL(18,2) NOT NULL,
                 TaxAmount DECIMAL(18,2) NOT NULL,
                 ShippingAmount DECIMAL(18,2) NOT NULL,
@@ -48,6 +49,13 @@ static class CommerceDatabase
             );
 
             CREATE UNIQUE INDEX UX_Orders_PoNumber ON dbo.Orders(PoNumber);
+        END
+        ELSE
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'VirtualAccount')
+                ALTER TABLE dbo.Orders ADD VirtualAccount NVARCHAR(30) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'VaExpiredAt')
+                ALTER TABLE dbo.Orders ADD VaExpiredAt DATETIMEOFFSET NULL;
         END
 
         IF OBJECT_ID(N'dbo.OrderItems', N'U') IS NULL
@@ -350,28 +358,43 @@ static class CommerceDatabase
     public static async Task<PaymentResponse?> PayOrderAsync(
         IConfiguration configuration,
         string poNumber,
-        PaymentRequest request,
+        MandiriSnapService mandiriSnap,
         CancellationToken cancellationToken)
     {
-        var method = string.IsNullOrWhiteSpace(request.Method) ? "BRI" : request.Method.Trim().ToUpperInvariant();
+        var method = "MANDIRI";
         var connectionString = ConnectionStringFactory.Build(configuration);
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
+        // Check order exists and get total before starting transaction
+        await using var checkCmd = connection.CreateCommand();
+        checkCmd.CommandText = "SELECT TotalAmount FROM dbo.Orders WHERE PoNumber = @PoNumber AND Status = 'pending_payment';";
+        checkCmd.Parameters.AddWithValue("@PoNumber", poNumber);
+        var totalObj = await checkCmd.ExecuteScalarAsync(cancellationToken);
+        if (totalObj is null) return null;
+        var total = (decimal)totalObj;
+
+        // Create Mandiri VA (outside transaction – external API call)
+        var (vaNumber, vaExpiredAt) = await mandiriSnap.CreateVirtualAccountAsync(poNumber, total, cancellationToken);
+
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.Transaction = (SqlTransaction)transaction;
         command.CommandText = """
             UPDATE dbo.Orders
             SET Status = 'paid',
                 PaymentMethod = @PaymentMethod,
+                VirtualAccount = @VirtualAccount,
+                VaExpiredAt = @VaExpiredAt,
                 PaidAt = COALESCE(PaidAt, SYSUTCDATETIME()),
                 UpdatedAt = SYSUTCDATETIME()
-            OUTPUT INSERTED.Id, INSERTED.TotalAmount, INSERTED.UserEmail
+            OUTPUT INSERTED.Id, INSERTED.UserEmail
             WHERE PoNumber = @PoNumber;
             """;
         command.Parameters.AddWithValue("@PoNumber", poNumber);
         command.Parameters.AddWithValue("@PaymentMethod", method);
+        command.Parameters.AddWithValue("@VirtualAccount", vaNumber);
+        command.Parameters.AddWithValue("@VaExpiredAt", vaExpiredAt);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -381,15 +404,18 @@ static class CommerceDatabase
         }
 
         var orderId = reader.GetInt32(0);
-        var total = reader.GetDecimal(1);
-        var userEmail = reader.IsDBNull(2) ? null : reader.GetString(2);
+        var userEmail = reader.IsDBNull(1) ? null : reader.GetString(1);
         await reader.CloseAsync();
 
-        await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId, "Pembayaran Berhasil", $"Metode {method}", "paid", true, 20, cancellationToken);
-        await AddNotificationAsync(connection, (SqlTransaction)transaction, "Pembayaran berhasil", $"Pembayaran {poNumber} melalui {method} telah diterima.", userEmail, cancellationToken);
+        await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId,
+            "Pembayaran Berhasil", $"Mandiri Virtual Account {vaNumber}", "paid", true, 20, cancellationToken);
+        await AddNotificationAsync(connection, (SqlTransaction)transaction,
+            "Pembayaran berhasil", $"Pembayaran {poNumber} melalui Mandiri Virtual Account telah diterima.", userEmail, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return new PaymentResponse(poNumber, method, BuildVirtualAccount(method, poNumber), total, "paid");
+        return new PaymentResponse(
+            poNumber, method, vaNumber, total, "paid",
+            vaExpiredAt, MandiriSnapService.HowToPayInstructions(vaNumber));
     }
 
     public static async Task<bool> ConfirmReceivedAsync(
@@ -563,9 +589,12 @@ static class CommerceDatabase
         BEGIN
             INSERT INTO dbo.Products (Name, Description, Category, Price, Stock, MinimumOrder, Unit, IconName)
             VALUES
-            ('Pupuk Urea Prill 50kg', 'Pupuk nitrogen tinggi untuk mempercepat pertumbuhan vegetatif tanaman dan meningkatkan hasil panen.', 'Subsidi', 112500, 120, 1, 'Karung (50kg)', 'water_drop'),
-            ('NPK Phonska 15-15-15', 'Pupuk majemuk seimbang yang membantu pertumbuhan akar, batang, dan kualitas hasil panen.', 'Subsidi', 115000, 85, 1, 'Karung (50kg)', 'eco'),
-            ('Benih Padi Inpari 32', 'Varietas benih unggul dengan daya hasil tinggi dan adaptif untuk berbagai kondisi lahan sawah.', 'Retail', 65000, 40, 1, 'Pack (5kg)', 'spa');
+            ('Urea Subsidi', 'Urea subsidi adalah pupuk kimia yang mengandung unsur hara Nitrogen (N) tinggi, yang pengadaannya dibantu oleh pemerintah sehingga harganya lebih terjangkau bagi petani yang terdaftar dalam sistem e-RDKK. Ciri paling mencolok dari urea subsidi adalah warnanya yang merah muda (pink). Pewarnaan ini bertujuan agar pupuk subsidi mudah dibedakan secara visual dari pupuk non-subsidi yang berwarna putih.', 'Subsidi', 1800000, 200, 1, 'Karung (50kg)', 'water_drop'),
+            ('NPK Kakao', '-', 'Subsidi', 2640000, 150, 1, 'Karung (50kg)', 'eco'),
+            ('ZA', '-', 'Subsidi', 1360000, 180, 1, 'Karung (50kg)', 'eco'),
+            ('Petroganik', '-', 'Subsidi', 640000, 300, 1, 'Karung (40kg)', 'spa'),
+            ('Phonska', '-', 'Subsidi', 1840000, 160, 1, 'Karung (50kg)', 'eco'),
+            ('Urea Non-Subsidi', 'Urea adalah pupuk kimia yang mengandung Nitrogen (N) berkadar tinggi. Unsur Nitrogen sangat dibutuhkan tanaman, terutama pada fase vegetatif (pertumbuhan) untuk pembentukan klorofil, pertumbuhan daun, serta peningkatan tinggi tanaman. Pupuk ini bersifat higroskopis (mudah menyerap air), sehingga sangat mudah larut dalam air dan cepat diserap oleh tanaman.', 'Retail', 2500000, 100, 1, 'Karung (50kg)', 'water_drop');
         END
 
         IF NOT EXISTS (SELECT 1 FROM dbo.Orders WHERE PoNumber = 'PO-2026-10-9842')
@@ -667,13 +696,4 @@ static class CommerceDatabase
         _ => status.ToUpperInvariant()
     };
 
-    private static string BuildVirtualAccount(string method, string poNumber)
-    {
-        var digits = new string(poNumber.Where(char.IsDigit).ToArray());
-        return method switch
-        {
-            "MANDIRI" => $"88908{digits[^Math.Min(digits.Length, 10)..]}",
-            _ => $"77788{digits[^Math.Min(digits.Length, 10)..]}"
-        };
-    }
 }

@@ -69,6 +69,19 @@ public sealed record RegisterTransportirRequest(
     }
 }
 
+public sealed record UpdateProfileRequest(
+    string Email,
+    string DisplayName,
+    string? PicName = null,
+    string? Phone = null,
+    string? Address = null);
+
+public sealed record ChangePasswordRequest(
+    string Email,
+    string CurrentPassword,
+    string NewPassword,
+    string ConfirmNewPassword);
+
 public sealed record ForgotPasswordRequest(string Email);
 public sealed record ForgotPasswordResponse(string Email, string Otp, int ExpiresInSeconds);
 public sealed record VerifyOtpRequest(string Email, string Otp);
@@ -78,10 +91,22 @@ public sealed record AuthSession(
     string Email,
     string Role,
     string DisplayName,
-    string Token)
+    string Token,
+    string? Phone = null,
+    string? PicName = null,
+    string? Address = null,
+    string? Region = null)
 {
     public static AuthSession FromUser(AuthUserRecord user)
-        => new(user.Email, user.Role, user.DisplayName, Guid.NewGuid().ToString("N"));
+        => new(
+            user.Email,
+            user.Role,
+            user.DisplayName,
+            Guid.NewGuid().ToString("N"),
+            user.Phone,
+            user.PicName,
+            user.Address,
+            user.Region);
 }
 
 public sealed record AuthUserRecord(
@@ -91,6 +116,10 @@ public sealed record AuthUserRecord(
     byte[] PasswordSalt,
     string Role,
     string DisplayName,
+    string? Phone,
+    string? PicName,
+    string? Address,
+    string? Region,
     byte[]? ResetOtpHash,
     byte[]? ResetOtpSalt,
     DateTimeOffset? ResetOtpExpiresAt,
