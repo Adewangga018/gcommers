@@ -214,8 +214,8 @@ class TransportirProfilePage extends StatelessWidget {
         ],
         onTap: (index) {
           if (index == 0) Navigator.of(context).pushNamed('/transportir-home', arguments: session);
-          if (index == 1) Navigator.of(context).pushNamed('/orders');
-          if (index == 2) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Menu ini sedang disiapkan.')));
+          if (index == 1) Navigator.of(context).pushNamed('/transportir-orders', arguments: session);
+          if (index == 2) Navigator.of(context).pushNamed('/transportir-shipments', arguments: session);
           if (index == 3) Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session);
         },
       ),

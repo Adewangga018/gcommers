@@ -7,7 +7,9 @@ import 'src/screens/kiosk_profil_page.dart';
 import 'src/screens/login_screen.dart';
 import 'src/screens/role_selection_screen.dart';
 import 'src/screens/transportir_dashboard_screen.dart';
+import 'src/screens/transportir_orders_flow.dart';
 import 'src/screens/transportir_profile_page.dart';
+import 'src/screens/transportir_shipping_flow.dart';
 import 'src/screens/transportir_reports_flow.dart';
 import 'src/screens/transportir_register_screen.dart';
 import 'src/screens/transportir_login_screen.dart';
@@ -45,6 +47,14 @@ class GCommersApp extends StatelessWidget {
         '/transportir-home': (context) {
           final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;
           return TransportirDashboardScreen(session: session);
+        },
+        '/transportir-orders': (context) {
+          final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;
+          return TransportirOrdersPage(session: session);
+        },
+        '/transportir-shipments': (context) {
+          final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;
+          return TransportirShipmentsPage(session: session);
         },
         '/transportir-profile': (context) {
           final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;

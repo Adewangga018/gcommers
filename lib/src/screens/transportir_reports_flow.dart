@@ -276,7 +276,7 @@ class _TransportirReportClaimPageState extends State<TransportirReportClaimPage>
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.16), borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.receipt_long_outlined, color: Colors.white),
                 ),
               ],
@@ -530,7 +530,7 @@ class TransportirReportDetailPage extends StatelessWidget {
                     Container(
                       width: 48,
                       height: 48,
-                      decoration: BoxDecoration(color: args.badgeColor.withOpacity(0.18), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: args.badgeColor.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(12)),
                       child: Icon(args.statusIcon, color: args.badgeColor),
                     ),
                     const SizedBox(width: 12),
@@ -546,7 +546,7 @@ class TransportirReportDetailPage extends StatelessWidget {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(color: args.badgeColor.withOpacity(0.14), borderRadius: BorderRadius.circular(999)),
+                      decoration: BoxDecoration(color: args.badgeColor.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
                       child: Text(args.statusLabel, style: TextStyle(color: args.badgeColor, fontWeight: FontWeight.w800, fontSize: 11)),
                     ),
                   ],
@@ -617,8 +617,8 @@ class _TransportirReportBottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _NavItem(icon: Icons.home_rounded, label: 'Beranda', active: currentIndex == 0, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session)),
-          _NavItem(icon: Icons.inventory_2_outlined, label: 'Pesanan', active: currentIndex == 1, onTap: () => _showSoon(context)),
-          _NavItem(icon: Icons.local_shipping_outlined, label: 'Pengiriman', active: currentIndex == 2, onTap: () => _showSoon(context)),
+          _NavItem(icon: Icons.inventory_2_outlined, label: 'Pesanan', active: currentIndex == 1, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session)),
+          _NavItem(icon: Icons.local_shipping_outlined, label: 'Pengiriman', active: currentIndex == 2, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-shipments', arguments: session)),
           _NavItem(icon: Icons.bar_chart_outlined, label: 'Laporan', active: currentIndex == 3, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session)),
           _NavItem(icon: Icons.person_outline, label: 'Profil', active: currentIndex == 4, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-profile', arguments: session)),
         ],
@@ -626,9 +626,6 @@ class _TransportirReportBottomNav extends StatelessWidget {
     );
   }
 
-  void _showSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Menu ini sedang disiapkan.')));
-  }
 }
 
 class _NavItem extends StatelessWidget {
@@ -710,7 +707,7 @@ class _TotalCard extends StatelessWidget {
             child: Container(
               width: 54,
               height: 72,
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
             ),
           ),
           Column(
@@ -1113,7 +1110,7 @@ class _HistoryRecordCard extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: record.badgeColor.withOpacity(0.25), borderRadius: BorderRadius.circular(999)),
+                  decoration: BoxDecoration(color: record.badgeColor.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(999)),
                   child: Text(record.badge, style: TextStyle(color: record.badgeColor, fontSize: 11, fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(height: 10),
