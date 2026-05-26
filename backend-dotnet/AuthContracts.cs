@@ -40,17 +40,23 @@ public sealed record RegisterKioskRequest(
 
 public sealed record RegisterTransportirRequest(
     string TransportirName,
+    string CompanyName,
     string Phone,
     string Email,
     string Password,
+    string PoliceNumber,
+    string Type,
     bool TermsAccepted)
 {
     public string? Validate()
     {
         if (string.IsNullOrWhiteSpace(TransportirName) ||
+            string.IsNullOrWhiteSpace(CompanyName) ||
             string.IsNullOrWhiteSpace(Phone) ||
             string.IsNullOrWhiteSpace(Email) ||
-            string.IsNullOrWhiteSpace(Password))
+            string.IsNullOrWhiteSpace(Password) ||
+            string.IsNullOrWhiteSpace(PoliceNumber) ||
+            string.IsNullOrWhiteSpace(Type))
         {
             return "Semua field wajib diisi.";
         }
@@ -95,7 +101,11 @@ public sealed record AuthSession(
     string? Phone = null,
     string? PicName = null,
     string? Address = null,
-    string? Region = null)
+    string? Region = null,
+    string? TransportirName = null,
+    string? CompanyName = null,
+    string? PoliceNumber = null,
+    string? VehicleType = null)
 {
     public static AuthSession FromUser(AuthUserRecord user)
         => new(
@@ -106,7 +116,11 @@ public sealed record AuthSession(
             user.Phone,
             user.PicName,
             user.Address,
-            user.Region);
+            user.Region,
+            user.TransportirName,
+            user.CompanyName,
+            user.PoliceNumber,
+            user.VehicleType);
 }
 
 public sealed record AuthUserRecord(
@@ -120,6 +134,10 @@ public sealed record AuthUserRecord(
     string? PicName,
     string? Address,
     string? Region,
+    string? TransportirName,
+    string? CompanyName,
+    string? PoliceNumber,
+    string? VehicleType,
     byte[]? ResetOtpHash,
     byte[]? ResetOtpSalt,
     DateTimeOffset? ResetOtpExpiresAt,

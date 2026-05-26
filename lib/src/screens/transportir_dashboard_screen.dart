@@ -51,10 +51,11 @@ class TransportirDashboardScreen extends StatelessWidget {
           const SizedBox(height: 8),
           const _RouteCard(),
           const SizedBox(height: 12),
-          _NewOrdersCard(onTapAll: () => _showComingSoon(context)),
+          _NewOrdersCard(onTapAll: () => Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session)),
         ],
       ),
       bottomNavigationBar: _TransportirBottomNav(
+        session: session,
         onProfileTap: () {
           Navigator.of(context).pushNamed('/transportir-profile', arguments: session);
         },
@@ -414,9 +415,10 @@ class _OrderRow extends StatelessWidget {
 }
 
 class _TransportirBottomNav extends StatelessWidget {
-  const _TransportirBottomNav({required this.onProfileTap});
+  const _TransportirBottomNav({required this.onProfileTap, this.session});
 
   final VoidCallback onProfileTap;
+  final AuthSession? session;
 
   @override
   Widget build(BuildContext context) {
@@ -437,17 +439,17 @@ class _TransportirBottomNav extends StatelessWidget {
           _NavItem(
             icon: Icons.inventory_2_outlined,
             label: 'Pesanan',
-            onTap: () => _showTabSoon(context),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session),
           ),
           _NavItem(
             icon: Icons.local_shipping_outlined,
             label: 'Pengiriman',
-            onTap: () => _showTabSoon(context),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-shipments', arguments: session),
           ),
           _NavItem(
             icon: Icons.bar_chart_outlined,
             label: 'Laporan',
-            onTap: () => _showTabSoon(context),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session),
           ),
           _NavItem(
             icon: Icons.person_outline,
@@ -459,11 +461,6 @@ class _TransportirBottomNav extends StatelessWidget {
     );
   }
 
-  static void _showTabSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Menu ini sedang disiapkan.')),
-    );
-  }
 }
 
 class _NavItem extends StatelessWidget {

@@ -120,6 +120,7 @@ class AuthTextField extends StatelessWidget {
     this.labelText,
     this.icon,
     this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
     this.obscureText = false,
     this.suffixIcon,
     this.onSuffixTap,
@@ -132,6 +133,7 @@ class AuthTextField extends StatelessWidget {
   final String? labelText;
   final IconData? icon;
   final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
   final bool obscureText;
   final Widget? suffixIcon;
   final VoidCallback? onSuffixTap;
@@ -160,6 +162,7 @@ class AuthTextField extends StatelessWidget {
         TextField(
           controller: controller,
           keyboardType: keyboardType,
+          textCapitalization: textCapitalization,
           obscureText: obscureText,
           maxLines: maxLines,
           onChanged: onChanged,

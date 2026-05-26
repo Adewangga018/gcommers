@@ -9,6 +9,10 @@ class SessionManager {
   static const _keyEmail = 'session_email';
   static const _keyRole = 'session_role';
   static const _keyDisplayName = 'session_display_name';
+  static const _keyTransportirName = 'session_transportir_name';
+  static const _keyCompanyName = 'session_company_name';
+  static const _keyPoliceNumber = 'session_police_number';
+  static const _keyVehicleType = 'session_vehicle_type';
   static const _keyToken = 'session_token';
   static const _keyPhone = 'session_phone';
   static const _keyAddress = 'session_address';
@@ -31,6 +35,10 @@ class SessionManager {
       _prefs.setString(_keyEmail, session.email),
       _prefs.setString(_keyRole, session.role),
       _prefs.setString(_keyDisplayName, session.displayName),
+      _prefs.setString(_keyTransportirName, session.transportirName ?? ''),
+      _prefs.setString(_keyCompanyName, session.companyName ?? ''),
+      _prefs.setString(_keyPoliceNumber, session.policeNumber ?? ''),
+      _prefs.setString(_keyVehicleType, session.vehicleType ?? ''),
       _prefs.setString(_keyToken, session.token ?? ''),
       _prefs.setString(_keyPhone, session.phone ?? ''),
       _prefs.setString(_keyAddress, session.address ?? ''),
@@ -44,6 +52,10 @@ class SessionManager {
     final email = _prefs.getString(_keyEmail);
     final role = _prefs.getString(_keyRole);
     final displayName = _prefs.getString(_keyDisplayName);
+    final transportirName = _prefs.getString(_keyTransportirName);
+    final companyName = _prefs.getString(_keyCompanyName);
+    final policeNumber = _prefs.getString(_keyPoliceNumber);
+    final vehicleType = _prefs.getString(_keyVehicleType);
     final token = _prefs.getString(_keyToken);
     final phone = _prefs.getString(_keyPhone);
     final address = _prefs.getString(_keyAddress);
@@ -58,6 +70,10 @@ class SessionManager {
       email: email,
       role: role,
       displayName: displayName,
+      transportirName: transportirName?.isNotEmpty == true ? transportirName : null,
+      companyName: companyName?.isNotEmpty == true ? companyName : null,
+      policeNumber: policeNumber?.isNotEmpty == true ? policeNumber : null,
+      vehicleType: vehicleType?.isNotEmpty == true ? vehicleType : null,
       token: token,
       phone: phone?.isEmpty == true ? null : phone,
       address: address?.isEmpty == true ? null : address,
@@ -84,6 +100,10 @@ class SessionManager {
       _prefs.remove(_keyEmail),
       _prefs.remove(_keyRole),
       _prefs.remove(_keyDisplayName),
+      _prefs.remove(_keyTransportirName),
+      _prefs.remove(_keyCompanyName),
+      _prefs.remove(_keyPoliceNumber),
+      _prefs.remove(_keyVehicleType),
       _prefs.remove(_keyToken),
       _prefs.remove(_keyPhone),
       _prefs.remove(_keyAddress),
