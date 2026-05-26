@@ -555,7 +555,7 @@ Future<Uint8List> _buildShipmentPdf({
 
   pdf.addPage(
     pw.Page(
-      pageFormat: PdfPageFormat.a4,
+      pageFormat: PdfPageFormat.a4.landscape,
       margin: const pw.EdgeInsets.fromLTRB(32, 26, 32, 26),
       build: (ctx) {
         return pw.Column(
