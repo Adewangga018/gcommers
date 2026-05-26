@@ -84,6 +84,14 @@ static class AuthDatabase
         BEGIN
             ALTER TABLE dbo.Users ADD CompanyName NVARCHAR(200) NULL;
         END
+
+        -- Add AvatarImage column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'AvatarImage'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD AvatarImage NVARCHAR(MAX) NULL;
+        END
         """;
 
         await using var command = connection.CreateCommand();
@@ -113,7 +121,8 @@ static class AuthDatabase
                 ResetOtpHash,
                 ResetOtpSalt,
                 ResetOtpExpiresAt,
-                ResetOtpVerifiedAt
+                ResetOtpVerifiedAt,
+                AvatarImage
             FROM dbo.Users
             WHERE Email = @Email;
             """;
@@ -143,7 +152,8 @@ static class AuthDatabase
             reader.IsDBNull(14) ? null : (byte[])reader[14],
             reader.IsDBNull(15) ? null : (byte[])reader[15],
             reader.IsDBNull(16) ? null : reader.GetFieldValue<DateTimeOffset>(16),
-            reader.IsDBNull(17) ? null : reader.GetFieldValue<DateTimeOffset>(17));
+            reader.IsDBNull(17) ? null : reader.GetFieldValue<DateTimeOffset>(17),
+            reader.IsDBNull(18) ? null : reader.GetString(18));  // AvatarImageBase64
     }
 
     public static async Task<AuthSession> CreateUserAsync(
@@ -380,12 +390,13 @@ static class AuthDatabase
         await using var command = connection.CreateCommand();
         command.CommandText = """
             UPDATE dbo.Users
-            SET DisplayName = @DisplayName,
-                KioskName   = @DisplayName,
-                PicName     = @PicName,
-                Phone       = @Phone,
-                Address     = @Address,
-                UpdatedAt   = SYSUTCDATETIME()
+            SET DisplayName  = @DisplayName,
+                KioskName    = @DisplayName,
+                PicName      = @PicName,
+                Phone        = @Phone,
+                Address      = @Address,
+                AvatarImage  = COALESCE(@AvatarImage, AvatarImage),
+                UpdatedAt    = SYSUTCDATETIME()
             WHERE Email = @Email;
             """;
         command.Parameters.AddWithValue("@Email", email);
@@ -393,6 +404,7 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@PicName", (object?)request.PicName?.Trim() ?? DBNull.Value);
         command.Parameters.AddWithValue("@Phone", (object?)request.Phone?.Trim() ?? DBNull.Value);
         command.Parameters.AddWithValue("@Address", (object?)request.Address?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@AvatarImage", (object?)request.AvatarImageBase64 ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 

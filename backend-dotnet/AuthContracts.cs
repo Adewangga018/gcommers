@@ -80,7 +80,8 @@ public sealed record UpdateProfileRequest(
     string DisplayName,
     string? PicName = null,
     string? Phone = null,
-    string? Address = null);
+    string? Address = null,
+    string? AvatarImageBase64 = null);
 
 public sealed record ChangePasswordRequest(
     string Email,
@@ -105,7 +106,8 @@ public sealed record AuthSession(
     string? TransportirName = null,
     string? CompanyName = null,
     string? PoliceNumber = null,
-    string? VehicleType = null)
+    string? VehicleType = null,
+    string? AvatarImageBase64 = null)
 {
     public static AuthSession FromUser(AuthUserRecord user)
         => new(
@@ -120,7 +122,8 @@ public sealed record AuthSession(
             user.TransportirName,
             user.CompanyName,
             user.PoliceNumber,
-            user.VehicleType);
+            user.VehicleType,
+            user.AvatarImageBase64);
 }
 
 public sealed record AuthUserRecord(
@@ -141,4 +144,5 @@ public sealed record AuthUserRecord(
     byte[]? ResetOtpHash,
     byte[]? ResetOtpSalt,
     DateTimeOffset? ResetOtpExpiresAt,
-    DateTimeOffset? ResetOtpVerifiedAt);
+    DateTimeOffset? ResetOtpVerifiedAt,
+    string? AvatarImageBase64 = null);

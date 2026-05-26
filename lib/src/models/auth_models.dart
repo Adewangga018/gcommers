@@ -12,6 +12,7 @@ class AuthSession {
     this.picName,
     this.region,
     this.token,
+    this.avatarImageBase64,
   });
 
   final String email;
@@ -26,6 +27,7 @@ class AuthSession {
   final String? picName;
   final String? region;
   final String? token;
+  final String? avatarImageBase64;
 }
 
 class KioskRegistrationDraft {

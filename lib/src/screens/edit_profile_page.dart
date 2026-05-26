@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -104,6 +105,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         picName: _picNameCtrl.text.trim().isEmpty ? null : _picNameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
         address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
+        avatarImageBase64: _avatarBytes != null ? base64Encode(_avatarBytes!) : null,
       );
       await sessionManager.saveSession(updated);
       if (!mounted) return;
@@ -238,6 +240,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
             // ── Profil Info ───────────────────────────────────────────────
             _sectionLabel('PROFIL KIOS'),
             _card(children: [
+              _readOnlyField(label: 'Email', value: _session?.email ?? ''),
+              _divider(),
               _field(
                 controller: _displayNameCtrl,
                 label: 'Nama Kios',
@@ -361,6 +365,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
         padding: EdgeInsets.symmetric(horizontal: 20),
         child: Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
       );
+
+  Widget _readOnlyField({required String label, required String value}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: AppTheme.muted, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F0F0),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Text(
+              value.isEmpty ? '-' : value,
+              style: const TextStyle(fontSize: 14, color: AppTheme.muted),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _field({
     required TextEditingController controller,

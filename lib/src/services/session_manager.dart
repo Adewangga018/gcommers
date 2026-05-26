@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/auth_models.dart';
@@ -31,7 +31,7 @@ class SessionManager {
 
   Future<void> saveSession(AuthSession session) async {
     await _ensureInit();
-    await Future.wait([
+    final futures = <Future>[
       _prefs.setString(_keyEmail, session.email),
       _prefs.setString(_keyRole, session.role),
       _prefs.setString(_keyDisplayName, session.displayName),
@@ -44,7 +44,17 @@ class SessionManager {
       _prefs.setString(_keyAddress, session.address ?? ''),
       _prefs.setString(_keyPicName, session.picName ?? ''),
       _prefs.setString(_keyRegion, session.region ?? ''),
-    ]);
+    ];
+    // Sync avatar from server response into local binary cache
+    if (session.avatarImageBase64 != null && session.avatarImageBase64!.isNotEmpty) {
+      try {
+        base64Decode(session.avatarImageBase64!); // validate before storing
+        futures.add(_prefs.setString(_keyAvatarB64, session.avatarImageBase64!));
+      } catch (e) {
+        debugPrint('SessionManager: invalid avatar base64 from server: $e');
+      }
+    }
+    await Future.wait(futures);
   }
 
   Future<AuthSession?> getSession() async {

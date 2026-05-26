@@ -121,6 +121,7 @@ class AuthService {
     String? picName,
     String? phone,
     String? address,
+    String? avatarImageBase64,
   }) async {
     final response = await http.put(
       _uri('/auth/profile'),
@@ -131,6 +132,7 @@ class AuthService {
         'picName': picName,
         'phone': phone,
         'address': address,
+        'avatarImageBase64': avatarImageBase64,
       }),
     );
     return _decodeAuthSession(response);
@@ -192,6 +194,7 @@ class AuthService {
         picName: data['picName'] as String?,
         address: data['address'] as String?,
         region: data['region'] as String?,
+        avatarImageBase64: data['avatarImageBase64'] as String?,
       );
     }
 
