@@ -354,7 +354,7 @@ class _ToggleTileState extends State<_ToggleTile> {
           ),
           Switch(
             value: _isEnabled,
-            activeThumbColor: AppTheme.primary,
+            activeColor: AppTheme.primary,
             onChanged: (value) {
               setState(() {
                 _isEnabled = value;

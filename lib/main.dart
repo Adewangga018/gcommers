@@ -8,6 +8,7 @@ import 'src/screens/login_screen.dart';
 import 'src/screens/role_selection_screen.dart';
 import 'src/screens/transportir_dashboard_screen.dart';
 import 'src/screens/transportir_profile_page.dart';
+import 'src/screens/transportir_reports_flow.dart';
 import 'src/screens/transportir_register_screen.dart';
 import 'src/screens/transportir_login_screen.dart';
 import 'src/screens/payment_page.dart';
@@ -48,6 +49,26 @@ class GCommersApp extends StatelessWidget {
         '/transportir-profile': (context) {
           final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;
           return TransportirProfilePage(session: session);
+        },
+        '/transportir-reports': (context) {
+          final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;
+          return TransportirReportsPage(session: session);
+        },
+        '/transportir-report-claim': (context) {
+          final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;
+          return TransportirReportClaimPage(session: session);
+        },
+        '/transportir-report-success': (context) {
+          final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;
+          return TransportirReportSuccessPage(session: session);
+        },
+        '/transportir-report-history': (context) {
+          final session = ModalRoute.of(context)?.settings.arguments as AuthSession?;
+          return TransportirReportHistoryPage(session: session);
+        },
+        '/transportir-report-detail': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as TransportirReportDetailArgs;
+          return TransportirReportDetailPage(args: args);
         },
         '/history': (context) => const HistoryPage(),
         '/history-detail': (context) {

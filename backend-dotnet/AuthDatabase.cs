@@ -24,6 +24,10 @@ static class AuthDatabase
                 KioskName NVARCHAR(200) NULL,
                 PicName NVARCHAR(200) NULL,
                 Phone NVARCHAR(50) NULL,
+                TransportirName NVARCHAR(200) NULL,
+                CompanyName NVARCHAR(200) NULL,
+                PoliceNumber NVARCHAR(50) NULL,
+                [Type] NVARCHAR(100) NULL,
                 Address NVARCHAR(500) NULL,
                 Region NVARCHAR(100) NULL,
                 LicenseImageName NVARCHAR(260) NULL,
@@ -48,6 +52,38 @@ static class AuthDatabase
             ALTER TABLE dbo.Users
             ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'));
         END
+        
+        -- Add PoliceNumber column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'PoliceNumber'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD PoliceNumber NVARCHAR(50) NULL;
+        END
+
+        -- Add Type column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'Type'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD [Type] NVARCHAR(100) NULL;
+        END
+
+        -- Add TransportirName column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'TransportirName'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD TransportirName NVARCHAR(200) NULL;
+        END
+
+        -- Add CompanyName column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'CompanyName'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD CompanyName NVARCHAR(200) NULL;
+        END
         """;
 
         await using var command = connection.CreateCommand();
@@ -66,6 +102,10 @@ static class AuthDatabase
                 PasswordSalt,
                 Role,
                 DisplayName,
+                TransportirName,
+                CompanyName,
+                PoliceNumber,
+                [Type],
                 ResetOtpHash,
                 ResetOtpSalt,
                 ResetOtpExpiresAt,
@@ -88,10 +128,14 @@ static class AuthDatabase
             (byte[])reader[3],
             reader.GetString(4),
             reader.GetString(5),
-            reader.IsDBNull(6) ? null : (byte[])reader[6],
-            reader.IsDBNull(7) ? null : (byte[])reader[7],
-            reader.IsDBNull(8) ? null : reader.GetFieldValue<DateTimeOffset>(8),
-            reader.IsDBNull(9) ? null : reader.GetFieldValue<DateTimeOffset>(9));
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8),
+            reader.IsDBNull(9) ? null : reader.GetString(9),
+            reader.IsDBNull(10) ? null : (byte[])reader[10],
+            reader.IsDBNull(11) ? null : (byte[])reader[11],
+            reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12),
+            reader.IsDBNull(13) ? null : reader.GetFieldValue<DateTimeOffset>(13));
     }
 
     public static async Task<AuthSession> CreateUserAsync(
@@ -113,9 +157,13 @@ static class AuthDatabase
                 PasswordSalt,
                 Role,
                 DisplayName,
+                TransportirName,
+                CompanyName,
                 KioskName,
                 PicName,
                 Phone,
+                PoliceNumber,
+                [Type],
                 Address,
                 Region,
                 LicenseImageName,
@@ -130,9 +178,13 @@ static class AuthDatabase
                 @PasswordSalt,
                 @Role,
                 @DisplayName,
+                NULL,
+                NULL,
                 @KioskName,
                 @PicName,
                 @Phone,
+                @PoliceNumber,
+                @Type,
                 @Address,
                 @Region,
                 @LicenseImageName,
@@ -149,6 +201,8 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@KioskName", request.KioskName.Trim());
         command.Parameters.AddWithValue("@PicName", request.PicName.Trim());
         command.Parameters.AddWithValue("@Phone", request.Phone.Trim());
+        command.Parameters.AddWithValue("@PoliceNumber", DBNull.Value);
+        command.Parameters.AddWithValue("@Type", DBNull.Value);
         command.Parameters.AddWithValue("@Address", request.Address.Trim());
         command.Parameters.AddWithValue("@Region", request.Region.Trim());
         command.Parameters.AddWithValue("@LicenseImageName", (object?)request.LicenseImageName ?? DBNull.Value);
@@ -175,7 +229,6 @@ static class AuthDatabase
         string normalizedEmail,
         CancellationToken cancellationToken)
     {
-        var displayName = request.TransportirName.Trim();
         var (passwordSalt, passwordHash) = PasswordHasher.Hash(request.Password);
 
         await using var command = connection.CreateCommand();
@@ -187,9 +240,13 @@ static class AuthDatabase
                 PasswordSalt,
                 Role,
                 DisplayName,
+                TransportirName,
+                CompanyName,
                 KioskName,
                 PicName,
                 Phone,
+                PoliceNumber,
+                [Type],
                 Address,
                 Region,
                 LicenseImageName,
@@ -204,9 +261,13 @@ static class AuthDatabase
                 @PasswordSalt,
                 @Role,
                 @DisplayName,
+                @TransportirName,
+                @CompanyName,
                 NULL,
                 NULL,
                 @Phone,
+                @PoliceNumber,
+                @Type,
                 NULL,
                 NULL,
                 NULL,
@@ -219,8 +280,12 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@PasswordHash", passwordHash);
         command.Parameters.AddWithValue("@PasswordSalt", passwordSalt);
         command.Parameters.AddWithValue("@Role", "transportir");
-        command.Parameters.AddWithValue("@DisplayName", displayName);
+        command.Parameters.AddWithValue("@DisplayName", request.CompanyName.Trim());
+        command.Parameters.AddWithValue("@TransportirName", request.TransportirName.Trim());
+        command.Parameters.AddWithValue("@CompanyName", request.CompanyName.Trim());
         command.Parameters.AddWithValue("@Phone", request.Phone.Trim());
+        command.Parameters.AddWithValue("@PoliceNumber", request.PoliceNumber.Trim());
+        command.Parameters.AddWithValue("@Type", request.Type.Trim());
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -228,7 +293,15 @@ static class AuthDatabase
             throw new InvalidOperationException("Failed to create transportir user.");
         }
 
-        return new AuthSession(normalizedEmail, reader.GetString(2), reader.GetString(3), Guid.NewGuid().ToString("N"));
+        return new AuthSession(
+            normalizedEmail,
+            reader.GetString(2),
+            reader.GetString(3),
+            Guid.NewGuid().ToString("N"),
+            request.TransportirName.Trim(),
+            request.CompanyName.Trim(),
+            request.PoliceNumber.Trim(),
+            request.Type.Trim());
     }
 
     public static async Task StoreResetOtpAsync(SqlConnection connection, int userId, string otp, CancellationToken cancellationToken)

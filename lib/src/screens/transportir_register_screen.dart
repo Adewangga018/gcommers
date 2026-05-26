@@ -15,7 +15,10 @@ class TransportirRegisterScreen extends StatefulWidget {
 
 class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
   final _transportirNameController = TextEditingController();
+  final _companyNameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _policeNumberController = TextEditingController();
+  final _typeController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -28,7 +31,10 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
   @override
   void dispose() {
     _transportirNameController.dispose();
+    _companyNameController.dispose();
     _phoneController.dispose();
+    _policeNumberController.dispose();
+    _typeController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -47,7 +53,10 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
     try {
       final draft = TransportirRegistrationDraft(
         transportirName: _transportirNameController.text,
+        companyName: _companyNameController.text,
         phone: _phoneController.text,
+        policeNumber: _policeNumberController.text,
+        type: _typeController.text,
         email: _emailController.text,
         password: _passwordController.text,
         termsAccepted: _accepted,
@@ -99,8 +108,14 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
                     children: [
                       AuthTextField(
                         controller: _transportirNameController,
-                        hintText: 'Nama Transportir / Perusahaan',
+                        hintText: 'Nama transportir',
                         icon: Icons.local_shipping_outlined,
+                      ),
+                      const SizedBox(height: 14),
+                      AuthTextField(
+                        controller: _companyNameController,
+                        hintText: 'Nama perusahaan transportir',
+                        icon: Icons.business_outlined,
                       ),
                       const SizedBox(height: 14),
                       AuthTextField(
@@ -108,6 +123,20 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
                         hintText: 'No. HP',
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 14),
+                      AuthTextField(
+                        controller: _policeNumberController,
+                        hintText: 'Nomor polisi / plat kendaraan',
+                        icon: Icons.confirmation_number_outlined,
+                        textCapitalization: TextCapitalization.characters,
+                      ),
+                      const SizedBox(height: 14),
+                      AuthTextField(
+                        controller: _typeController,
+                        hintText: 'Jenis kendaraan',
+                        icon: Icons.two_wheeler_outlined,
+                        textCapitalization: TextCapitalization.words,
                       ),
                       const SizedBox(height: 14),
                       AuthTextField(

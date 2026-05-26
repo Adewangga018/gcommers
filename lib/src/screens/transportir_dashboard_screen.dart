@@ -55,6 +55,7 @@ class TransportirDashboardScreen extends StatelessWidget {
         ],
       ),
       bottomNavigationBar: _TransportirBottomNav(
+        session: session,
         onProfileTap: () {
           Navigator.of(context).pushNamed('/transportir-profile', arguments: session);
         },
@@ -414,9 +415,10 @@ class _OrderRow extends StatelessWidget {
 }
 
 class _TransportirBottomNav extends StatelessWidget {
-  const _TransportirBottomNav({required this.onProfileTap});
+  const _TransportirBottomNav({required this.onProfileTap, this.session});
 
   final VoidCallback onProfileTap;
+  final AuthSession? session;
 
   @override
   Widget build(BuildContext context) {
@@ -447,7 +449,7 @@ class _TransportirBottomNav extends StatelessWidget {
           _NavItem(
             icon: Icons.bar_chart_outlined,
             label: 'Laporan',
-            onTap: () => _showTabSoon(context),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session),
           ),
           _NavItem(
             icon: Icons.person_outline,

@@ -121,7 +121,10 @@ class AuthService {
       headers: _headers,
       body: jsonEncode({
         'transportirName': draft.transportirName,
+        'companyName': draft.companyName,
         'phone': draft.phone,
+        'policeNumber': draft.policeNumber,
+        'type': draft.type,
         'email': draft.email,
         'password': draft.password,
         'termsAccepted': draft.termsAccepted,
@@ -138,6 +141,10 @@ class AuthService {
         email: data['email'] as String,
         role: data['role'] as String,
         displayName: data['displayName'] as String,
+        transportirName: data['transportirName'] as String?,
+        companyName: data['companyName'] as String?,
+        policeNumber: data['policeNumber'] as String?,
+        vehicleType: data['vehicleType'] as String?,
         token: data['token'] as String?,
       );
     }
