@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
-import '../services/session_manager.dart';
 import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 
@@ -28,11 +27,6 @@ class TransportirDashboardScreen extends StatelessWidget {
         ),
         actions: [
           const NotificationBadge(iconColor: Color(0xFF3F3AA0)),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Color(0xFF48445F)),
-            tooltip: 'Keluar',
-            onPressed: () => _handleLogout(context),
-          ),
         ],
       ),
       body: ListView(
@@ -57,12 +51,6 @@ class TransportirDashboardScreen extends StatelessWidget {
       ),
       bottomNavigationBar: TransportirBottomNav(currentIndex: 0, session: session),
     );
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    await sessionManager.clearSession();
-    if (!context.mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil('/transportir-login', (_) => false);
   }
 
 }
