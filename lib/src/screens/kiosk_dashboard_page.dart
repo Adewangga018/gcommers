@@ -151,7 +151,10 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                   const SizedBox(height: 28),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Text('Ringkasan Bulan Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Ringkasan Bulan Ini',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1E293B), letterSpacing: 0.1),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Padding(
@@ -187,10 +190,13 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Pesanan Terbaru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Pesanan Terbaru',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1E293B), letterSpacing: 0.1),
+                        ),
                         TextButton(
                           onPressed: () => Navigator.of(context).pushNamed('/history'),
-                          child: Text('Lihat Semua', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.bold)),
+                          child: Text('Lihat Semua', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.w600, fontSize: 13)),
                         ),
                       ],
                     ),
@@ -240,20 +246,28 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
         onTap: onTap,
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey[200]!),
+            border: Border.all(color: const Color(0xFFE2DDF1)),
+            boxShadow: const [
+              BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
+            ],
           ),
           child: Column(
             children: [
-              CircleAvatar(
-                backgroundColor: color.withOpacity(0.1),
-                child: Icon(icon, color: color),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 22),
               ),
               const SizedBox(height: 10),
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1E293B))),
             ],
           ),
         ),
@@ -262,41 +276,42 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
   }
 
   Widget _buildSummaryCard({required IconData icon, required String title, required String value, required Widget subWidget}) {
-    return SizedBox(
-      height: 115, // Memberikan tinggi tetap agar ukuran container sama
-      child: Container(
+    return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: const Color(0xFFE2DDF1)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: Colors.grey[600], size: 20),
+              Icon(icon, color: const Color(0xFF6B7280), size: 18),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  title, 
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  title,
+                  style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13, fontWeight: FontWeight.w500),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
-            value, 
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+            value,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
           ),
           const SizedBox(height: 6),
           subWidget,
         ],
-      ),),
+      ),
     );
   }
 
@@ -307,51 +322,57 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
     final statusColor = _statusColor(order.status);
     return InkWell(
       onTap: () => Navigator.of(context).pushNamed('/history-detail', arguments: order.poNumber),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2DDF1)),
+          boxShadow: const [
+            BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.poNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(order.poNumber, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF1E293B))),
                       const SizedBox(height: 4),
-                      Text(formatDateTime(order.createdAt), style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                      Text(formatDateTime(order.createdAt), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
                   child: Text(
                     order.statusLabel,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+                    style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11),
                   ),
-                )
+                ),
               ],
             ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
-              child: Divider(height: 1),
+              child: Divider(height: 1, color: Color(0xFFF1EEF9)),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Total: ${formatCurrency(order.totalAmount)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Icon(Icons.chevron_right, color: Colors.grey[400]),
+                Text(
+                  formatCurrency(order.totalAmount),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF3B309E)),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBC8D8), size: 20),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -377,10 +398,10 @@ class _ErrorState extends StatelessWidget {
 
 Color _statusColor(String status) {
   return switch (status) {
-    'pending_payment' => AppTheme.primary,
-    'paid' => AppTheme.primaryDark,
-    'shipping' => AppTheme.primaryDark,
-    'received' || 'completed' => AppTheme.primaryDark,
+    'pending_payment' => const Color(0xFFD97706),
+    'paid' => const Color(0xFF2563EB),
+    'shipping' => const Color(0xFF7C3AED),
+    'received' || 'completed' => const Color(0xFF059669),
     _ => Colors.grey,
   };
 }

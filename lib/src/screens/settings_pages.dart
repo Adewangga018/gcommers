@@ -218,9 +218,17 @@ class HelpPage extends StatelessWidget {
               decoration: _cardDecoration(),
               child: Column(
                 children: [
-                  _HelpRow(label: 'Panduan Penggunaan', subtitle: 'Cara menggunakan fitur GCommers', onTap: () {}),
-                  const _RowDivider(),
-                  _HelpRow(label: 'FAQ', subtitle: 'Pertanyaan yang sering diajukan', onTap: () {}),
+                  _HelpRow(
+                    label: 'Panduan Penggunaan',
+                    subtitle: 'Cara menggunakan fitur GCommers',
+                    onTap: () => _openHelpDetail(context, _HelpDetailKind.guide),
+                  ),
+                  _HelpRow(
+                    label: 'FAQ',
+                    subtitle: 'Pertanyaan yang sering diajukan',
+                    onTap: () => _openHelpDetail(context, _HelpDetailKind.faq),
+                    isLast: true,
+                  ),
                 ],
               ),
             ),
@@ -230,7 +238,12 @@ class HelpPage extends StatelessWidget {
               decoration: _cardDecoration(),
               child: Column(
                 children: [
-                  _HelpRow(label: 'Email Dukungan', subtitle: 'support@gcommers.id', onTap: () {}),
+                  _HelpRow(
+                    label: 'Email Dukungan',
+                    subtitle: 'support@gcommers.id',
+                    onTap: () => _openHelpDetail(context, _HelpDetailKind.email),
+                    isLast: true,
+                  ),
                 ],
               ),
             ),
@@ -245,6 +258,116 @@ class HelpPage extends StatelessWidget {
       ),
     );
   }
+
+  void _openHelpDetail(BuildContext context, _HelpDetailKind kind) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => _HelpDetailPage(kind: kind)),
+    );
+  }
+}
+
+enum _HelpDetailKind { guide, faq, email }
+
+class _HelpDetailPage extends StatelessWidget {
+  const _HelpDetailPage({required this.kind});
+
+  final _HelpDetailKind kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = switch (kind) {
+      _HelpDetailKind.guide => 'Panduan Penggunaan',
+      _HelpDetailKind.faq => 'FAQ',
+      _HelpDetailKind.email => 'Email Dukungan',
+    };
+
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: _buildAppBar(title),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (kind == _HelpDetailKind.guide) ..._guideContent(),
+            if (kind == _HelpDetailKind.faq) ..._faqContent(),
+            if (kind == _HelpDetailKind.email) ..._emailContent(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _guideContent() => const [
+        _SectionLabel('Mulai Menggunakan'),
+        _DetailCard(
+          children: [
+            _BulletText('Pilih role sesuai akun: Kios untuk pembelian, Transportir untuk pengiriman.'),
+            _BulletText('Masuk menggunakan email dan password yang sudah terdaftar.'),
+            _BulletText('Gunakan menu Profil untuk melihat informasi akun, keamanan, notifikasi, dan bantuan.'),
+          ],
+        ),
+        SizedBox(height: 20),
+        _SectionLabel('Kios'),
+        _DetailCard(
+          children: [
+            _BulletText('Buka Pesanan untuk memilih produk dari database.'),
+            _BulletText('Gunakan pencarian berdasarkan nama atau kode produk.'),
+            _BulletText('Lanjutkan pembayaran setelah pesanan dibuat.'),
+          ],
+        ),
+        SizedBox(height: 20),
+        _SectionLabel('Transportir'),
+        _DetailCard(
+          children: [
+            _BulletText('Pantau pesanan, pengiriman, dan laporan dari navigasi bawah.'),
+            _BulletText('Buka detail pesanan untuk melihat surat jalan dan status pengiriman.'),
+            _BulletText('Gunakan halaman laporan untuk klaim atau riwayat laporan.'),
+          ],
+        ),
+      ];
+
+  List<Widget> _faqContent() => const [
+        _SectionLabel('Pertanyaan Umum'),
+        _DetailCard(
+          children: [
+            _QuestionAnswer(
+              question: 'Bagaimana jika produk tidak muncul?',
+              answer: 'Pastikan backend berjalan dan koneksi database aktif, lalu muat ulang halaman pesanan.',
+            ),
+            _RowDivider(),
+            _QuestionAnswer(
+              question: 'Kenapa notifikasi saya kosong?',
+              answer: 'Notifikasi akan muncul setelah ada aktivitas pesanan, pembayaran, atau pengiriman untuk akun Anda.',
+            ),
+            _RowDivider(),
+            _QuestionAnswer(
+              question: 'Bagaimana cara mengubah foto profil?',
+              answer: 'Buka Profil, pilih Edit Profil, unggah foto baru, lalu tekan Simpan Profil.',
+            ),
+          ],
+        ),
+      ];
+
+  List<Widget> _emailContent() => const [
+        _SectionLabel('Kontak Dukungan'),
+        _DetailCard(
+          children: [
+            _InfoRow(label: 'Email', value: 'support@gcommers.id'),
+            _InfoRow(label: 'Jam Layanan', value: 'Senin-Jumat, 08.00-17.00 WIB'),
+            _InfoRow(label: 'Prioritas', value: 'Sertakan email akun, role, dan ringkasan kendala.', isLast: true),
+          ],
+        ),
+        SizedBox(height: 20),
+        _SectionLabel('Format Pesan'),
+        _DetailCard(
+          children: [
+            _BulletText('Subjek: Kendala GCommers - nama fitur.'),
+            _BulletText('Tuliskan langkah yang dilakukan sebelum masalah muncul.'),
+            _BulletText('Lampirkan tangkapan layar jika ada pesan error.'),
+          ],
+        ),
+      ];
 }
 
 // ─── NotificationBadge ────────────────────────────────────────────────────────
@@ -325,7 +448,6 @@ AppBar _buildAppBar(String title) {
     iconTheme: const IconThemeData(color: AppTheme.primary),
     title: Text(title, style: const TextStyle(color: AppTheme.navy, fontWeight: FontWeight.bold, fontSize: 18)),
     centerTitle: true,
-    actions: const [NotificationBadge()],
   );
 }
 
@@ -505,6 +627,73 @@ class _HelpRow extends StatelessWidget {
         ),
         if (!isLast) const _RowDivider(),
       ],
+    );
+  }
+}
+
+class _DetailCard extends StatelessWidget {
+  const _DetailCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: _cardDecoration(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+      ),
+    );
+  }
+}
+
+class _BulletText extends StatelessWidget {
+  const _BulletText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(top: 7, right: 10),
+            decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+          ),
+          Expanded(
+            child: Text(text, style: const TextStyle(fontSize: 14, height: 1.45, color: AppTheme.navy)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuestionAnswer extends StatelessWidget {
+  const _QuestionAnswer({required this.question, required this.answer});
+
+  final String question;
+  final String answer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(question, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.navy)),
+          const SizedBox(height: 6),
+          Text(answer, style: const TextStyle(fontSize: 13, height: 1.45, color: AppTheme.muted)),
+        ],
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../models/auth_models.dart';
+import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 
 class TransportirOrdersPage extends StatelessWidget {
@@ -153,11 +154,10 @@ class TransportirOrdersPage extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _TransportirBottomBar(currentIndex: 1, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 1, session: session),
     );
   }
 }
-
 class TransportirOrderDetailPage extends StatelessWidget {
   const TransportirOrderDetailPage({super.key, required this.order, this.session});
 
@@ -212,7 +212,7 @@ class TransportirOrderDetailPage extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _TransportirBottomBar(currentIndex: 1, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 1, session: session),
     );
   }
 }
@@ -415,7 +415,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: _TransportirBottomBar(currentIndex: 1, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 1, session: session),
     );
   }
 }
@@ -1134,61 +1134,3 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-class _TransportirBottomBar extends StatelessWidget {
-  const _TransportirBottomBar({required this.currentIndex, this.session});
-
-  final int currentIndex;
-  final AuthSession? session;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF4F2F9),
-        border: Border(top: BorderSide(color: Color(0xFFD2CDDF))),
-      ),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _NavItem(icon: Icons.home_rounded, label: 'Beranda', active: currentIndex == 0, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session)),
-          _NavItem(icon: Icons.inventory_2_outlined, label: 'Pesanan', active: currentIndex == 1, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session)),
-          _NavItem(icon: Icons.local_shipping_outlined, label: 'Pengiriman', active: currentIndex == 2, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-shipments', arguments: session)),
-          _NavItem(icon: Icons.bar_chart_outlined, label: 'Laporan', active: currentIndex == 3, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session)),
-          _NavItem(icon: Icons.person_outline, label: 'Profil', active: currentIndex == 4, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-profile', arguments: session)),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({required this.icon, required this.label, required this.active, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = active ? const Color(0xFF4A469E) : const Color(0xFF4D4A5C);
-    final bg = active ? const Color(0xFFD7D2EC) : Colors.transparent;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(22)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: fg, size: 20),
-            Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12)),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
+import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 
 class TransportirShipmentsPage extends StatelessWidget {
@@ -11,40 +12,40 @@ class TransportirShipmentsPage extends StatelessWidget {
   static const List<TransportirShipmentCardData> _shipments = [
     TransportirShipmentCardData(
       shipmentNumber: 'SJ-20231024-001',
-      statusLabel: 'Ready to Load',
+      statusLabel: 'Siap Muat',
       statusColor: Color(0xFF4D8FE8),
       statusBackground: Color(0xFFDDEBFF),
-      scheduleLabel: 'Today, 09:00 AM',
+      scheduleLabel: 'Hari ini, 09.00 WIB',
       origin: 'Gudang Utama, Jakarta',
       destination: 'Pabrik Perakitan, Bekasi',
       destinationSubtitle: 'Pabrik Perakitan, Bekasi',
-      actionPrimaryLabel: 'Load-In',
+      actionPrimaryLabel: 'Muat Masuk',
       actionSecondaryLabel: '',
       actionSecondaryKind: TransportirShipmentActionKind.none,
     ),
     TransportirShipmentCardData(
       shipmentNumber: 'SJ-20231024-002',
-      statusLabel: 'In Transit',
+      statusLabel: 'Dalam Perjalanan',
       statusColor: Color(0xFFB86B22),
       statusBackground: Color(0xFFF4E0CB),
-      scheduleLabel: 'Est. Arrival: 14:30 PM',
+      scheduleLabel: 'Est. Tiba: 14.30 WIB',
       origin: 'Gudang Utama, Jakarta',
       destination: 'Pabrik Perakitan, Bekasi',
       destinationSubtitle: 'Pabrik Perakitan, Bekasi',
-      actionPrimaryLabel: 'Track',
-      actionSecondaryLabel: 'Load-Out',
+      actionPrimaryLabel: 'Lacak',
+      actionSecondaryLabel: 'Muat Keluar',
       actionSecondaryKind: TransportirShipmentActionKind.loadOut,
     ),
     TransportirShipmentCardData(
       shipmentNumber: 'SJ-20231023-089',
-      statusLabel: 'Completed',
+      statusLabel: 'Selesai',
       statusColor: Color(0xFF6ABAB4),
       statusBackground: Color(0xFFDDF3F0),
-      scheduleLabel: 'Delivered: Yesterday, 16:45 PM',
+      scheduleLabel: 'Terkirim: Kemarin, 16.45 WIB',
       origin: 'Gudang Utama, Jakarta',
       destination: 'Distributor Regional, Semarang',
       destinationSubtitle: 'Distributor Regional, Semarang',
-      actionPrimaryLabel: 'View Proof',
+      actionPrimaryLabel: 'Lihat Bukti',
       actionSecondaryLabel: '',
       actionSecondaryKind: TransportirShipmentActionKind.proof,
       completed: true,
@@ -110,7 +111,7 @@ class TransportirShipmentsPage extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _TransportirShippingBottomBar(currentIndex: 2, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 2, session: session),
     );
   }
 }
@@ -156,9 +157,9 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Tracking Shipment', style: TextStyle(color: Color(0xFF6B6780), fontSize: 12)),
+                          const Text('Pelacakan Pengiriman', style: TextStyle(color: Color(0xFF6B6780), fontSize: 12)),
                           const SizedBox(height: 4),
-                          Text(shipment.shipmentNumber, style: const TextStyle(fontSize: 24 / 2, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
+                          Text(shipment.shipmentNumber, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
                         ],
                       ),
                     ),
@@ -168,11 +169,11 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 const Divider(height: 1),
                 const SizedBox(height: 14),
-                _KeyValue(label: 'Origin', value: shipment.origin),
+                _KeyValue(label: 'Asal', value: shipment.origin),
                 const SizedBox(height: 12),
-                _KeyValue(label: 'Destination', value: shipment.destination),
+                _KeyValue(label: 'Tujuan', value: shipment.destination),
                 const SizedBox(height: 12),
-                _KeyValue(label: 'Schedule', value: shipment.scheduleLabel),
+                _KeyValue(label: 'Jadwal', value: shipment.scheduleLabel),
               ],
             ),
           ),
@@ -187,11 +188,11 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Timeline', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                const Text('Riwayat Status', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
                 const SizedBox(height: 14),
-                _TimelineStep(active: true, title: 'Loading Started', subtitle: 'Warehouse Alpha - Dock 4', icon: Icons.local_shipping_outlined),
-                _TimelineStep(active: true, title: 'Departed', subtitle: 'Jakarta - Bekasi corridor', icon: Icons.route_rounded),
-                _TimelineStep(active: false, title: 'Arrived', subtitle: 'Waiting for confirmation', icon: Icons.flag_outlined),
+                _TimelineStep(active: true, title: 'Pemuatan Dimulai', subtitle: 'Gudang Alpha - Dermaga 4', icon: Icons.local_shipping_outlined),
+                _TimelineStep(active: true, title: 'Berangkat', subtitle: 'Koridor Jakarta - Bekasi', icon: Icons.route_rounded),
+                _TimelineStep(active: false, title: 'Tiba', subtitle: 'Menunggu konfirmasi', icon: Icons.flag_outlined),
               ],
             ),
           ),
@@ -205,7 +206,7 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
                 ),
               ),
               icon: const Icon(Icons.qr_code_rounded),
-              label: const Text('View Proof', style: TextStyle(fontWeight: FontWeight.w800)),
+              label: const Text('Lihat Bukti', style: TextStyle(fontWeight: FontWeight.w800)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryPurple,
                 foregroundColor: Colors.white,
@@ -215,7 +216,7 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _TransportirShippingBottomBar(currentIndex: 2, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 2, session: session),
     );
   }
 }
@@ -240,7 +241,7 @@ class TransportirShipmentProofPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: primaryPurple),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Load-in Proof', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.w800)),
+        title: const Text('Bukti Pemuatan', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
         child: Column(
@@ -312,11 +313,11 @@ class TransportirShipmentProofPage extends StatelessWidget {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: const [
-                                          _InfoLine(icon: Icons.location_on_outlined, label: 'LOCATION', value: 'Warehouse Alpha - Dock 4'),
+                                          _InfoLine(icon: Icons.location_on_outlined, label: 'LOKASI', value: 'Gudang Alpha - Dermaga 4'),
                                           Divider(height: 18, color: Colors.white12),
-                                          _InfoLine(icon: Icons.gps_fixed_outlined, label: 'GPS COORDINATES', value: '-6.2088° S, 106.8456° E'),
+                                          _InfoLine(icon: Icons.gps_fixed_outlined, label: 'KOORDINAT GPS', value: '-6.2088° S, 106.8456° E'),
                                           Divider(height: 18, color: Colors.white12),
-                                          _InfoLine(icon: Icons.access_time_rounded, label: 'TIMESTAMP', value: '24 Oct 2023, 14:32:05 WIB'),
+                                          _InfoLine(icon: Icons.access_time_rounded, label: 'WAKTU', value: '24 Okt 2023, 14.32.05 WIB'),
                                         ],
                                       ),
                                     ),
@@ -354,8 +355,8 @@ class TransportirShipmentProofPage extends StatelessWidget {
                 children: [
                   _ActionMiniButton(
                     icon: Icons.restore_rounded,
-                    label: 'Retake',
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Retake sedang disiapkan.'))),
+                    label: 'Ulangi',
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur pengulangan sedang disiapkan.'))),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
@@ -371,9 +372,9 @@ class TransportirShipmentProofPage extends StatelessWidget {
                   const SizedBox(width: 14),
                   _ActionMiniButton(
                     icon: Icons.check_circle_outline,
-                    label: 'Confirm Order',
+                    label: 'Konfirmasi',
                     filled: true,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order confirmed.'))),
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pesanan dikonfirmasi.'))),
                   ),
                 ],
               ),
@@ -381,7 +382,7 @@ class TransportirShipmentProofPage extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _TransportirShippingBottomBar(currentIndex: 2, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 2, session: session),
     );
   }
 }
@@ -477,7 +478,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         shipment.shipmentNumber,
-                        style: TextStyle(fontSize: 20 / 2, fontWeight: FontWeight.w900, color: titleColor, decoration: faded ? TextDecoration.lineThrough : TextDecoration.none),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: titleColor, decoration: faded ? TextDecoration.lineThrough : TextDecoration.none),
                       ),
                       const SizedBox(height: 6),
                       Row(
@@ -534,7 +535,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
   }
 
   void _handlePrimary(BuildContext context) {
-    if (shipment.actionPrimaryLabel == 'Track') {
+    if (shipment.actionPrimaryLabel == 'Lacak') {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => TransportirShipmentTrackingPage(shipment: shipment, session: session)),
       );
@@ -732,65 +733,6 @@ class _ActionMiniButton extends StatelessWidget {
         const SizedBox(height: 6),
         Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF4B465B))),
       ],
-    );
-  }
-}
-
-class _TransportirShippingBottomBar extends StatelessWidget {
-  const _TransportirShippingBottomBar({required this.currentIndex, this.session});
-
-  final int currentIndex;
-  final AuthSession? session;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF4F2F9),
-        border: Border(top: BorderSide(color: Color(0xFFD2CDDF))),
-      ),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _NavItem(icon: Icons.home_rounded, label: 'Beranda', active: currentIndex == 0, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session)),
-          _NavItem(icon: Icons.inventory_2_outlined, label: 'Pesanan', active: currentIndex == 1, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session)),
-          _NavItem(icon: Icons.local_shipping_outlined, label: 'Pengiriman', active: currentIndex == 2, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-shipments', arguments: session)),
-          _NavItem(icon: Icons.bar_chart_outlined, label: 'Laporan', active: currentIndex == 3, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session)),
-          _NavItem(icon: Icons.person_outline, label: 'Profil', active: currentIndex == 4, onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-profile', arguments: session)),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({required this.icon, required this.label, required this.active, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = active ? const Color(0xFF4A469E) : const Color(0xFF4D4A5C);
-    final bg = active ? const Color(0xFFD7D2EC) : Colors.transparent;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(22)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: fg, size: 20),
-            Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12)),
-          ],
-        ),
-      ),
     );
   }
 }

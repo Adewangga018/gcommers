@@ -1,6 +1,7 @@
 class Product {
   const Product({
     required this.id,
+    required this.code,
     required this.name,
     required this.description,
     required this.category,
@@ -9,11 +10,15 @@ class Product {
     required this.minimumOrder,
     required this.unit,
     required this.iconName,
+    required this.status,
+    required this.rating,
+    required this.specification,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       id: json['id'] as int,
+      code: json['code'] as String? ?? '',
       name: json['name'] as String,
       description: json['description'] as String,
       category: json['category'] as String,
@@ -22,10 +27,14 @@ class Product {
       minimumOrder: json['minimumOrder'] as int,
       unit: json['unit'] as String,
       iconName: json['iconName'] as String,
+      status: json['status'] as String? ?? 'Aktif',
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      specification: json['specification'] as String?,
     );
   }
 
   final int id;
+  final String code;
   final String name;
   final String description;
   final String category;
@@ -34,6 +43,9 @@ class Product {
   final int minimumOrder;
   final String unit;
   final String iconName;
+  final String status;
+  final double rating;
+  final String? specification;
 }
 
 class OrderSummary {

@@ -41,7 +41,7 @@ static class AuthDatabase
                 LockoutUntil DATETIMEOFFSET NULL,
                 CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Users_CreatedAt DEFAULT SYSUTCDATETIME(),
                 UpdatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Users_UpdatedAt DEFAULT SYSUTCDATETIME(),
-                CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'))
+                CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin', N'superadmin'))
             );
 
             CREATE UNIQUE INDEX UX_Users_Email ON dbo.Users(Email);
@@ -54,7 +54,7 @@ static class AuthDatabase
         )
         BEGIN
             ALTER TABLE dbo.Users
-            ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'));
+            ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin', N'superadmin'));
         END
 
         IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND EXISTS (
@@ -66,7 +66,7 @@ static class AuthDatabase
         BEGIN
             ALTER TABLE dbo.Users DROP CONSTRAINT CK_Users_Role;
             ALTER TABLE dbo.Users
-            ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'));
+            ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin', N'superadmin'));
         END
         
         -- Add PoliceNumber column if missing
@@ -145,6 +145,72 @@ static class AuthDatabase
         command.CommandText = sql;
         await command.ExecuteNonQueryAsync();
 
+        await SeedAdminUsersAsync(connection);
+    }
+
+    private static async Task SeedAdminUsersAsync(SqlConnection connection)
+    {
+        await EnsureAdminUserAsync(connection, "superadmin@gcommers.id", "Super Admin", "superadmin", null);
+
+        foreach (var region in new[] { "Makassar", "Medan", "Lampung", "Gresik" })
+        {
+            await EnsureAdminUserAsync(
+                connection,
+                $"admin.{region.ToLowerInvariant()}@gcommers.id",
+                $"Admin {region}",
+                "admin",
+                region);
+        }
+    }
+
+    private static async Task EnsureAdminUserAsync(
+        SqlConnection connection,
+        string email,
+        string displayName,
+        string role,
+        string? region)
+    {
+        await using var existsCommand = connection.CreateCommand();
+        existsCommand.CommandText = "SELECT 1 FROM dbo.Users WHERE Email = @Email;";
+        existsCommand.Parameters.AddWithValue("@Email", email);
+        if (await existsCommand.ExecuteScalarAsync() is not null)
+        {
+            return;
+        }
+
+        var (passwordSalt, passwordHash) = PasswordHasher.Hash("Admin123!");
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO dbo.Users
+            (
+                Email,
+                PasswordHash,
+                PasswordSalt,
+                Role,
+                DisplayName,
+                Region,
+                CreatedAt,
+                UpdatedAt
+            )
+            VALUES
+            (
+                @Email,
+                @PasswordHash,
+                @PasswordSalt,
+                @Role,
+                @DisplayName,
+                @Region,
+                SYSUTCDATETIME(),
+                SYSUTCDATETIME()
+            );
+            """;
+        command.Parameters.AddWithValue("@Email", email);
+        command.Parameters.AddWithValue("@PasswordHash", passwordHash);
+        command.Parameters.AddWithValue("@PasswordSalt", passwordSalt);
+        command.Parameters.AddWithValue("@Role", role);
+        command.Parameters.AddWithValue("@DisplayName", displayName);
+        command.Parameters.AddWithValue("@Region", (object?)region ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync();
     }
 
     public static async Task<AuthUserRecord?> FindUserByEmailAsync(SqlConnection connection, string email, CancellationToken cancellationToken)

@@ -1,4 +1,6 @@
 using Microsoft.Data.SqlClient;
+using Microsoft.VisualBasic.FileIO;
+using System.Globalization;
 
 static class CommerceDatabase
 {
@@ -14,17 +16,51 @@ static class CommerceDatabase
             CREATE TABLE dbo.Products
             (
                 Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Products PRIMARY KEY,
+                ProductCode NVARCHAR(50) NULL,
+                SourceProductId INT NULL,
                 Name NVARCHAR(200) NOT NULL,
-                Description NVARCHAR(1000) NOT NULL,
+                Description NVARCHAR(MAX) NOT NULL,
                 Category NVARCHAR(50) NOT NULL,
                 Price DECIMAL(18,2) NOT NULL,
                 Stock INT NOT NULL,
                 MinimumOrder INT NOT NULL,
                 Unit NVARCHAR(100) NOT NULL,
                 IconName NVARCHAR(100) NOT NULL,
-                CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Products_CreatedAt DEFAULT SYSUTCDATETIME()
+                Status NVARCHAR(50) NOT NULL CONSTRAINT DF_Products_Status DEFAULT N'Aktif',
+                Rating DECIMAL(3,1) NOT NULL CONSTRAINT DF_Products_Rating DEFAULT 0,
+                Specification NVARCHAR(MAX) NULL,
+                CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Products_CreatedAt DEFAULT SYSUTCDATETIME(),
+                UpdatedAt DATETIMEOFFSET NULL
             );
         END
+        ELSE
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Products') AND name = 'ProductCode')
+                ALTER TABLE dbo.Products ADD ProductCode NVARCHAR(50) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Products') AND name = 'SourceProductId')
+                ALTER TABLE dbo.Products ADD SourceProductId INT NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Products') AND name = 'Status')
+                ALTER TABLE dbo.Products ADD Status NVARCHAR(50) NOT NULL CONSTRAINT DF_Products_Status DEFAULT N'Aktif';
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Products') AND name = 'Rating')
+                ALTER TABLE dbo.Products ADD Rating DECIMAL(3,1) NOT NULL CONSTRAINT DF_Products_Rating DEFAULT 0;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Products') AND name = 'Specification')
+                ALTER TABLE dbo.Products ADD Specification NVARCHAR(MAX) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Products') AND name = 'UpdatedAt')
+                ALTER TABLE dbo.Products ADD UpdatedAt DATETIMEOFFSET NULL;
+            IF EXISTS (
+                SELECT 1
+                FROM sys.columns c
+                JOIN sys.types t ON c.user_type_id = t.user_type_id
+                WHERE c.object_id = OBJECT_ID(N'dbo.Products')
+                  AND c.name = N'Description'
+                  AND t.name = N'nvarchar'
+                  AND c.max_length <> -1
+            )
+                ALTER TABLE dbo.Products ALTER COLUMN Description NVARCHAR(MAX) NOT NULL;
+        END
+
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Products_ProductCode' AND object_id = OBJECT_ID(N'dbo.Products'))
+            EXEC(N'CREATE UNIQUE INDEX UX_Products_ProductCode ON dbo.Products(ProductCode) WHERE ProductCode IS NOT NULL;');
 
         IF OBJECT_ID(N'dbo.Orders', N'U') IS NULL
         BEGIN
@@ -124,9 +160,11 @@ static class CommerceDatabase
 
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT Id, Name, Description, Category, Price, Stock, MinimumOrder, Unit, IconName
+            SELECT Id, COALESCE(ProductCode, ''), Name, Description, Category, Price, Stock,
+                   MinimumOrder, Unit, IconName, Status, Rating, Specification
             FROM dbo.Products
-            WHERE @Category IS NULL OR Category = @Category
+            WHERE (@Category IS NULL OR Category = @Category)
+              AND Status = N'Aktif'
             ORDER BY Id;
             """;
         command.Parameters.AddWithValue("@Category", string.IsNullOrWhiteSpace(category) ? DBNull.Value : category);
@@ -139,11 +177,15 @@ static class CommerceDatabase
                 reader.GetString(1),
                 reader.GetString(2),
                 reader.GetString(3),
-                reader.GetDecimal(4),
-                reader.GetInt32(5),
+                reader.GetString(4),
+                reader.GetDecimal(5),
                 reader.GetInt32(6),
-                reader.GetString(7),
-                reader.GetString(8)));
+                reader.GetInt32(7),
+                reader.GetString(8),
+                reader.GetString(9),
+                reader.GetString(10),
+                reader.GetDecimal(11),
+                reader.IsDBNull(12) ? null : reader.GetString(12)));
         }
 
         return products;
@@ -584,19 +626,9 @@ static class CommerceDatabase
 
     private static async Task SeedAsync(SqlConnection connection)
     {
-        await ExecuteAsync(connection, """
-        IF NOT EXISTS (SELECT 1 FROM dbo.Products)
-        BEGIN
-            INSERT INTO dbo.Products (Name, Description, Category, Price, Stock, MinimumOrder, Unit, IconName)
-            VALUES
-            ('Urea Subsidi', 'Urea subsidi adalah pupuk kimia yang mengandung unsur hara Nitrogen (N) tinggi, yang pengadaannya dibantu oleh pemerintah sehingga harganya lebih terjangkau bagi petani yang terdaftar dalam sistem e-RDKK. Ciri paling mencolok dari urea subsidi adalah warnanya yang merah muda (pink). Pewarnaan ini bertujuan agar pupuk subsidi mudah dibedakan secara visual dari pupuk non-subsidi yang berwarna putih.', 'Subsidi', 1800000, 200, 1, 'Karung (50kg)', 'water_drop'),
-            ('NPK Kakao', '-', 'Subsidi', 2640000, 150, 1, 'Karung (50kg)', 'eco'),
-            ('ZA', '-', 'Subsidi', 1360000, 180, 1, 'Karung (50kg)', 'eco'),
-            ('Petroganik', '-', 'Subsidi', 640000, 300, 1, 'Karung (40kg)', 'spa'),
-            ('Phonska', '-', 'Subsidi', 1840000, 160, 1, 'Karung (50kg)', 'eco'),
-            ('Urea Non-Subsidi', 'Urea adalah pupuk kimia yang mengandung Nitrogen (N) berkadar tinggi. Unsur Nitrogen sangat dibutuhkan tanaman, terutama pada fase vegetatif (pertumbuhan) untuk pembentukan klorofil, pertumbuhan daun, serta peningkatan tinggi tanaman. Pupuk ini bersifat higroskopis (mudah menyerap air), sehingga sangat mudah larut dalam air dan cepat diserap oleh tanaman.', 'Retail', 2500000, 100, 1, 'Karung (50kg)', 'water_drop');
-        END
+        await ImportProductsFromCsvAsync(connection);
 
+        await ExecuteAsync(connection, """
         IF NOT EXISTS (SELECT 1 FROM dbo.Orders WHERE PoNumber = 'PO-2026-10-9842')
         BEGIN
             INSERT INTO dbo.Orders
@@ -628,6 +660,99 @@ static class CommerceDatabase
             ('Pesanan dalam perjalanan', 'Kurir sedang mengantar pesanan ke kios.');
         END
         """);
+    }
+
+    private static async Task ImportProductsFromCsvAsync(SqlConnection connection)
+    {
+        var csvPath = Path.Combine(AppContext.BaseDirectory, "Data", "produk_202605291005.csv");
+        if (!File.Exists(csvPath))
+        {
+            return;
+        }
+
+        using var parser = new TextFieldParser(csvPath)
+        {
+            TextFieldType = FieldType.Delimited,
+            HasFieldsEnclosedInQuotes = true,
+            TrimWhiteSpace = false
+        };
+        parser.SetDelimiters(",");
+        _ = parser.ReadFields();
+
+        while (!parser.EndOfData)
+        {
+            var fields = parser.ReadFields();
+            if (fields is null || fields.Length < 12)
+            {
+                continue;
+            }
+
+            var product = ProductSeed.FromCsv(fields);
+            if (product is null)
+            {
+                continue;
+            }
+
+            await UpsertProductAsync(connection, product);
+        }
+    }
+
+    private static async Task UpsertProductAsync(SqlConnection connection, ProductSeed product)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            MERGE dbo.Products AS target
+            USING (
+                SELECT
+                    @SourceProductId AS SourceProductId,
+                    @ProductCode AS ProductCode,
+                    @Name AS Name,
+                    @Description AS Description,
+                    @Category AS Category,
+                    @Price AS Price,
+                    @Unit AS Unit,
+                    @IconName AS IconName,
+                    @Status AS Status,
+                    @Rating AS Rating,
+                    @Specification AS Specification
+            ) AS source
+            ON target.ProductCode = source.ProductCode
+               OR (target.ProductCode IS NULL AND target.Id = source.SourceProductId)
+            WHEN MATCHED THEN
+                UPDATE SET
+                    ProductCode = source.ProductCode,
+                    SourceProductId = source.SourceProductId,
+                    Name = source.Name,
+                    Description = source.Description,
+                    Category = source.Category,
+                    Price = source.Price,
+                    Unit = source.Unit,
+                    IconName = source.IconName,
+                    Status = source.Status,
+                    Rating = source.Rating,
+                    Specification = source.Specification,
+                    UpdatedAt = SYSUTCDATETIME()
+            WHEN NOT MATCHED THEN
+                INSERT
+                    (ProductCode, SourceProductId, Name, Description, Category, Price, Stock,
+                     MinimumOrder, Unit, IconName, Status, Rating, Specification, CreatedAt, UpdatedAt)
+                VALUES
+                    (source.ProductCode, source.SourceProductId, source.Name, source.Description,
+                     source.Category, source.Price, 1000, 1, source.Unit, source.IconName,
+                     source.Status, source.Rating, source.Specification, SYSUTCDATETIME(), SYSUTCDATETIME());
+            """;
+        command.Parameters.AddWithValue("@SourceProductId", product.SourceProductId);
+        command.Parameters.AddWithValue("@ProductCode", product.Code);
+        command.Parameters.AddWithValue("@Name", product.Name);
+        command.Parameters.AddWithValue("@Description", product.Description);
+        command.Parameters.AddWithValue("@Category", product.Category);
+        command.Parameters.AddWithValue("@Price", product.Price);
+        command.Parameters.AddWithValue("@Unit", product.Unit);
+        command.Parameters.AddWithValue("@IconName", product.IconName);
+        command.Parameters.AddWithValue("@Status", product.Status);
+        command.Parameters.AddWithValue("@Rating", product.Rating);
+        command.Parameters.AddWithValue("@Specification", (object?)product.Specification ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task ExecuteAsync(SqlConnection connection, string sql)
@@ -696,4 +821,68 @@ static class CommerceDatabase
         _ => status.ToUpperInvariant()
     };
 
+}
+
+sealed record ProductSeed(
+    int SourceProductId,
+    string Code,
+    string Name,
+    string Description,
+    string Category,
+    decimal Price,
+    string Unit,
+    string IconName,
+    string Status,
+    decimal Rating,
+    string? Specification)
+{
+    public static ProductSeed? FromCsv(string[] fields)
+    {
+        if (!int.TryParse(fields[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var sourceId))
+        {
+            return null;
+        }
+
+        var code = Clean(fields[1]);
+        var name = Clean(fields[2]);
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var description = Clean(fields[3]);
+        var category = Clean(fields[4]) == "1" ? "Subsidi" : "Retail";
+        var price = decimal.TryParse(Clean(fields[5]), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedPrice)
+            ? parsedPrice
+            : 0m;
+        var status = string.IsNullOrWhiteSpace(Clean(fields[6])) ? "Aktif" : Clean(fields[6]);
+        var unit = string.IsNullOrWhiteSpace(Clean(fields[9])) ? "TON" : Clean(fields[9]);
+        var rating = decimal.TryParse(Clean(fields[10]), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedRating)
+            ? parsedRating
+            : 0m;
+        var specification = string.IsNullOrWhiteSpace(Clean(fields[11])) ? null : Clean(fields[11]);
+
+        return new ProductSeed(
+            sourceId,
+            code,
+            name,
+            string.IsNullOrWhiteSpace(description) ? "-" : description,
+            category,
+            price,
+            unit,
+            IconFor(name),
+            status,
+            rating,
+            specification);
+    }
+
+    private static string Clean(string? value) => (value ?? string.Empty).Trim();
+
+    private static string IconFor(string name)
+    {
+        var normalized = name.ToLowerInvariant();
+        if (normalized.Contains("urea")) return "water_drop";
+        if (normalized.Contains("petro") || normalized.Contains("dolomit")) return "spa";
+        return "eco";
+    }
 }

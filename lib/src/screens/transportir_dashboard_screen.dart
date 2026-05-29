@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
 import '../services/session_manager.dart';
+import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 
 class TransportirDashboardScreen extends StatelessWidget {
@@ -20,22 +21,26 @@ class TransportirDashboardScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF0EEF6),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF48445F)),
-          onPressed: () => _handleLogout(context),
-        ),
+        automaticallyImplyLeading: false,
         title: const Text(
           'GCommers',
           style: TextStyle(color: Color(0xFF3F3AA0), fontWeight: FontWeight.w800),
         ),
-        actions: const [NotificationBadge(iconColor: Color(0xFF3F3AA0))],
+        actions: [
+          const NotificationBadge(iconColor: Color(0xFF3F3AA0)),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Color(0xFF48445F)),
+            tooltip: 'Keluar',
+            onPressed: () => _handleLogout(context),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
         children: [
           Text(
             'Halo, $displayName',
-            style: const TextStyle(fontSize: 38 / 2, fontWeight: FontWeight.w900, color: Color(0xFF20202D)),
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF20202D)),
           ),
           const SizedBox(height: 2),
           const Text(
@@ -50,12 +55,7 @@ class TransportirDashboardScreen extends StatelessWidget {
           _NewOrdersCard(onTapAll: () => Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session)),
         ],
       ),
-      bottomNavigationBar: _TransportirBottomNav(
-        session: session,
-        onProfileTap: () {
-          Navigator.of(context).pushNamed('/transportir-profile', arguments: session);
-        },
-      ),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 0, session: session),
     );
   }
 
@@ -66,7 +66,6 @@ class TransportirDashboardScreen extends StatelessWidget {
   }
 
 }
-
 class _TransportirStatsCard extends StatelessWidget {
   const _TransportirStatsCard();
 
@@ -89,7 +88,7 @@ class _TransportirStatsCard extends StatelessWidget {
                   children: [
                     Text(
                       'Dashboard',
-                      style: TextStyle(color: Color(0xFFF3F2FF), fontSize: 32 / 2, fontWeight: FontWeight.w800),
+                      style: TextStyle(color: Color(0xFFF3F2FF), fontSize: 16, fontWeight: FontWeight.w800),
                     ),
                     SizedBox(height: 2),
                     Text(
@@ -129,7 +128,7 @@ class _TransportirStatsCard extends StatelessWidget {
                 SizedBox(height: 6),
                 Text(
                   'Rp 1.200.000',
-                  style: TextStyle(color: Colors.white, fontSize: 36 / 2, fontWeight: FontWeight.w900),
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
                 ),
               ],
             ),
@@ -165,7 +164,7 @@ class _MiniStatBox extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 38 / 2, fontWeight: FontWeight.w900),
+            style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900),
           ),
         ],
       ),
@@ -270,7 +269,7 @@ class _RouteCard extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('15m', style: TextStyle(fontSize: 34 / 2, color: Color(0xFF4441AA), fontWeight: FontWeight.w900)),
+                              Text('15m', style: TextStyle(fontSize: 17, color: Color(0xFF4441AA), fontWeight: FontWeight.w900)),
                               Text('Estimasi tiba', style: TextStyle(fontSize: 13, color: Color(0xFF666475))),
                             ],
                           ),
@@ -389,13 +388,13 @@ class _OrderRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  'Pickup: 5 Pallets',
-                  style: TextStyle(fontSize: 19 / 2, fontWeight: FontWeight.w800, color: Color(0xFF20202E)),
+                  'Pengambilan: 5 Palet',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF20202E)),
                 ),
                 SizedBox(height: 3),
-                Text('PT. Sumber Makmur', style: TextStyle(fontSize: 16, color: Color(0xFF525160))),
+                Text('PT. Sumber Makmur', style: TextStyle(fontSize: 13, color: Color(0xFF525160))),
                 SizedBox(height: 2),
-                Text('Scheduled: 14:00 WIB', style: TextStyle(fontSize: 14, color: Color(0xFF7B7889))),
+                Text('Jadwal: 14.00 WIB', style: TextStyle(fontSize: 12, color: Color(0xFF7B7889))),
               ],
             ),
           ),
@@ -405,90 +404,3 @@ class _OrderRow extends StatelessWidget {
   }
 }
 
-class _TransportirBottomNav extends StatelessWidget {
-  const _TransportirBottomNav({required this.onProfileTap, this.session});
-
-  final VoidCallback onProfileTap;
-  final AuthSession? session;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF4F2F9),
-        border: Border(top: BorderSide(color: Color(0xFFD2CDDF))),
-      ),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const _NavItem(
-            icon: Icons.home_rounded,
-            label: 'Beranda',
-            active: true,
-          ),
-          _NavItem(
-            icon: Icons.inventory_2_outlined,
-            label: 'Pesanan',
-            onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session),
-          ),
-          _NavItem(
-            icon: Icons.local_shipping_outlined,
-            label: 'Pengiriman',
-            onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-shipments', arguments: session),
-          ),
-          _NavItem(
-            icon: Icons.bar_chart_outlined,
-            label: 'Laporan',
-            onTap: () => Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session),
-          ),
-          _NavItem(
-            icon: Icons.person_outline,
-            label: 'Profil',
-            onTap: onProfileTap,
-          ),
-        ],
-      ),
-    );
-  }
-
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    this.active = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = active ? const Color(0xFF4A469E) : const Color(0xFF4D4A5C);
-    final bg = active ? const Color(0xFFD7D2EC) : Colors.transparent;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(22)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: fg, size: 20),
-            Text(
-              label,
-              style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

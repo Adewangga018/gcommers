@@ -94,6 +94,10 @@ class _RoleBadge extends StatelessWidget {
         return 'Kiosk';
       case 'transportir':
         return 'Transportir';
+      case 'admin':
+        return 'Admin Region';
+      case 'superadmin':
+        return 'Super Admin';
       default:
         return role;
     }

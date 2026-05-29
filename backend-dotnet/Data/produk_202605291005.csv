@@ -1,0 +1,43 @@
+"id","kode","nama","diskripsi","jenis","harga","status","created_at","updated_at","satuan","rating","spesifikasi"
+1,PB01001,Urea,"Urea subsidi adalah pupuk kimia yang mengandung unsur hara Nitrogen (N) tinggi, yang pengadaannya dibantu oleh pemerintah sehingga harganya lebih terjangkau bagi petani yang terdaftar dalam sistem e-RDKK.
+Ciri paling mencolok dari urea subsidi adalah warnanya yang merah muda (pink). Pewarnaan ini bertujuan agar pupuk subsidi mudah dibedakan secara visual dari pupuk non-subsidi yang berwarna putih. Pewarna yang digunakan bersifat organik dan aman bagi tanaman.",1,1800000.0,Aktif,2026-01-08 10:09:31.000,,TON,0.0,"Meskipun warnanya berbeda, standar kandungan haranya tetap mengikuti SNI (Standar Nasional Indonesia):
+- Kadar Nitrogen (N) : Minimal 46%
+- Kadar Biuret : Maksimal 1%
+- Kadar Air (Moisture) : Maksimal 0,5%
+- Bentuk : Prill (Butiran halus)
+- Warna : Pink / Merah Muda
+- Kemasan : Kantong 50 kg dengan logo Pupuk Indonesia"
+2,PB01011,NPK KAKAO (50 kg),-,1,2640000.0,Aktif,2026-01-08 10:09:31.000,,TON,0.0,
+3,PB01002,ZA,-,1,1360000.0,Aktif,2026-01-08 10:09:31.000,,TON,0.0,
+4,PB01006,Petroganik,-,1,640000.0,Aktif,2026-01-08 10:09:31.000,,TON,0.0,
+5,PB01004,Phonska,-,1,1840000.0,Aktif,2026-01-08 10:09:31.000,,TON,0.0,
+6,PB02001,Urea,"Urea adalah pupuk kimia yang mengandung Nitrogen (N) berkadar tinggi. Unsur Nitrogen sangat dibutuhkan tanaman, terutama pada fase vegetatif (pertumbuhan) untuk pembentukan klorofil, pertumbuhan daun, serta peningkatan tinggi tanaman.
+Pupuk ini bersifat higroskopis (mudah menyerap air), sehingga sangat mudah larut dalam air dan cepat diserap oleh tanaman.",2,2500000.0,Aktif,2026-01-08 10:09:31.000,,TON,0.0,"Berdasarkan standar industri dan SNI yang diterapkan oleh Pupuk Indonesia, berikut adalah spesifikasi umum Urea Non-Subsidi: 
+- Kadar Nitrogen Minimal 46%, 
+- Kadar Biuret Maksimal 1%, 
+- Kadar Air Maksimal 0,5%, 
+- Bentuk Prill (Butiran halus) atau Granule (Butiran kasar/bulat), 
+- Warna Putih Alami (Tanpa Pewarna), 
+- Sifat Higroskopis (Mudah larut dalam air)."
+7,PB03001,Pupuk Urea - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+8,PB03002,Pupuk Za - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+9,PB03003,Pupuk Sp-36 - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+10,PB03004,Pupuk Phonska - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+11,PB03005,Pupuk Npk Kebomas-15:15:15 - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+12,PB03006,Pupuk Kcl - Ritail,-,2,150000.0,Aktif,,,KG,1.0,
+13,PB03007,Pupuk Tsp - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+14,PB03008,Dolomit - Ritail,-,2,150000.0,Aktif,,,KG,1.0,
+15,PB03009,Pupuk Dap - Ritail,-,2,150000.0,Aktif,,,KG,1.0,
+16,PB03010,Pupuk Zk - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+17,PB03011,PUPUK AMOPHOS - RITAIL                                                          ,-,2,150000.0,Aktif,,,TON   ,1.0,
+18,PB03012,Gypsum - Ritail,-,2,150000.0,Aktif,,,KG,1.0,
+19,PB03013,Rock Phosphate - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+20,PB03014,Kapur Pertanian - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+21,PB03015,Pupuk Petroganik - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+22,PB03016,Petro Biofertil - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+23,PB03017,Petrogladiator - Ritail,-,2,150000.0,Aktif,,,TON,1.0,
+24,PB03018,PETRO BIOFERTIL KEMASAN 2KG - RITAIL                                            ,-,2,150000.0,Aktif,,,KG    ,1.0,
+25,PB03019,PETRO BIOFERTIL KEMASAN 5KG - RITAIL                                            ,-,2,150000.0,Aktif,,,KG    ,1.0,
+26,PB03020,PETRO GLADIATOR SERBUK KEMASAN 1KG - RITAIL                                     ,-,2,150000.0,Aktif,,,KG    ,1.0,
+27,PB03021,PETRO GLADIATOR SERBUK KEMASAN 10KG - RITAIL                                    ,-,2,150000.0,Aktif,,,KG    ,1.0,
+28,PB03022,PETRO GLADIATOR CAIR - RITAIL                                                   ,-,2,150000.0,Aktif,,,LITER ,1.0,

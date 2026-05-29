@@ -15,11 +15,21 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   final _commerceService = CommerceService();
   late Future<List<OrderSummary>> _ordersFuture;
+  String _selectedFilter = 'Semua';
 
   @override
   void initState() {
     super.initState();
     _ordersFuture = _commerceService.getOrders();
+  }
+
+  List<OrderSummary> _applyFilter(List<OrderSummary> orders) {
+    return switch (_selectedFilter) {
+      'Pending' => orders.where((o) => o.status == 'pending_payment').toList(),
+      'Diproses' => orders.where((o) => o.status == 'paid' || o.status == 'shipping').toList(),
+      'Selesai' => orders.where((o) => o.status == 'received' || o.status == 'completed').toList(),
+      _ => orders,
+    };
   }
 
   @override
@@ -47,18 +57,21 @@ class _HistoryPageState extends State<HistoryPage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                children: [
-                  Expanded(child: _FilterChip(label: 'Semua', selected: true)),
-                  SizedBox(width: 10),
-                  Expanded(child: _FilterChip(label: 'Pending', selected: false)),
-                  SizedBox(width: 10),
-                  Expanded(child: _FilterChip(label: 'Diproses', selected: false)),
-                  SizedBox(width: 10),
-                  Expanded(child: _FilterChip(label: 'Selesai', selected: false)),
-                ],
+                children: ['Semua', 'Pending', 'Diproses', 'Selesai'].map((label) {
+                  return Expanded(
+                    child: Padding(
+                      padding: label == 'Semua' ? EdgeInsets.zero : const EdgeInsets.only(left: 10),
+                      child: _FilterChip(
+                        label: label,
+                        selected: _selectedFilter == label,
+                        onTap: () => setState(() => _selectedFilter = label),
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
             const SizedBox(height: 16),
@@ -73,7 +86,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     return Center(child: Text('Gagal memuat riwayat: ${snapshot.error}'));
                   }
 
-                  final orders = snapshot.data!;
+                  final orders = _applyFilter(snapshot.data!);
                   if (orders.isEmpty) {
                     return const Center(child: Text('Belum ada riwayat pesanan.'));
                   }
@@ -102,29 +115,33 @@ class _HistoryPageState extends State<HistoryPage> {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.selected});
+  const _FilterChip({required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     const Color primaryPurple = Color(0xFF3B309E);
 
-    return Container(
-      height: 36,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: selected ? primaryPurple : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: selected ? primaryPurple : AppTheme.border),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: selected ? Colors.white : Colors.black54,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? primaryPurple : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: selected ? primaryPurple : AppTheme.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : Colors.black54,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
         ),
       ),
     );
@@ -247,9 +264,10 @@ class _HistoryBottomBar extends StatelessWidget {
 
 Color _statusColor(String status) {
   return switch (status) {
-    'pending_payment' => AppTheme.primary,
-    'paid' || 'shipping' => AppTheme.primaryDark,
-    'received' || 'completed' => AppTheme.primaryDark,
+    'pending_payment' => const Color(0xFFD97706),
+    'paid' => const Color(0xFF2563EB),
+    'shipping' => const Color(0xFF7C3AED),
+    'received' || 'completed' => const Color(0xFF059669),
     _ => Colors.grey,
   };
 }

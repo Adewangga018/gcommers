@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/auth_models.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
+import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 
 class TransportirProfilePage extends StatefulWidget {
@@ -55,7 +56,7 @@ class _TransportirProfilePageState extends State<TransportirProfilePage> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppTheme.primary),
           onPressed: () => Navigator.pop(context),
         ),
-          title: const Text(
+        title: const Text(
           'GCommers',
           style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
         ),
@@ -182,7 +183,7 @@ class _TransportirProfilePageState extends State<TransportirProfilePage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildTransportirBottomNav(context, 4, session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 4, session: session),
     );
   }
 
@@ -256,28 +257,4 @@ class _MenuTile extends StatelessWidget {
       onTap: () => Navigator.of(context).pushNamed(route),
     );
   }
-}
-
-Widget _buildTransportirBottomNav(BuildContext context, int currentIndex, AuthSession? session) {
-  return BottomNavigationBar(
-    currentIndex: currentIndex,
-    type: BottomNavigationBarType.fixed,
-    selectedItemColor: AppTheme.primary,
-    unselectedItemColor: Colors.grey,
-    showUnselectedLabels: true,
-    items: const [
-      BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
-      BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Pesanan'),
-      BottomNavigationBarItem(icon: Icon(Icons.local_shipping_outlined), label: 'Pengiriman'),
-      BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Laporan'),
-      BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
-    ],
-    onTap: (index) {
-      if (index == currentIndex) return;
-      if (index == 0) Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session);
-      if (index == 1) Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session);
-      if (index == 2) Navigator.of(context).pushReplacementNamed('/transportir-shipments', arguments: session);
-      if (index == 3) Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session);
-    },
-  );
 }

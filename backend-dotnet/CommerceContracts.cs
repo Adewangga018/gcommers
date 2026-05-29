@@ -1,5 +1,6 @@
 public sealed record ProductDto(
     int Id,
+    string Code,
     string Name,
     string Description,
     string Category,
@@ -7,7 +8,10 @@ public sealed record ProductDto(
     int Stock,
     int MinimumOrder,
     string Unit,
-    string IconName);
+    string IconName,
+    string Status,
+    decimal Rating,
+    string? Specification);
 
 public sealed record CreateOrderItemRequest(int ProductId, int Quantity);
 

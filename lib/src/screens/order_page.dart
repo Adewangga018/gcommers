@@ -105,7 +105,13 @@ class _OrderPageState extends State<OrderPage> {
             final query = _searchController.text.trim().toLowerCase();
             final visibleProducts = query.isEmpty
                 ? products
-                : products.where((product) => product.name.toLowerCase().contains(query)).toList();
+                : products
+                    .where(
+                      (product) =>
+                          product.name.toLowerCase().contains(query) ||
+                          product.code.toLowerCase().contains(query),
+                    )
+                    .toList();
 
             return Column(
               children: [
@@ -333,7 +339,7 @@ class _ProductCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      product.name,
+                      product.code.isEmpty ? product.name : '${product.code} - ${product.name}',
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, height: 1.15),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -437,8 +443,10 @@ class ProductDetailPage extends StatelessWidget {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
+                              if (product.code.isNotEmpty) _InfoChip(text: product.code),
                               _InfoChip(text: product.category),
                               _InfoChip(text: product.unit),
+                              _InfoChip(text: product.status),
                             ],
                           ),
                         ],
@@ -458,13 +466,26 @@ class ProductDetailPage extends StatelessWidget {
                 child: Column(
                   children: [
                     _DetailRow(label: 'Kategori', value: product.category),
+                    if (product.code.isNotEmpty) _DetailRow(label: 'Kode', value: product.code),
                     _DetailRow(label: 'Harga', value: formatCurrency(product.price)),
                     _DetailRow(label: 'Stok', value: '${product.stock}'),
                     _DetailRow(label: 'Minimal Pembelian', value: '${product.minimumOrder}'),
                     _DetailRow(label: 'Satuan', value: product.unit),
+                    _DetailRow(label: 'Status', value: product.status),
+                    _DetailRow(label: 'Rating', value: product.rating.toStringAsFixed(1)),
                   ],
                 ),
               ),
+              if (product.specification?.trim().isNotEmpty ?? false) ...[
+                const SizedBox(height: 16),
+                _DetailSection(
+                  title: 'Spesifikasi',
+                  child: Text(
+                    product.specification!,
+                    style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
