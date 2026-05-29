@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
 import '../services/session_manager.dart';
+import 'settings_pages.dart';
 
 class TransportirDashboardScreen extends StatelessWidget {
   const TransportirDashboardScreen({super.key, this.session});
@@ -27,12 +28,7 @@ class TransportirDashboardScreen extends StatelessWidget {
           'GCommers',
           style: TextStyle(color: Color(0xFF3F3AA0), fontWeight: FontWeight.w800),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF3F3AA0)),
-            onPressed: () => _showComingSoon(context),
-          ),
-        ],
+        actions: const [NotificationBadge(iconColor: Color(0xFF3F3AA0))],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
@@ -69,11 +65,6 @@ class TransportirDashboardScreen extends StatelessWidget {
     Navigator.of(context).pushNamedAndRemoveUntil('/transportir-login', (_) => false);
   }
 
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fitur sedang disiapkan.')),
-    );
-  }
 }
 
 class _TransportirStatsCard extends StatelessWidget {

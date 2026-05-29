@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../models/auth_models.dart';
+import 'settings_pages.dart';
 
 class TransportirOrdersPage extends StatelessWidget {
   const TransportirOrdersPage({super.key, this.session});
@@ -122,12 +123,7 @@ class TransportirOrdersPage extends StatelessWidget {
           'GCommers',
           style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF4A3AFF)),
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifikasi sedang disiapkan.'))),
-          ),
-        ],
+
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
@@ -181,12 +177,7 @@ class TransportirOrderDetailPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('GCommers', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF4A3AFF)),
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifikasi sedang disiapkan.'))),
-          ),
-        ],
+        actions: const [NotificationBadge(iconColor: Color(0xFF4A3AFF))],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),

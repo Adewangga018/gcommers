@@ -493,8 +493,10 @@ static class AuthDatabase
         command.CommandText = """
             UPDATE dbo.Users
             SET DisplayName  = @DisplayName,
-                KioskName    = @DisplayName,
-                PicName      = @PicName,
+                KioskName    = CASE WHEN Role = N'kiosk' THEN @DisplayName ELSE KioskName END,
+                CompanyName  = CASE WHEN Role = N'transportir' THEN @DisplayName ELSE CompanyName END,
+                PicName      = CASE WHEN Role = N'kiosk' THEN @PicName ELSE PicName END,
+                TransportirName = CASE WHEN Role = N'transportir' THEN @PicName ELSE TransportirName END,
                 Phone        = @Phone,
                 Address      = @Address,
                 AvatarImage  = COALESCE(@AvatarImage, AvatarImage),

@@ -26,7 +26,7 @@ class _KiosProfilePageState extends State<KiosProfilePage> {
 
   Future<void> _loadSession() async {
     final session = await sessionManager.getSession();
-    final avatar = await sessionManager.loadAvatarBytes();
+    final avatar = await sessionManager.loadAvatarBytes(email: session?.email);
     if (!mounted) return;
     setState(() {
       _session = session;

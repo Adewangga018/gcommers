@@ -31,6 +31,7 @@ class SessionManager {
 
   Future<void> saveSession(AuthSession session) async {
     await _ensureInit();
+    final avatarKey = _avatarKeyForEmail(session.email);
     final futures = <Future>[
       _prefs.setString(_keyEmail, session.email),
       _prefs.setString(_keyRole, session.role),
@@ -45,14 +46,17 @@ class SessionManager {
       _prefs.setString(_keyPicName, session.picName ?? ''),
       _prefs.setString(_keyRegion, session.region ?? ''),
     ];
-    // Sync avatar from server response into local binary cache
     if (session.avatarImageBase64 != null && session.avatarImageBase64!.isNotEmpty) {
       try {
-        base64Decode(session.avatarImageBase64!); // validate before storing
+        base64Decode(session.avatarImageBase64!);
+        futures.add(_prefs.setString(avatarKey, session.avatarImageBase64!));
         futures.add(_prefs.setString(_keyAvatarB64, session.avatarImageBase64!));
       } catch (e) {
         debugPrint('SessionManager: invalid avatar base64 from server: $e');
       }
+    } else {
+      futures.add(_prefs.remove(avatarKey));
+      futures.add(_prefs.remove(_keyAvatarB64));
     }
     await Future.wait(futures);
   }
@@ -89,17 +93,25 @@ class SessionManager {
       address: address?.isEmpty == true ? null : address,
       picName: picName?.isEmpty == true ? null : picName,
       region: region?.isEmpty == true ? null : region,
+      avatarImageBase64: _loadAvatarBase64ForEmail(email),
     );
   }
 
-  Future<void> saveAvatarBytes(Uint8List bytes) async {
+  Future<void> saveAvatarBytes(Uint8List bytes, {String? email}) async {
     await _ensureInit();
-    await _prefs.setString(_keyAvatarB64, base64Encode(bytes));
+    final encoded = base64Encode(bytes);
+    final futures = <Future>[_prefs.setString(_keyAvatarB64, encoded)];
+    if (email != null && email.trim().isNotEmpty) {
+      futures.add(_prefs.setString(_avatarKeyForEmail(email), encoded));
+    }
+    await Future.wait(futures);
   }
 
-  Future<Uint8List?> loadAvatarBytes() async {
+  Future<Uint8List?> loadAvatarBytes({String? email}) async {
     await _ensureInit();
-    final str = _prefs.getString(_keyAvatarB64);
+    final str = email == null
+        ? _prefs.getString(_keyAvatarB64)
+        : _loadAvatarBase64ForEmail(email);
     if (str == null || str.isEmpty) return null;
     return base64Decode(str);
   }
@@ -127,6 +139,14 @@ class SessionManager {
     if (!_initialized) {
       await init();
     }
+  }
+
+  String _avatarKeyForEmail(String email) =>
+      '${_keyAvatarB64}_${email.trim().toLowerCase()}';
+
+  String? _loadAvatarBase64ForEmail(String email) {
+    return _prefs.getString(_avatarKeyForEmail(email)) ??
+        _prefs.getString(_keyAvatarB64);
   }
 }
 

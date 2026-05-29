@@ -36,6 +36,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       'transportir' => 'Transportir',
       _ => 'Administrator',
     };
+    final isTransportir = s?.role == 'transportir';
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -45,14 +46,24 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionLabel('Profil Kios'),
-            _InfoCard(children: [
-              _InfoRow(label: 'Nama Kios', value: s?.displayName),
-              _InfoRow(label: 'Penanggung Jawab', value: s?.picName),
-              _InfoRow(label: 'Nomor Telepon', value: s?.phone),
-              _InfoRow(label: 'Alamat', value: s?.address),
-              _InfoRow(label: 'Wilayah', value: s?.region, isLast: true),
-            ]),
+            _SectionLabel(isTransportir ? 'Profil Transportir' : 'Profil Kios'),
+            _InfoCard(
+              children: isTransportir
+                  ? [
+                      _InfoRow(label: 'Nama Perusahaan', value: s?.companyName ?? s?.displayName),
+                      _InfoRow(label: 'Nama Transportir', value: s?.transportirName),
+                      _InfoRow(label: 'Nomor Telepon', value: s?.phone),
+                      _InfoRow(label: 'Nomor Polisi', value: s?.policeNumber),
+                      _InfoRow(label: 'Jenis Kendaraan', value: s?.vehicleType, isLast: true),
+                    ]
+                  : [
+                      _InfoRow(label: 'Nama Kios', value: s?.displayName),
+                      _InfoRow(label: 'Penanggung Jawab', value: s?.picName),
+                      _InfoRow(label: 'Nomor Telepon', value: s?.phone),
+                      _InfoRow(label: 'Alamat', value: s?.address),
+                      _InfoRow(label: 'Wilayah', value: s?.region, isLast: true),
+                    ],
+            ),
             const SizedBox(height: 20),
             _SectionLabel('Akun'),
             _InfoCard(children: [
@@ -145,21 +156,6 @@ class _SecurityPageState extends State<SecurityPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                child: const Text('Ubah Password', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              ),
-            ),
           ],
         ),
       ),
@@ -225,8 +221,6 @@ class HelpPage extends StatelessWidget {
                   _HelpRow(label: 'Panduan Penggunaan', subtitle: 'Cara menggunakan fitur GCommers', onTap: () {}),
                   const _RowDivider(),
                   _HelpRow(label: 'FAQ', subtitle: 'Pertanyaan yang sering diajukan', onTap: () {}),
-                  const _RowDivider(),
-                  _HelpRow(label: 'Video Tutorial', subtitle: 'Pelajari fitur melalui video panduan', onTap: () {}, isLast: true),
                 ],
               ),
             ),
@@ -237,8 +231,6 @@ class HelpPage extends StatelessWidget {
               child: Column(
                 children: [
                   _HelpRow(label: 'Email Dukungan', subtitle: 'support@gcommers.id', onTap: () {}),
-                  const _RowDivider(),
-                  _HelpRow(label: 'Live Chat', subtitle: 'Senin–Jumat, 08.00–17.00 WIB', onTap: () {}, isLast: true),
                 ],
               ),
             ),

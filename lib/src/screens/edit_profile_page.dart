@@ -59,13 +59,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> _load() async {
     final session = await sessionManager.getSession();
-    final avatar = await sessionManager.loadAvatarBytes();
+    final avatar = await sessionManager.loadAvatarBytes(email: session?.email);
+    final isTransportir = session?.role.toLowerCase() == 'transportir';
     if (!mounted) return;
     setState(() {
       _session = session;
       _avatarBytes = avatar;
-      _displayNameCtrl.text = session?.displayName ?? '';
-      _picNameCtrl.text = session?.picName ?? '';
+      _displayNameCtrl.text =
+          isTransportir ? (session?.companyName ?? session?.displayName ?? '') : session?.displayName ?? '';
+      _picNameCtrl.text = isTransportir ? (session?.transportirName ?? '') : session?.picName ?? '';
       _phoneCtrl.text = session?.phone ?? '';
       _addressCtrl.text = session?.address ?? '';
     });
@@ -78,7 +80,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           source: ImageSource.gallery, imageQuality: 80, maxWidth: 800, maxHeight: 800);
       if (image == null) return;
       final bytes = await image.readAsBytes();
-      await sessionManager.saveAvatarBytes(bytes);
       if (!mounted) return;
       setState(() => _avatarBytes = bytes);
     } catch (e) {
@@ -93,7 +94,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     final name = _displayNameCtrl.text.trim();
     if (name.isEmpty) {
-      _showError('Nama Kios tidak boleh kosong.');
+      final roleName = session.role.toLowerCase() == 'transportir' ? 'Nama perusahaan' : 'Nama Kios';
+      _showError('$roleName tidak boleh kosong.');
       return;
     }
 
@@ -175,6 +177,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isTransportir = _session?.role.toLowerCase() == 'transportir';
+    final profileSection = isTransportir ? 'PROFIL TRANSPORTIR' : 'PROFIL KIOS';
+    final displayNameLabel = isTransportir ? 'Nama Perusahaan' : 'Nama Kios';
+    final displayNameHint = isTransportir ? 'Nama perusahaan transportir' : 'Nama kios Anda';
+    final picNameLabel = isTransportir ? 'Nama Transportir' : 'Penanggung Jawab';
+    final picNameHint = isTransportir ? 'Nama transportir' : 'Nama penanggung jawab';
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -238,20 +247,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
             const SizedBox(height: 28),
 
             // ── Profil Info ───────────────────────────────────────────────
-            _sectionLabel('PROFIL KIOS'),
+            _sectionLabel(profileSection),
             _card(children: [
               _readOnlyField(label: 'Email', value: _session?.email ?? ''),
               _divider(),
               _field(
                 controller: _displayNameCtrl,
-                label: 'Nama Kios',
-                hint: 'Nama kios Anda',
+                label: displayNameLabel,
+                hint: displayNameHint,
               ),
               _divider(),
               _field(
                 controller: _picNameCtrl,
-                label: 'Penanggung Jawab',
-                hint: 'Nama penanggung jawab',
+                label: picNameLabel,
+                hint: picNameHint,
               ),
               _divider(),
               _field(
@@ -260,13 +269,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 hint: 'Nomor telepon',
                 keyboardType: TextInputType.phone,
               ),
-              _divider(),
-              _field(
-                controller: _addressCtrl,
-                label: 'Alamat',
-                hint: 'Alamat lengkap kios',
-                maxLines: 2,
-              ),
+              if (!isTransportir) ...[
+                _divider(),
+                _field(
+                  controller: _addressCtrl,
+                  label: 'Alamat',
+                  hint: 'Alamat lengkap kios',
+                  maxLines: 2,
+                ),
+              ],
             ]),
             const SizedBox(height: 16),
             SizedBox(

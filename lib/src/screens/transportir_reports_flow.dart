@@ -26,25 +26,20 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
     final session = widget.session;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FF),
+      backgroundColor: const Color(0xFFF6F4FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Color(0xFF4A3AFF)),
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Menu sedang disiapkan.'))),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4A3AFF)),
+          onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session),
         ),
         title: const Text(
-          'Transport Reports',
-          style: TextStyle(color: Color(0xFF17203A), fontWeight: FontWeight.w800),
+          'GCommers',
+          style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle_outlined, color: Color(0xFF4A3AFF)),
-            onPressed: () => Navigator.of(context).pushNamed('/transportir-profile', arguments: session),
-          ),
-        ],
+        
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),

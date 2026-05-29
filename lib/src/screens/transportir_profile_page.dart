@@ -1,249 +1,283 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
 import '../services/session_manager.dart';
+import '../theme/app_theme.dart';
+import 'settings_pages.dart';
 
-class TransportirProfilePage extends StatelessWidget {
+class TransportirProfilePage extends StatefulWidget {
   const TransportirProfilePage({super.key, this.session});
 
   final AuthSession? session;
 
   @override
+  State<TransportirProfilePage> createState() => _TransportirProfilePageState();
+}
+
+class _TransportirProfilePageState extends State<TransportirProfilePage> {
+  AuthSession? _session;
+  Uint8List? _avatarBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _session = widget.session;
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final session = await sessionManager.getSession();
+    final activeSession = session ?? widget.session;
+    final avatar = await sessionManager.loadAvatarBytes(email: activeSession?.email);
+    if (!mounted) return;
+    setState(() {
+      _session = activeSession;
+      _avatarBytes = avatar;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const Color primary = Color(0xFF4A3AFF);
-    final companyName = (session?.companyName?.trim().isNotEmpty ?? false)
-        ? session!.companyName!
-        : ((session?.displayName.trim().isNotEmpty ?? false) ? session!.displayName : 'Nama Perusahaan Transportir');
-    final transportirName = (session?.transportirName?.trim().isNotEmpty ?? false)
-        ? session!.transportirName!
-        : 'Nama Transportir';
-    final policeNumber = (session?.policeNumber?.trim().isNotEmpty ?? false)
-        ? session!.policeNumber!
-        : 'Nomor polisi belum diisi';
-    final vehicleType = (session?.vehicleType?.trim().isNotEmpty ?? false)
-        ? session!.vehicleType!
-        : 'Jenis kendaraan belum diisi';
-    final email = session?.email ?? 'you@domain.tld';
+    final session = _session ?? widget.session;
+    final companyName = _companyName(session);
+    final email = session?.email ?? 'user@contoh.com';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F6FB),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0.5,
-        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shadowColor: Colors.black12,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF4A3AFF)),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppTheme.primary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('GCommers', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.grey),
-            onPressed: () => Navigator.of(context).pushNamed('/notifications'),
-          ),
-        ],
+          title: const Text(
+          'GCommers',
+          style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
+        ),
+        centerTitle: true,
+        actions: const [NotificationBadge()],
       ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              const SizedBox(height: 18),
+              const SizedBox(height: 28),
               Center(
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                    ),
-                    Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 44,
-                          backgroundColor: Colors.grey[200],
-                          child: Icon(Icons.person, size: 56, color: Colors.grey[400]),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(companyName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(color: const Color(0xFFEDE8FF), borderRadius: BorderRadius.circular(20)),
-                              child: const Text('Transportir Mitra', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w700, fontSize: 13)),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(transportirName, style: TextStyle(color: Colors.grey[600])),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Positioned(
-                      right: 48,
-                      top: 54,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(color: Color(0xFF4A3AFF), shape: BoxShape.circle),
-                        child: const Icon(Icons.edit, size: 16, color: Colors.white),
-                      ),
-                    ),
-                  ],
+                child: Container(
+                  width: 116,
+                  height: 116,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.primary.withAlpha(60), width: 3),
+                    color: Colors.grey[100],
+                  ),
+                  child: ClipOval(
+                    child: _avatarBytes != null
+                        ? Image.memory(_avatarBytes!, fit: BoxFit.cover)
+                        : Icon(Icons.local_shipping_rounded, size: 58, color: Colors.grey[400]),
+                  ),
                 ),
               ),
-
               const SizedBox(height: 18),
-
-              // Stats cards
-              Row(
+              Column(
                 children: [
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 10),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[200]!)),
-                      child: Column(
-                        children: const [
-                          Icon(Icons.local_shipping_outlined, color: Color(0xFF154E96)),
-                          SizedBox(height: 6),
-                          Text('142', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                          SizedBox(height: 4),
-                          Text('Total Trip', style: TextStyle(color: Colors.black54)),
-                        ],
-                      ),
-                    ),
+                  Text(
+                    companyName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.navy),
                   ),
-                  Expanded(
+                  const SizedBox(height: 4),
+                  Text(email, style: const TextStyle(color: AppTheme.muted, fontSize: 14)),
+                  const SizedBox(height: 14),
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.of(context).pushNamed('/edit-profile');
+                      _loadSession();
+                    },
                     child: Container(
-                      margin: const EdgeInsets.only(left: 10),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[200]!)),
-                      child: Column(
-                        children: const [
-                          Icon(Icons.monetization_on_outlined, color: Color(0xFF154E96)),
-                          SizedBox(height: 6),
-                          Text('1.2K', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                          SizedBox(height: 4),
-                          Text('Est. Pendapatan', style: TextStyle(color: Colors.black54)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withAlpha(18),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppTheme.primary.withAlpha(40)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.edit_rounded, color: AppTheme.primary, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'Edit Profil',
+                            style: TextStyle(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 20),
-
+              const SizedBox(height: 28),
+              Row(
+                children: const [
+                  Expanded(child: _StatCard(icon: Icons.local_shipping_outlined, value: '142', label: 'Total Trip')),
+                  SizedBox(width: 14),
+                  Expanded(child: _StatCard(icon: Icons.payments_outlined, value: '1.2K', label: 'Transaksi')),
+                ],
+              ),
+              const SizedBox(height: 28),
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 8, offset: const Offset(0, 2)),
+                  ],
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Data Transportir', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 12),
-                    _buildInfoRow('Nama transportir', transportirName),
-                    const SizedBox(height: 10),
-                    _buildInfoRow('Nama perusahaan', companyName),
-                    const SizedBox(height: 10),
-                    _buildInfoRow('Email', email),
-                    const SizedBox(height: 10),
-                    _buildInfoRow('Nomor polisi', policeNumber),
-                    const SizedBox(height: 10),
-                    _buildInfoRow('Jenis kendaraan', vehicleType),
+                    _MenuTile(icon: Icons.person_outline_rounded, title: 'Informasi Akun', route: '/account-info'),
+                    _divider(),
+                    _MenuTile(icon: Icons.shield_outlined, title: 'Keamanan', route: '/security'),
+                    _divider(),
+                    _MenuTile(icon: Icons.notifications_outlined, title: 'Notifikasi', route: '/notification-settings'),
+                    _divider(),
+                    _MenuTile(icon: Icons.help_outline_rounded, title: 'Bantuan', route: '/help'),
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // Menu list
-              Container(
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
-                child: Column(
-                  children: [
-                    _buildMenuTile(Icons.person_outline, 'Informasi Akun', () {}),
-                    const Divider(height: 1, indent: 16),
-                    _buildMenuTile(Icons.shield_outlined, 'Keamanan', () {}),
-                    const Divider(height: 1, indent: 16),
-                    _buildMenuTile(Icons.notifications_none_outlined, 'Notifikasi', () {}),
-                    const Divider(height: 1, indent: 16),
-                    _buildMenuTile(Icons.help_outline_rounded, 'Bantuan', () {}),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Logout button
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton.icon(
                   onPressed: () async {
+                    final nav = Navigator.of(context);
                     await sessionManager.clearSession();
-                    if (!context.mounted) return;
-                    Navigator.of(context).pushNamedAndRemoveUntil('/transportir-login', (_) => false);
+                    if (!mounted) return;
+                    nav.pushNamedAndRemoveUntil('/transportir-login', (_) => false);
                   },
-                  icon: const Icon(Icons.logout, color: Color(0xFFB92B2B)),
-                  label: const Text('Keluar', style: TextStyle(color: Color(0xFFB92B2B), fontWeight: FontWeight.bold, fontSize: 16)),
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFB92B2B)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  icon: const Icon(Icons.logout_rounded, color: Colors.red, size: 20),
+                  label: const Text(
+                    'Keluar',
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 4,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: primary,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Pesanan'),
-          BottomNavigationBarItem(icon: Icon(Icons.local_shipping_outlined), label: 'Pengiriman'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Laporan'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
+      bottomNavigationBar: _buildTransportirBottomNav(context, 4, session),
+    );
+  }
+
+  Widget _divider() => const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
+      );
+
+  String _companyName(AuthSession? session) {
+    if (session?.companyName?.trim().isNotEmpty ?? false) return session!.companyName!;
+    if (session?.displayName.trim().isNotEmpty ?? false) return session!.displayName;
+    return 'Nama Perusahaan Transportir';
+  }
+
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.icon, required this.value, required this.label});
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 8, offset: const Offset(0, 2)),
         ],
-        onTap: (index) {
-          if (index == 0) Navigator.of(context).pushNamed('/transportir-home', arguments: session);
-          if (index == 1) Navigator.of(context).pushNamed('/transportir-orders', arguments: session);
-          if (index == 2) Navigator.of(context).pushNamed('/transportir-shipments', arguments: session);
-          if (index == 3) Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session);
-        },
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: AppTheme.primary.withAlpha(18), shape: BoxShape.circle),
+            child: Icon(icon, color: AppTheme.primary, size: 26),
+          ),
+          const SizedBox(height: 10),
+          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.navy)),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(color: AppTheme.muted, fontSize: 13, fontWeight: FontWeight.w500)),
+        ],
       ),
     );
   }
+}
 
-  Widget _buildMenuTile(IconData icon, String title, VoidCallback onTap) {
+class _MenuTile extends StatelessWidget {
+  const _MenuTile({required this.icon, required this.title, required this.route});
+
+  final IconData icon;
+  final String title;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF4A3AFF)),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(color: AppTheme.primary.withAlpha(18), borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: AppTheme.primary, size: 20),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.navy)),
+      trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey[400], size: 20),
+      onTap: () => Navigator.of(context).pushNamed(route),
     );
   }
+}
 
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 128,
-          child: Text(label, style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
-        ),
-      ],
-    );
-  }
+Widget _buildTransportirBottomNav(BuildContext context, int currentIndex, AuthSession? session) {
+  return BottomNavigationBar(
+    currentIndex: currentIndex,
+    type: BottomNavigationBarType.fixed,
+    selectedItemColor: AppTheme.primary,
+    unselectedItemColor: Colors.grey,
+    showUnselectedLabels: true,
+    items: const [
+      BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
+      BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Pesanan'),
+      BottomNavigationBarItem(icon: Icon(Icons.local_shipping_outlined), label: 'Pengiriman'),
+      BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Laporan'),
+      BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
+    ],
+    onTap: (index) {
+      if (index == currentIndex) return;
+      if (index == 0) Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session);
+      if (index == 1) Navigator.of(context).pushReplacementNamed('/transportir-orders', arguments: session);
+      if (index == 2) Navigator.of(context).pushReplacementNamed('/transportir-shipments', arguments: session);
+      if (index == 3) Navigator.of(context).pushReplacementNamed('/transportir-reports', arguments: session);
+    },
+  );
 }

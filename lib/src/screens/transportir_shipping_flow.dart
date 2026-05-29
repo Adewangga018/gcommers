@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
+import 'settings_pages.dart';
 
 class TransportirShipmentsPage extends StatelessWidget {
   const TransportirShipmentsPage({super.key, this.session});
@@ -53,7 +54,7 @@ class TransportirShipmentsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F4FB),
+      backgroundColor: const Color(0xFFF6F4FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -62,13 +63,10 @@ class TransportirShipmentsPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4A3AFF)),
           onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session),
         ),
-        title: const Text('GCommers', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF4A3AFF)),
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifikasi sedang disiapkan.'))),
-          ),
-        ],
+        title: const Text(
+          'GCommers',
+          style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
