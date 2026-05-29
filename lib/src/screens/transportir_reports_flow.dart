@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
+import '../models/commerce_models.dart';
+import '../services/commerce_service.dart';
 import '../widgets/transportir_bottom_nav.dart';
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+String _fmtRupiah(double v) {
+  final s = v.toStringAsFixed(0);
+  final buf = StringBuffer('Rp ');
+  for (var i = 0; i < s.length; i++) {
+    buf.write(s[i]);
+    final rem = s.length - i - 1;
+    if (rem > 0 && rem % 3 == 0) buf.write('.');
+  }
+  return buf.toString();
+}
+
+final _monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+String _monthLabel(DateTime d) => '${_monthNames[d.month - 1]} ${d.year}';
+
+// ─── Main Reports Page ───────────────────────────────────────────────────────
 
 class TransportirReportsPage extends StatefulWidget {
   const TransportirReportsPage({super.key, this.session});
-
   final AuthSession? session;
 
   @override
@@ -13,18 +34,62 @@ class TransportirReportsPage extends StatefulWidget {
 }
 
 class _TransportirReportsPageState extends State<TransportirReportsPage> {
-  final List<_ReportMonth> _months = const [
-    _ReportMonth('Oktober 2023', 'Rp 45.200.000', 124, '15.400 Kg', 70, 30),
-    _ReportMonth('September 2023', 'Rp 42.150.000', 118, '14.900 Kg', 68, 32),
-    _ReportMonth('Agustus 2023', 'Rp 38.900.000', 109, '13.220 Kg', 64, 36),
-  ];
+  final _service = CommerceService();
+  DateTime _selected = DateTime(DateTime.now().year, DateTime.now().month);
+  List<OrderSummary> _orders = [];
+  bool _loading = true;
+  String? _error;
 
-  int _selectedMonthIndex = 0;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final data = await _service.getOrders(userEmail: widget.session?.email);
+      if (mounted) setState(() { _orders = data; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = '$e'; _loading = false; });
+    }
+  }
+
+  List<OrderSummary> _forMonth(DateTime d) => _orders
+      .where((o) => o.createdAt.year == d.year && o.createdAt.month == d.month)
+      .toList();
+
+  double _total(DateTime d) => _forMonth(d).fold(0, (s, o) => s + o.totalAmount);
+  int _count(DateTime d) => _forMonth(d).length;
+  int _items(DateTime d) => _forMonth(d).fold(0, (s, o) => s + o.itemCount);
+
+  // Past 3 months before the selected one
+  List<DateTime> get _history {
+    final list = <DateTime>[];
+    var cur = DateTime(_selected.year, _selected.month - 1);
+    for (var i = 0; i < 3; i++) {
+      list.add(cur);
+      cur = DateTime(cur.year, cur.month - 1);
+    }
+    return list;
+  }
+
+  Future<void> _openMonthPicker() async {
+    final picked = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => _MonthPickerDialog(initial: _selected),
+    );
+    if (picked != null && mounted) setState(() => _selected = picked);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final month = _months[_selectedMonthIndex];
     final session = widget.session;
+    final monthOrders = _forMonth(_selected);
+    final totalAmt = _total(_selected);
+    final tripCnt  = _count(_selected);
+    final itemCnt  = _items(_selected);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F4FA),
@@ -36,117 +101,154 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
           icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4A3AFF)),
           onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session),
         ),
-        title: const Text(
-          'GCommers',
-          style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-        children: [
-          const Text(
-            'Pengajuan Klaim Biaya\nPengiriman Bulanan',
-            style: TextStyle(fontSize: 29 / 2, fontWeight: FontWeight.w900, color: Color(0xFF17203A), height: 1.15),
-          ),
-          const SizedBox(height: 18),
-          _MonthSelector(
-            label: month.monthLabel,
-            onPrevious: _selectedMonthIndex == 0 ? null : () => setState(() => _selectedMonthIndex -= 1),
-            onNext: _selectedMonthIndex == _months.length - 1 ? null : () => setState(() => _selectedMonthIndex += 1),
-          ),
-          const SizedBox(height: 18),
-          _TotalCard(total: month.totalCost),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.local_shipping_outlined,
-                  title: 'Total Pengiriman',
-                  value: '${month.tripCount} Trip',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.scale_outlined,
-                  title: 'Total Volume',
-                  value: month.volume,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _RatioCard(shippingPercentage: month.shippingRatio, fuelPercentage: month.fuelRatio),
-          const SizedBox(height: 22),
-          const Text(
-            'Riwayat Laporan',
-            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF17203A)),
-          ),
-          const SizedBox(height: 14),
-          _HistoryCard(
-            entries: const [
-              _ReportHistoryEntry(
-                title: 'September 2023',
-                subtitle: 'Disetujui',
-                amount: 'Rp 42.150.000',
-                date: '15 Okt 2023',
-                statusColor: Color(0xFF4FD48B),
-                statusIcon: Icons.check_circle_outline,
-                statusBg: Color(0xFFE1FAEA),
-              ),
-              _ReportHistoryEntry(
-                title: 'Agustus 2023',
-                subtitle: 'Sedang Diproses',
-                amount: 'Rp 38.900.000',
-                date: '12 Sep 2023',
-                statusColor: Color(0xFF4A7DFF),
-                statusIcon: Icons.pending_actions_outlined,
-                statusBg: Color(0xFFE7EEFF),
-              ),
-              _ReportHistoryEntry(
-                title: 'Juli 2023',
-                subtitle: 'Disetujui',
-                amount: 'Rp 40.500.000',
-                date: '14 Agt 2023',
-                statusColor: Color(0xFF4FD48B),
-                statusIcon: Icons.check_circle_outline,
-                statusBg: Color(0xFFE1FAEA),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            height: 54,
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).pushNamed('/transportir-report-history', arguments: session),
-              icon: const Icon(Icons.history),
-              label: const Text('Riwayat Laporan'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF4438A7),
-                side: const BorderSide(color: Color(0xFF4438A7)),
-                textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 54,
-            child: FilledButton.icon(
-              onPressed: () => Navigator.of(context).pushNamed('/transportir-report-claim', arguments: session),
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Ajukan Klaim Baru'),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF4438A7),
-                foregroundColor: Colors.white,
-                textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
+        title: const Text('GCommers',
+            style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF4A3AFF)),
+            onPressed: _load,
           ),
         ],
       ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _ErrorView(error: _error!, onRetry: _load)
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                    children: [
+                      const Text(
+                        'Laporan Pengiriman Bulanan',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF17203A)),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Data dari ${_orders.length} pesanan tersedia',
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF6A6780)),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Month Picker ─────────────────────────────────────
+                      _MonthSelectorButton(
+                        label: _monthLabel(_selected),
+                        onTap: _openMonthPicker,
+                        onPrev: () => setState(() =>
+                            _selected = DateTime(_selected.year, _selected.month - 1)),
+                        onNext: DateTime(_selected.year, _selected.month + 1)
+                                .isAfter(DateTime(DateTime.now().year, DateTime.now().month))
+                            ? null
+                            : () => setState(() =>
+                                _selected = DateTime(_selected.year, _selected.month + 1)),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Total Card ───────────────────────────────────────
+                      _TotalCard(
+                        total: _fmtRupiah(totalAmt),
+                        month: _monthLabel(_selected),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ── Stat Cards ───────────────────────────────────────
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.local_shipping_outlined,
+                              title: 'Total Pesanan',
+                              value: '$tripCnt Pesanan',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.inventory_2_outlined,
+                              title: 'Total Barang',
+                              value: '$itemCnt Item',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ── Status Breakdown ─────────────────────────────────
+                      if (monthOrders.isNotEmpty)
+                        _StatusBreakdownCard(orders: monthOrders),
+                      if (monthOrders.isEmpty)
+                        _EmptyMonthCard(month: _monthLabel(_selected)),
+                      const SizedBox(height: 22),
+
+                      // ── History ──────────────────────────────────────────
+                      const Text(
+                        'Riwayat Bulan Sebelumnya',
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF17203A)),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFD3D6E7)),
+                        ),
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < _history.length; i++) ...[
+                              _MonthHistoryTile(
+                                month: _history[i],
+                                total: _total(_history[i]),
+                                count: _count(_history[i]),
+                              ),
+                              if (i < _history.length - 1)
+                                const Divider(height: 1, indent: 16, endIndent: 16),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // ── Actions ──────────────────────────────────────────
+                      SizedBox(
+                        height: 52,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.of(context)
+                              .pushNamed('/transportir-report-history', arguments: session),
+                          icon: const Icon(Icons.history),
+                          label: const Text('Semua Riwayat Klaim'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF4438A7),
+                            side: const BorderSide(color: Color(0xFF4438A7)),
+                            textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 52,
+                        child: FilledButton.icon(
+                          onPressed: () => Navigator.of(context)
+                              .pushNamed('/transportir-report-claim', arguments: session),
+                          icon: const Icon(Icons.add_circle_outline),
+                          label: const Text('Ajukan Klaim Baru'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF4438A7),
+                            foregroundColor: Colors.white,
+                            textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
       bottomNavigationBar: TransportirBottomNav(currentIndex: 3, session: session),
     );
   }
@@ -594,65 +696,431 @@ class TransportirReportDetailPage extends StatelessWidget {
   }
 }
 
-class _MonthSelector extends StatelessWidget {
-  const _MonthSelector({required this.label, required this.onPrevious, required this.onNext});
+// ─── Month Selector Button ───────────────────────────────────────────────────
+
+class _MonthSelectorButton extends StatelessWidget {
+  const _MonthSelectorButton({
+    required this.label,
+    required this.onTap,
+    required this.onPrev,
+    this.onNext,
+  });
 
   final String label;
-  final VoidCallback? onPrevious;
+  final VoidCallback onTap;
+  final VoidCallback onPrev;
   final VoidCallback? onNext;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 44,
+      height: 52,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFD3D6E7)),
+        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 6, offset: Offset(0, 2))],
       ),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.chevron_left, color: Color(0xFF4A3AFF)), onPressed: onPrevious),
-          const Spacer(),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF4438A7))),
-          const Spacer(),
-          IconButton(icon: const Icon(Icons.chevron_right, color: Color(0xFF4A3AFF)), onPressed: onNext),
+          IconButton(
+            icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF4A3AFF)),
+            onPressed: onPrev,
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: onTap,
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.calendar_month_rounded, size: 18, color: Color(0xFF4438A7)),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF4438A7),
+                        fontSize: 15),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.chevron_right_rounded,
+                color: onNext != null ? const Color(0xFF4A3AFF) : Colors.grey[300]),
+            onPressed: onNext,
+          ),
         ],
       ),
     );
   }
 }
 
-class _TotalCard extends StatelessWidget {
-  const _TotalCard({required this.total});
+// ─── Month Picker Dialog ─────────────────────────────────────────────────────
 
-  final String total;
+class _MonthPickerDialog extends StatefulWidget {
+  const _MonthPickerDialog({required this.initial});
+  final DateTime initial;
+
+  @override
+  State<_MonthPickerDialog> createState() => _MonthPickerDialogState();
+}
+
+class _MonthPickerDialogState extends State<_MonthPickerDialog> {
+  late int _year;
+  final _now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _year = widget.initial.year;
+  }
+
+  bool _isDisabled(int month) =>
+      DateTime(_year, month).isAfter(DateTime(_now.year, _now.month));
+
+  bool _isSelected(int month) =>
+      _year == widget.initial.year && month == widget.initial.month;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Year navigation
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF4A3AFF)),
+                  onPressed: () => setState(() => _year--),
+                ),
+                Text(
+                  '$_year',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF17203A)),
+                ),
+                IconButton(
+                  icon: Icon(Icons.chevron_right_rounded,
+                      color: _year < _now.year ? const Color(0xFF4A3AFF) : Colors.grey[300]),
+                  onPressed: _year < _now.year ? () => setState(() => _year++) : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Month grid
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.6,
+              ),
+              itemCount: 12,
+              itemBuilder: (_, i) {
+                final month = i + 1;
+                final disabled = _isDisabled(month);
+                final selected = _isSelected(month);
+                return GestureDetector(
+                  onTap: disabled
+                      ? null
+                      : () => Navigator.pop(context, DateTime(_year, month)),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? const Color(0xFF4438A7)
+                          : disabled
+                              ? const Color(0xFFF0F0F0)
+                              : const Color(0xFFEEEBFF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _monthNames[i].substring(0, 3),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: selected
+                            ? Colors.white
+                            : disabled
+                                ? Colors.grey[400]
+                                : const Color(0xFF4438A7),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal',
+                    style: TextStyle(color: Color(0xFF6A6780), fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Status Breakdown Card ───────────────────────────────────────────────────
+
+class _StatusBreakdownCard extends StatelessWidget {
+  const _StatusBreakdownCard({required this.orders});
+  final List<OrderSummary> orders;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = <String, int>{};
+    for (final o in orders) {
+      groups[o.statusLabel] = (groups[o.statusLabel] ?? 0) + 1;
+    }
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD3D6E7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('STATUS PESANAN',
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w900,
+                  color: Color(0xFF5A5D73), letterSpacing: 0.6)),
+          const SizedBox(height: 12),
+          ...groups.entries.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(e.key,
+                              style: const TextStyle(
+                                  fontSize: 13, color: Color(0xFF17203A))),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: e.value / orders.length,
+                              minHeight: 7,
+                              backgroundColor: const Color(0xFFEEEBFF),
+                              valueColor: const AlwaysStoppedAnimation(Color(0xFF4438A7)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text('${e.value}',
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF4438A7))),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Empty Month Card ─────────────────────────────────────────────────────────
+
+class _EmptyMonthCard extends StatelessWidget {
+  const _EmptyMonthCard({required this.month});
+  final String month;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 98,
-      decoration: BoxDecoration(color: const Color(0xFF4438A7), borderRadius: BorderRadius.circular(12)),
-      padding: const EdgeInsets.all(16),
-      child: Stack(
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD3D6E7)),
+      ),
+      child: Column(
         children: [
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              width: 54,
-              height: 72,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
+          Icon(Icons.inbox_outlined, size: 40, color: Colors.grey[350]),
+          const SizedBox(height: 10),
+          Text('Tidak ada data pesanan\npada $month',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[500], height: 1.4)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Month History Tile ──────────────────────────────────────────────────────
+
+class _MonthHistoryTile extends StatelessWidget {
+  const _MonthHistoryTile({
+    required this.month,
+    required this.total,
+    required this.count,
+  });
+
+  final DateTime month;
+  final double total;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasData = count > 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: hasData ? const Color(0xFFE7E4FF) : const Color(0xFFF0F0F0),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(
+              hasData ? Icons.bar_chart_rounded : Icons.remove_circle_outline,
+              color: hasData ? const Color(0xFF4438A7) : Colors.grey[400],
+              size: 22,
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('Total Biaya', style: TextStyle(color: Color(0xFFDED9FF), fontSize: 14)),
-              const SizedBox(height: 4),
-              FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(total, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900))),
-            ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _monthLabel(month),
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF17203A)),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasData ? '$count pesanan' : 'Tidak ada data',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: hasData ? const Color(0xFF6A6780) : Colors.grey[400]),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            hasData ? _fmtRupiah(total) : '-',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: hasData ? const Color(0xFF4438A7) : Colors.grey[400],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Error View ───────────────────────────────────────────────────────────────
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.error, required this.onRetry});
+  final String error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+            const SizedBox(height: 12),
+            Text(error,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFF5E6076))),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Coba Lagi'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4438A7)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TotalCard extends StatelessWidget {
+  const _TotalCard({required this.total, required this.month});
+
+  final String total;
+  final String month;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4438A7), Color(0xFF6C5CE7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Total Nilai Pesanan',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 13)),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(total,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+                ),
+                const SizedBox(height: 4),
+                Text(month,
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12)),
+              ],
+            ),
+          ),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.account_balance_wallet_outlined, color: Colors.white, size: 26),
           ),
         ],
       ),
@@ -686,103 +1154,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _RatioCard extends StatelessWidget {
-  const _RatioCard({required this.shippingPercentage, required this.fuelPercentage});
-
-  final int shippingPercentage;
-  final int fuelPercentage;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFD3D6E7))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('RASIO BIAYA', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF5A5D73))),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Biaya Pengiriman ($shippingPercentage%)', style: const TextStyle(fontSize: 13, color: Color(0xFF17203A))),
-              Text('Bensin ($fuelPercentage%)', style: const TextStyle(fontSize: 13, color: Color(0xFF17203A))),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Row(
-              children: [
-                Expanded(flex: shippingPercentage, child: Container(height: 12, color: const Color(0xFF4438A7))),
-                Expanded(flex: fuelPercentage, child: Container(height: 12, color: const Color(0xFF4FD48B))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.entries});
-
-  final List<_ReportHistoryEntry> entries;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFD3D6E7))),
-      child: Column(
-        children: [
-          for (var i = 0; i < entries.length; i++) ...[
-            _HistoryTile(entry: entries[i]),
-            if (i != entries.length - 1) const Divider(height: 1),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _HistoryTile extends StatelessWidget {
-  const _HistoryTile({required this.entry});
-
-  final _ReportHistoryEntry entry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(width: 42, height: 42, decoration: BoxDecoration(color: entry.statusBg, borderRadius: BorderRadius.circular(12)), child: Icon(entry.statusIcon, color: entry.statusColor, size: 24)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(entry.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
-                const SizedBox(height: 2),
-                Text(entry.subtitle, style: TextStyle(fontSize: 13, color: entry.statusColor)),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(entry.amount, style: const TextStyle(color: Color(0xFF4438A7), fontWeight: FontWeight.w800)),
-              const SizedBox(height: 2),
-              Text(entry.date, style: const TextStyle(color: Color(0xFF5E6076))),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _SearchField extends StatelessWidget {
   const _SearchField({required this.onTapPlus});
@@ -921,36 +1292,6 @@ class _InfoLine extends StatelessWidget {
   }
 }
 
-class _ReportMonth {
-  const _ReportMonth(this.monthLabel, this.totalCost, this.tripCount, this.volume, this.shippingRatio, this.fuelRatio);
-
-  final String monthLabel;
-  final String totalCost;
-  final int tripCount;
-  final String volume;
-  final int shippingRatio;
-  final int fuelRatio;
-}
-
-class _ReportHistoryEntry {
-  const _ReportHistoryEntry({
-    required this.title,
-    required this.subtitle,
-    required this.amount,
-    required this.date,
-    required this.statusColor,
-    required this.statusIcon,
-    required this.statusBg,
-  });
-
-  final String title;
-  final String subtitle;
-  final String amount;
-  final String date;
-  final Color statusColor;
-  final IconData statusIcon;
-  final Color statusBg;
-}
 
 class TransportirHistoryRecord {
   const TransportirHistoryRecord(this.number, this.date, this.amount, this.badge, this.badgeColor);

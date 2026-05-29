@@ -62,8 +62,8 @@ class CommerceService {
     return OrderDetail.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Future<List<OrderSummary>> getOrders() async {
-    final response = await http.get(_uri('/orders'));
+  Future<List<OrderSummary>> getOrders({String? userEmail}) async {
+    final response = await http.get(_uri('/orders', {'userEmail': userEmail}));
     _ensureOk(response);
     return (jsonDecode(response.body) as List<dynamic>)
         .map((item) => OrderSummary.fromJson(item as Map<String, dynamic>))
