@@ -94,10 +94,32 @@ auth.MapPost("/login", async (LoginRequest request, IConfiguration configuration
     await connection.OpenAsync(cancellationToken);
 
     var user = await AuthDatabase.FindUserByEmailAsync(connection, email, cancellationToken);
-    if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordSalt, user.PasswordHash))
+    if (user is null)
     {
-        return Results.Unauthorized();
+        return Results.Json(new { message = "Email atau password salah." }, statusCode: StatusCodes.Status401Unauthorized);
     }
+
+    if (user.LockoutUntil.HasValue && user.LockoutUntil.Value > DateTimeOffset.UtcNow)
+    {
+        return Results.Json(
+            new { message = $"Akun terkunci sementara sampai {user.LockoutUntil:dd MMM yyyy HH:mm} WIB." },
+            statusCode: StatusCodes.Status423Locked);
+    }
+
+    if (!PasswordHasher.Verify(request.Password, user.PasswordSalt, user.PasswordHash))
+    {
+        var lockoutUntil = await AuthDatabase.RegisterFailedLoginAsync(connection, user.Id, cancellationToken);
+        if (lockoutUntil.HasValue && lockoutUntil.Value > DateTimeOffset.UtcNow)
+        {
+            return Results.Json(
+                new { message = $"Akun terkunci sementara sampai {lockoutUntil:dd MMM yyyy HH:mm} WIB." },
+                statusCode: StatusCodes.Status423Locked);
+        }
+
+        return Results.Json(new { message = "Email atau password salah." }, statusCode: StatusCodes.Status401Unauthorized);
+    }
+
+    await AuthDatabase.ResetLoginAttemptsAsync(connection, user.Id, cancellationToken);
 
     return Results.Ok(AuthSession.FromUser(user));
 });

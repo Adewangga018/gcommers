@@ -108,4 +108,7 @@ public sealed record AuthUserRecord(
     byte[]? ResetOtpHash,
     byte[]? ResetOtpSalt,
     DateTimeOffset? ResetOtpExpiresAt,
-    DateTimeOffset? ResetOtpVerifiedAt);
+    DateTimeOffset? ResetOtpVerifiedAt,
+    int FailedLoginCount,
+    DateTimeOffset? LastFailedLoginAt,
+    DateTimeOffset? LockoutUntil);

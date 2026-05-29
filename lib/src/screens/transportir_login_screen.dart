@@ -38,8 +38,8 @@ class _TransportirLoginScreenState extends State<TransportirLoginScreen> {
       );
 
       final role = session.role.toLowerCase();
-      if (role != 'transportir' && role != 'admin') {
-        throw Exception('Akun ini bukan role transportir. Gunakan login kiosk.');
+      if (role != 'transportir') {
+        throw Exception('Akun ini bukan role transportir. Gunakan login transportir.');
       }
 
       await sessionManager.saveSession(session);
@@ -104,7 +104,7 @@ class _TransportirLoginScreenState extends State<TransportirLoginScreen> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Masuk ke akun GCommers untuk role transportir atau admin',
+                        'Masuk ke akun GCommers untuk role transportir',
                         style: TextStyle(color: AppTheme.muted, fontSize: 15),
                       ),
                       const SizedBox(height: 18),

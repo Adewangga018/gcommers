@@ -10,6 +10,7 @@ Minimal ASP.NET Core Web API for connecting the Flutter app to SQL Server.
 - `POST /auth/forgot-password` generates a reset OTP stored in SQL Server
 - `POST /auth/verify-otp` verifies the reset OTP
 - `POST /auth/reset-password` updates the password in SQL Server
+- Login attempts are locked after repeated failures to reduce brute-force risk
 - Supports SQL login via environment variables or a direct connection string
 
 ## Connection options

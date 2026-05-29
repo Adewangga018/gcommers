@@ -37,7 +37,9 @@ class _AppShellState extends State<AppShell> {
       return;
     }
 
-    if (session.role.toLowerCase() == 'kiosk') {
+    final role = session.role.toLowerCase();
+
+    if (role == 'kiosk') {
       Navigator.of(context).pushReplacementNamed(
         '/home',
         arguments: session,
@@ -45,7 +47,7 @@ class _AppShellState extends State<AppShell> {
       return;
     }
 
-    if (session.role.toLowerCase() == 'transportir' || session.role.toLowerCase() == 'admin') {
+    if (role == 'transportir') {
       Navigator.of(context).pushReplacementNamed(
         '/transportir-home',
         arguments: session,

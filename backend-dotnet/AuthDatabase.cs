@@ -35,6 +35,9 @@ static class AuthDatabase
                 ResetOtpSalt VARBINARY(32) NULL,
                 ResetOtpExpiresAt DATETIMEOFFSET NULL,
                 ResetOtpVerifiedAt DATETIMEOFFSET NULL,
+                FailedLoginCount INT NOT NULL CONSTRAINT DF_Users_FailedLoginCount DEFAULT 0,
+                LastFailedLoginAt DATETIMEOFFSET NULL,
+                LockoutUntil DATETIMEOFFSET NULL,
                 CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Users_CreatedAt DEFAULT SYSUTCDATETIME(),
                 UpdatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Users_UpdatedAt DEFAULT SYSUTCDATETIME(),
                 CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'))
@@ -49,6 +52,18 @@ static class AuthDatabase
               AND parent_object_id = OBJECT_ID(N'dbo.Users')
         )
         BEGIN
+            ALTER TABLE dbo.Users
+            ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'));
+        END
+
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND EXISTS (
+            SELECT 1
+            FROM sys.check_constraints
+            WHERE name = N'CK_Users_Role'
+              AND parent_object_id = OBJECT_ID(N'dbo.Users')
+        )
+        BEGIN
+            ALTER TABLE dbo.Users DROP CONSTRAINT CK_Users_Role;
             ALTER TABLE dbo.Users
             ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'kiosk', N'transportir', N'admin'));
         END
@@ -84,11 +99,33 @@ static class AuthDatabase
         BEGIN
             ALTER TABLE dbo.Users ADD CompanyName NVARCHAR(200) NULL;
         END
+
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'FailedLoginCount'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD FailedLoginCount INT NOT NULL CONSTRAINT DF_Users_FailedLoginCount DEFAULT 0;
+        END
+
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'LastFailedLoginAt'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD LastFailedLoginAt DATETIMEOFFSET NULL;
+        END
+
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'LockoutUntil'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD LockoutUntil DATETIMEOFFSET NULL;
+        END
         """;
 
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         await command.ExecuteNonQueryAsync();
+
     }
 
     public static async Task<AuthUserRecord?> FindUserByEmailAsync(SqlConnection connection, string email, CancellationToken cancellationToken)
@@ -109,7 +146,10 @@ static class AuthDatabase
                 ResetOtpHash,
                 ResetOtpSalt,
                 ResetOtpExpiresAt,
-                ResetOtpVerifiedAt
+                ResetOtpVerifiedAt,
+                FailedLoginCount,
+                LastFailedLoginAt,
+                LockoutUntil
             FROM dbo.Users
             WHERE Email = @Email;
             """;
@@ -135,7 +175,58 @@ static class AuthDatabase
             reader.IsDBNull(10) ? null : (byte[])reader[10],
             reader.IsDBNull(11) ? null : (byte[])reader[11],
             reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12),
-            reader.IsDBNull(13) ? null : reader.GetFieldValue<DateTimeOffset>(13));
+            reader.IsDBNull(13) ? null : reader.GetFieldValue<DateTimeOffset>(13),
+            reader.GetInt32(14),
+            reader.IsDBNull(15) ? null : reader.GetFieldValue<DateTimeOffset>(15),
+            reader.IsDBNull(16) ? null : reader.GetFieldValue<DateTimeOffset>(16));
+    }
+
+    public static async Task ResetLoginAttemptsAsync(SqlConnection connection, int userId, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE dbo.Users
+            SET FailedLoginCount = 0,
+                LastFailedLoginAt = NULL,
+                LockoutUntil = NULL,
+                UpdatedAt = SYSUTCDATETIME()
+            WHERE Id = @Id;
+            """;
+        command.Parameters.AddWithValue("@Id", userId);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public static async Task<DateTimeOffset?> RegisterFailedLoginAsync(SqlConnection connection, int userId, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            DECLARE @Now DATETIMEOFFSET = SYSUTCDATETIME();
+            DECLARE @AttemptCount INT;
+
+            UPDATE dbo.Users
+            SET FailedLoginCount = CASE
+                    WHEN LastFailedLoginAt IS NULL OR LastFailedLoginAt < DATEADD(MINUTE, -15, @Now) THEN 1
+                    ELSE FailedLoginCount + 1
+                END,
+                LastFailedLoginAt = @Now,
+                LockoutUntil = CASE
+                    WHEN LastFailedLoginAt IS NULL OR LastFailedLoginAt < DATEADD(MINUTE, -15, @Now) THEN NULL
+                    WHEN FailedLoginCount + 1 >= 5 THEN DATEADD(MINUTE, 15, @Now)
+                    ELSE LockoutUntil
+                END,
+                UpdatedAt = @Now
+            OUTPUT INSERTED.LockoutUntil
+            WHERE Id = @Id;
+            """;
+        command.Parameters.AddWithValue("@Id", userId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return reader.IsDBNull(0) ? null : reader.GetFieldValue<DateTimeOffset>(0);
     }
 
     public static async Task<AuthSession> CreateUserAsync(
