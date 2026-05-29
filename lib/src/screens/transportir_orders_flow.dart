@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../models/auth_models.dart';
 
@@ -201,6 +205,8 @@ class TransportirOrderDetailPage extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 14),
               child: _ShipmentSummaryCard(
                 shipment: shipment,
+                order: order,
+                session: session,
                 onOpen: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => TransportirShipmentDetailPage(
@@ -500,6 +506,286 @@ class TransportirShipmentItem {
   final String quantityText;
 }
 
+Future<void> _downloadShipmentPdf(
+  BuildContext context, {
+  required TransportirOrderRecord order,
+  required TransportirShipmentRecord shipment,
+  required AuthSession? session,
+}) async {
+  try {
+    final bytes = await _buildShipmentPdf(order: order, shipment: shipment, session: session);
+    await Printing.sharePdf(bytes: bytes, filename: 'surat-jalan-${shipment.shipmentNumber}.pdf');
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gagal membuat PDF surat jalan: $error')),
+    );
+  }
+}
+
+Future<Uint8List> _buildShipmentPdf({
+  required TransportirOrderRecord order,
+  required TransportirShipmentRecord shipment,
+  required AuthSession? session,
+}) async {
+  final logoData = await rootBundle.load('gcs.jpg');
+  final logo = pw.MemoryImage(logoData.buffer.asUint8List());
+  final pdf = pw.Document();
+
+  final driverName  = _firstFilled([session?.displayName, shipment.driverName]);
+  final ownerName   = _firstFilled([session?.companyName, session?.transportirName, shipment.transportirName]);
+  final phone       = _firstFilled([session?.phone, '-']);
+  final policeNumber = _firstFilled([session?.policeNumber, shipment.policeNumber]);
+
+  pw.Widget infoRow(String label, String value, {double labelWidth = 110}) {
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.SizedBox(
+          width: labelWidth,
+          child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
+        ),
+        pw.Text(':  ', style: const pw.TextStyle(fontSize: 9)),
+        pw.Expanded(
+          child: pw.Text(value, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4.landscape,
+      margin: const pw.EdgeInsets.fromLTRB(32, 26, 32, 26),
+      build: (ctx) {
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            // ── Header ───────────────────────────────────────────────────────
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                pw.Image(logo, width: 60, height: 60, fit: pw.BoxFit.contain),
+                pw.SizedBox(width: 12),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'PT. GRESIK CIPTA SEJAHTERA',
+                        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.Text('Jl. KIG Raya Selatan Blok A5 - Gresik',
+                          style: const pw.TextStyle(fontSize: 9)),
+                      pw.Text('Telp. (031) 3985543, 3984822, 3973239',
+                          style: const pw.TextStyle(fontSize: 9)),
+                    ],
+                  ),
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('No.', style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text(
+                      shipment.shipmentNumber,
+                      style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+
+            // ── Title ────────────────────────────────────────────────────────
+            pw.Text(
+              'SURAT PENGANTAR',
+              style: pw.TextStyle(
+                fontSize: 13,
+                fontWeight: pw.FontWeight.bold,
+                decoration: pw.TextDecoration.underline,
+              ),
+            ),
+            pw.Text('Surat Jalan Pengiriman Barang',
+                style: const pw.TextStyle(fontSize: 9)),
+            pw.SizedBox(height: 6),
+            pw.Divider(thickness: 1),
+            pw.SizedBox(height: 8),
+
+            // ── Info Block ───────────────────────────────────────────────────
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Left: vehicle info
+                pw.SizedBox(
+                  width: 220,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      infoRow('Kendaraan No. Pol', policeNumber, labelWidth: 112),
+                      pw.SizedBox(height: 5),
+                      infoRow('Barang EX', order.clientName, labelWidth: 112),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(width: 12),
+                // Right: date + recipient
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Tanggal  :  ${shipment.deliveryDateLabel}',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                      pw.SizedBox(height: 5),
+                      pw.Text('Kepada Yth.',
+                          style: const pw.TextStyle(fontSize: 9)),
+                      pw.Text(
+                        shipment.recipientName,
+                        style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.Text('Di', style: const pw.TextStyle(fontSize: 9)),
+                      pw.Text(
+                        shipment.destinationAddress,
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 10),
+
+            // ── Table (no Harga / Nilai / Total Nilai) ───────────────────────
+            pw.Table(
+              border: pw.TableBorder.all(width: 0.7),
+              columnWidths: const {
+                0: pw.FixedColumnWidth(26),
+                1: pw.FlexColumnWidth(),
+                2: pw.FixedColumnWidth(60),
+                3: pw.FixedColumnWidth(58),
+              },
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFFE8E8E8)),
+                  children: [
+                    _pdfCell('NO', bold: true, align: pw.TextAlign.center),
+                    _pdfCell('URAIAN BARANG', bold: true),
+                    _pdfCell('JUMLAH', bold: true, align: pw.TextAlign.center),
+                    _pdfCell('SATUAN', bold: true, align: pw.TextAlign.center),
+                  ],
+                ),
+                for (var i = 0; i < shipment.items.length; i++)
+                  pw.TableRow(
+                    children: [
+                      _pdfCell('${i + 1}', align: pw.TextAlign.center),
+                      _pdfCell(shipment.items[i].name),
+                      _pdfCell(shipment.items[i].quantityText, align: pw.TextAlign.center),
+                      _pdfCell('TON', align: pw.TextAlign.center),
+                    ],
+                  ),
+              ],
+            ),
+
+            pw.Spacer(),
+
+            // ── Footer Info ──────────────────────────────────────────────────
+            pw.Divider(thickness: 0.6),
+            pw.SizedBox(height: 5),
+            pw.Text(
+              'Dikirim ke alamat tersebut untuk memenuhi permintaan',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 3),
+            pw.Text('Pemilik  :  $ownerName', style: const pw.TextStyle(fontSize: 9)),
+            pw.SizedBox(height: 2),
+            pw.Row(
+              children: [
+                pw.Text('Telp       :  $phone', style: const pw.TextStyle(fontSize: 9)),
+                pw.SizedBox(width: 24),
+                pw.Text('GP : ${order.bptpReference}', style: const pw.TextStyle(fontSize: 9)),
+              ],
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Catatan :',
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 3),
+            for (final note in const [
+              '1. Dilarang menjual di atas HET, sesuai SK mentan.',
+              '2. Dilarang menjual antar kios, industri, dan di luar peruntukannya.',
+              '3. Harap menyimpan surat pengantar ini sebagai arsip.',
+              '4. Surat pengantar ini sebagai Nota Penjualan.',
+            ])
+              pw.Text(note, style: const pw.TextStyle(fontSize: 8)),
+
+            pw.SizedBox(height: 16),
+
+            // ── Signatures ───────────────────────────────────────────────────
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                _pdfSignBox('Penerima,', ''),
+                pw.SizedBox(width: 20),
+                _pdfSignBox('Tanda Tangan,\nSopir/Pembawa', driverName),
+                pw.SizedBox(width: 20),
+                _pdfSignBox('Pengirim,', ownerName),
+              ],
+            ),
+          ],
+        );
+      },
+    ),
+  );
+
+  return pdf.save();
+}
+
+pw.Widget _pdfSignBox(String title, String name) {
+  return pw.Expanded(
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        pw.Text(
+          title,
+          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+          textAlign: pw.TextAlign.center,
+        ),
+        pw.SizedBox(height: 44),
+        pw.Container(
+          width: 110,
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(bottom: pw.BorderSide(width: 0.8)),
+          ),
+        ),
+        pw.SizedBox(height: 4),
+        if (name.isNotEmpty)
+          pw.Text(name, style: const pw.TextStyle(fontSize: 9), textAlign: pw.TextAlign.center),
+      ],
+    ),
+  );
+}
+
+pw.Widget _pdfCell(String text, {bool bold = false, pw.TextAlign align = pw.TextAlign.left}) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+    child: pw.Text(
+      text,
+      style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal),
+      textAlign: align,
+    ),
+  );
+}
+
+String _firstFilled(List<String?> values) {
+  for (final value in values) {
+    final trimmed = value?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) return trimmed;
+  }
+  return '-';
+}
+
 class _TransportirOrderCard extends StatelessWidget {
   const _TransportirOrderCard({required this.order, required this.onTap});
 
@@ -668,9 +954,11 @@ class _NoticeCard extends StatelessWidget {
 }
 
 class _ShipmentSummaryCard extends StatelessWidget {
-  const _ShipmentSummaryCard({required this.shipment, required this.onOpen});
+  const _ShipmentSummaryCard({required this.shipment, required this.order, required this.session, required this.onOpen});
 
   final TransportirShipmentRecord shipment;
+  final TransportirOrderRecord order;
+  final AuthSession? session;
   final VoidCallback onOpen;
 
   @override
@@ -752,7 +1040,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: onOpen,
+                    onPressed: () => _downloadShipmentPdf(context, order: order, shipment: shipment, session: session),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4438A7),
                       foregroundColor: Colors.white,

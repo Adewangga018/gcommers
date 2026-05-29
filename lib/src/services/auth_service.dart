@@ -115,6 +115,50 @@ class AuthService {
     return _decodeAuthSession(response);
   }
 
+  Future<AuthSession> updateProfile({
+    required String email,
+    required String displayName,
+    String? picName,
+    String? phone,
+    String? address,
+    String? avatarImageBase64,
+  }) async {
+    final response = await http.put(
+      _uri('/auth/profile'),
+      headers: _headers,
+      body: jsonEncode({
+        'email': email,
+        'displayName': displayName,
+        'picName': picName,
+        'phone': phone,
+        'address': address,
+        'avatarImageBase64': avatarImageBase64,
+      }),
+    );
+    return _decodeAuthSession(response);
+  }
+
+  Future<void> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) async {
+    final response = await http.post(
+      _uri('/auth/change-password'),
+      headers: _headers,
+      body: jsonEncode({
+        'email': email,
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmNewPassword': confirmNewPassword,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw _toException(response);
+    }
+  }
+
   Future<AuthSession> registerTransportir(TransportirRegistrationDraft draft) async {
     final response = await http.post(
       _uri('/auth/register-transportir'),
@@ -146,6 +190,11 @@ class AuthService {
         policeNumber: data['policeNumber'] as String?,
         vehicleType: data['vehicleType'] as String?,
         token: data['token'] as String?,
+        phone: data['phone'] as String?,
+        picName: data['picName'] as String?,
+        address: data['address'] as String?,
+        region: data['region'] as String?,
+        avatarImageBase64: data['avatarImageBase64'] as String?,
       );
     }
 

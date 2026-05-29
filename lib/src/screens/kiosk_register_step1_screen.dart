@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
 import '../widgets/auth_widgets.dart';
 import 'kiosk_register_step2_screen.dart';
 

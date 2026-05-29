@@ -22,6 +22,7 @@ import 'src/screens/scan_qr_page.dart';
 import 'src/screens/received_goods_page.dart';
 import 'src/screens/notification_page.dart';
 import 'src/screens/settings_pages.dart';
+import 'src/screens/edit_profile_page.dart';
 import 'src/theme/app_theme.dart';
 
 void main() {
@@ -93,6 +94,7 @@ class GCommersApp extends StatelessWidget {
         '/profile': (context) => const KiosProfilePage(),
         '/login': (context) => const LoginScreen(),
         '/notifications': (context) => const NotificationPage(),
+        '/edit-profile': (context) => const EditProfilePage(),
         '/account-info': (context) => const AccountInfoPage(),
         '/security': (context) => const SecurityPage(),
         '/notification-settings': (context) => const NotificationSettingsPage(),

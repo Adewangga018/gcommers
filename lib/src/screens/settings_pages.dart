@@ -5,6 +5,8 @@ import '../services/commerce_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 
+// ─── Account Info ─────────────────────────────────────────────────────────────
+
 class AccountInfoPage extends StatefulWidget {
   const AccountInfoPage({super.key});
 
@@ -28,60 +30,49 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color bgLight = Color(0xFFF9F9FF);
+    final s = _session;
+    final roleLabel = switch (s?.role) {
+      'kiosk' => 'Kios Mitra',
+      'transportir' => 'Transportir',
+      _ => 'Administrator',
+    };
+
     return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: AppTheme.primary),
-        title: const Text('Informasi Akun', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 18)),
-        centerTitle: true,
-        actions: [
-          const NotificationBadge(),
-        ],
-      ),
+      backgroundColor: AppTheme.background,
+      appBar: _buildAppBar('Informasi Akun'),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Akun Anda', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('Kelola informasi akun dan detail verifikasi kios Anda.', style: TextStyle(color: Colors.grey[600], height: 1.5)),
-              const SizedBox(height: 24),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Column(
-                  children: [
-                    _InfoTile(label: 'Nama Akun', value: _session?.displayName ?? '-'),
-                    const Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Email', value: _session?.email ?? '-'),
-                    const Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Jenis Akun', value: _session?.role == 'kiosk' ? 'Kios Mitra' : 'Administrator'),
-                    const Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'PIC', value: _session?.picName ?? '-'),
-                    const Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Nomor Telepon', value: _session?.phone ?? '-'),
-                    const Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Alamat Kios', value: _session?.address ?? '-'),
-                    const Divider(height: 1, indent: 20, endIndent: 20),
-                    const _InfoTile(label: 'Status Verifikasi', value: 'Terverifikasi'),
-                  ],
-                ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionLabel('Profil Kios'),
+            _InfoCard(children: [
+              _InfoRow(label: 'Nama Kios', value: s?.displayName),
+              _InfoRow(label: 'Penanggung Jawab', value: s?.picName),
+              _InfoRow(label: 'Nomor Telepon', value: s?.phone),
+              _InfoRow(label: 'Alamat', value: s?.address),
+              _InfoRow(label: 'Wilayah', value: s?.region, isLast: true),
+            ]),
+            const SizedBox(height: 20),
+            _SectionLabel('Akun'),
+            _InfoCard(children: [
+              _InfoRow(label: 'Email', value: s?.email),
+              _InfoRow(label: 'Jenis Akun', value: roleLabel),
+              _InfoRow(
+                label: 'Status Verifikasi',
+                value: 'Terverifikasi',
+                valueColor: const Color(0xFF2E7D32),
+                isLast: true,
               ),
-            ],
-          ),
+            ]),
+          ],
         ),
       ),
     );
   }
 }
+
+// ─── Security ─────────────────────────────────────────────────────────────────
 
 class SecurityPage extends StatefulWidget {
   const SecurityPage({super.key});
@@ -92,6 +83,7 @@ class SecurityPage extends StatefulWidget {
 
 class _SecurityPageState extends State<SecurityPage> {
   AuthSession? _session;
+  bool _twoFactorEnabled = false;
 
   @override
   void initState() {
@@ -106,203 +98,164 @@ class _SecurityPageState extends State<SecurityPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color bgLight = Color(0xFFF9F9FF);
     return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: AppTheme.primary),
-        title: const Text('Keamanan', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 18)),
-        centerTitle: true,
-        actions: [
-          const NotificationBadge(),
-        ],
-      ),
+      backgroundColor: AppTheme.background,
+      appBar: _buildAppBar('Keamanan'),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Keamanan Akun', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('Kelola login Anda, ganti password, dan aktifkan keamanan tambahan.', style: TextStyle(color: Colors.grey[600], height: 1.5)),
-              const SizedBox(height: 24),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Column(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionLabel('Kata Sandi'),
+            _InfoCard(children: [
+              _InfoRow(label: 'Password', value: '••••••••'),
+              _InfoRow(label: 'Pemulihan Akun', value: _session?.email, isLast: true),
+            ]),
+            const SizedBox(height: 20),
+            _SectionLabel('Keamanan Tambahan'),
+            Container(
+              decoration: _cardDecoration(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                child: Row(
                   children: [
-                    const _InfoTile(label: 'Password', value: '••••••••'),
-                    const Divider(height: 1, indent: 20, endIndent: 20),
-                    const _InfoTile(label: 'Otentikasi 2 Langkah', value: 'Nonaktif'),
-                    const Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Pemulihan Akun', value: _session?.email ?? 'Email terdaftar'),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Otentikasi 2 Langkah',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.navy)),
+                          const SizedBox(height: 2),
+                          Text(
+                            _twoFactorEnabled ? 'Aktif' : 'Nonaktif',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _twoFactorEnabled ? const Color(0xFF2E7D32) : AppTheme.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _twoFactorEnabled,
+                      activeThumbColor: AppTheme.primary,
+                      onChanged: (v) => setState(() => _twoFactorEnabled = v),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.lock_outline),
-                  label: const Text('Ubah Password', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
                 ),
+                child: const Text('Ubah Password', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+// ─── Notification Settings ────────────────────────────────────────────────────
 
 class NotificationSettingsPage extends StatelessWidget {
   const NotificationSettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const Color bgLight = Color(0xFFF9F9FF);
     return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: AppTheme.primary),
-        title: const Text('Notifikasi', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 18)),
-        centerTitle: true,
-        actions: [
-          const NotificationBadge(),
-        ],
-      ),
+      backgroundColor: AppTheme.background,
+      appBar: _buildAppBar('Notifikasi'),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Pengaturan Notifikasi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('Pilih jenis notifikasi yang ingin Anda terima dari GCommers.', style: TextStyle(color: Colors.grey[600], height: 1.5)),
-              const SizedBox(height: 24),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: const Column(
-                  children: [
-                    _ToggleTile(label: 'Notifikasi Pesanan'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _ToggleTile(label: 'Notifikasi Pembayaran'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _ToggleTile(label: 'Notifikasi Pengiriman'),
-                  ],
-                ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionLabel('Preferensi Notifikasi'),
+            Container(
+              decoration: _cardDecoration(),
+              child: const Column(
+                children: [
+                  _ToggleRow(label: 'Notifikasi Pesanan', subtitle: 'Pesanan baru dan perubahan status'),
+                  _RowDivider(),
+                  _ToggleRow(label: 'Notifikasi Pembayaran', subtitle: 'Konfirmasi dan pengingat pembayaran'),
+                  _RowDivider(),
+                  _ToggleRow(label: 'Notifikasi Pengiriman', subtitle: 'Status pengiriman dan estimasi tiba', isLast: true),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+// ─── Help ─────────────────────────────────────────────────────────────────────
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const Color bgLight = Color(0xFFF9F9FF);
     return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: AppTheme.primary),
-        title: const Text('Bantuan', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 18)),
-        centerTitle: true,
-        actions: [
-          const NotificationBadge(),
-        ],
-      ),
+      backgroundColor: AppTheme.background,
+      appBar: _buildAppBar('Bantuan'),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Bantuan', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('Jika Anda membutuhkan bantuan, lihat petunjuk atau hubungi tim dukungan kami.', style: TextStyle(color: Colors.grey[600], height: 1.5)),
-              const SizedBox(height: 24),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: const Column(
-                  children: [
-                    _InfoTile(label: 'Pusat Bantuan', value: 'Panduan penggunaan aplikasi'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'Kontak Dukungan', value: 'support@gcommers.id'),
-                    Divider(height: 1, indent: 20, endIndent: 20),
-                    _InfoTile(label: 'FAQ', value: 'Pertanyaan umum'),
-                  ],
-                ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionLabel('Panduan'),
+            Container(
+              decoration: _cardDecoration(),
+              child: Column(
+                children: [
+                  _HelpRow(label: 'Panduan Penggunaan', subtitle: 'Cara menggunakan fitur GCommers', onTap: () {}),
+                  const _RowDivider(),
+                  _HelpRow(label: 'FAQ', subtitle: 'Pertanyaan yang sering diajukan', onTap: () {}),
+                  const _RowDivider(),
+                  _HelpRow(label: 'Video Tutorial', subtitle: 'Pelajari fitur melalui video panduan', onTap: () {}, isLast: true),
+                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+            _SectionLabel('Hubungi Kami'),
+            Container(
+              decoration: _cardDecoration(),
+              child: Column(
+                children: [
+                  _HelpRow(label: 'Email Dukungan', subtitle: 'support@gcommers.id', onTap: () {}),
+                  const _RowDivider(),
+                  _HelpRow(label: 'Live Chat', subtitle: 'Senin–Jumat, 08.00–17.00 WIB', onTap: () {}, isLast: true),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            _SectionLabel('Tentang Aplikasi'),
+            _InfoCard(children: [
+              const _InfoRow(label: 'Versi Aplikasi', value: '1.0.0'),
+              const _InfoRow(label: 'Nama Aplikasi', value: 'GCommers', isLast: true),
+            ]),
+          ],
         ),
       ),
     );
   }
 }
 
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87, fontSize: 15),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(color: Colors.grey[600], fontSize: 15),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ─── NotificationBadge ────────────────────────────────────────────────────────
 
 class NotificationBadge extends StatefulWidget {
   final Color iconColor;
@@ -324,16 +277,13 @@ class _NotificationBadgeState extends State<NotificationBadge> {
 
   Future<void> _loadUnreadCount() async {
     try {
-      debugPrint('NotificationBadge: Loading unread count.');
       final session = await sessionManager.getSession();
-      debugPrint('NotificationBadge: Session email: ${session?.email}');
       final notifications = await _commerceService.getNotifications(userEmail: session?.email);
       if (!mounted) return;
-      setState(() {
-        _unreadCount = notifications.where((item) => !item.isRead).length;
-      });
-      debugPrint('NotificationBadge: Unread count: $_unreadCount');
-    } catch (e) { debugPrint('NotificationBadge: Error loading unread count: $e'); }
+      setState(() => _unreadCount = notifications.where((n) => !n.isRead).length);
+    } catch (e) {
+      debugPrint('NotificationBadge error: $e');
+    }
   }
 
   @override
@@ -349,22 +299,22 @@ class _NotificationBadgeState extends State<NotificationBadge> {
           alignment: Alignment.center,
           clipBehavior: Clip.none,
           children: [
-            Icon(Icons.notifications_none, color: widget.iconColor, size: 28),
+            Icon(Icons.notifications_rounded, color: widget.iconColor, size: 26),
             if (_unreadCount > 0)
               Positioned(
-                right: -4,
-                top: -4,
+                right: -5,
+                top: -5,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(color: Color(0xFFE53935), shape: BoxShape.circle),
+                  constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
                   child: Text(
-                    '$_unreadCount',
+                    _unreadCount > 99 ? '99+' : '$_unreadCount',
                     style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                 ),
-              )
+              ),
           ],
         ),
       ),
@@ -372,39 +322,197 @@ class _NotificationBadgeState extends State<NotificationBadge> {
   }
 }
 
-class _ToggleTile extends StatefulWidget {
-  const _ToggleTile({required this.label});
+// ─── Shared helpers ───────────────────────────────────────────────────────────
 
-  final String label;
-
-  @override
-  State<_ToggleTile> createState() => _ToggleTileState();
+AppBar _buildAppBar(String title) {
+  return AppBar(
+    backgroundColor: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    shadowColor: Colors.black12,
+    iconTheme: const IconThemeData(color: AppTheme.primary),
+    title: Text(title, style: const TextStyle(color: AppTheme.navy, fontWeight: FontWeight.bold, fontSize: 18)),
+    centerTitle: true,
+    actions: const [NotificationBadge()],
+  );
 }
 
-class _ToggleTileState extends State<_ToggleTile> {
-  bool _isEnabled = true;
+BoxDecoration _cardDecoration() => BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      boxShadow: [BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 8, offset: const Offset(0, 2))],
+    );
+
+// ─── Shared Widgets ───────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(widget.label, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 15)),
-          ),
-          Switch(
-            value: _isEnabled,
-            activeColor: AppTheme.primary,
-            onChanged: (value) {
-              setState(() {
-                _isEnabled = value;
-              });
-            },
-          ),
-        ],
+      padding: const EdgeInsets.only(left: 2, bottom: 10),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(fontSize: 11, color: AppTheme.muted, fontWeight: FontWeight.w700, letterSpacing: 0.8),
       ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(decoration: _cardDecoration(), child: Column(children: children));
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, this.value, this.valueColor, this.isLast = false});
+
+  final String label;
+  final String? value;
+  final Color? valueColor;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 140,
+                child: Text(label,
+                    style: const TextStyle(fontSize: 13, color: AppTheme.muted, fontWeight: FontWeight.w500)),
+              ),
+              Expanded(
+                child: Text(
+                  (value == null || value!.isEmpty) ? '-' : value!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: valueColor ?? AppTheme.navy,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (!isLast) const _RowDivider(),
+      ],
+    );
+  }
+}
+
+class _RowDivider extends StatelessWidget {
+  const _RowDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20),
+      child: Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
+    );
+  }
+}
+
+class _ToggleRow extends StatefulWidget {
+  const _ToggleRow({required this.label, this.subtitle, this.isLast = false});
+
+  final String label;
+  final String? subtitle;
+  final bool isLast;
+
+  @override
+  State<_ToggleRow> createState() => _ToggleRowState();
+}
+
+class _ToggleRowState extends State<_ToggleRow> {
+  bool _enabled = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.label,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.navy)),
+                    if (widget.subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(widget.subtitle!,
+                          style: const TextStyle(fontSize: 12, color: AppTheme.muted)),
+                    ],
+                  ],
+                ),
+              ),
+              Switch(
+                value: _enabled,
+                activeThumbColor: AppTheme.primary,
+                onChanged: (v) => setState(() => _enabled = v),
+              ),
+            ],
+          ),
+        ),
+        if (!widget.isLast) const _RowDivider(),
+      ],
+    );
+  }
+}
+
+class _HelpRow extends StatelessWidget {
+  const _HelpRow({required this.label, required this.subtitle, required this.onTap, this.isLast = false});
+
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: isLast
+              ? const BorderRadius.only(bottomLeft: Radius.circular(14), bottomRight: Radius.circular(14))
+              : BorderRadius.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.navy)),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.muted)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.grey[400], size: 20),
+              ],
+            ),
+          ),
+        ),
+        if (!isLast) const _RowDivider(),
+      ],
     );
   }
 }

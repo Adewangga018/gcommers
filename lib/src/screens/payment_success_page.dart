@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/commerce_models.dart';
 import '../utils/formatters.dart';
@@ -6,85 +7,255 @@ import '../utils/formatters.dart';
 class PaymentSuccessPage extends StatelessWidget {
   const PaymentSuccessPage({super.key});
 
+  static const _navy = Color(0xFF1A237E);
+  static const _purple = Color(0xFF3B309E);
+  static const _mandiriBlue = Color(0xFF003D7C);
+
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
-    const Color bgLight = Color(0xFF3B309E);
     final args = ModalRoute.of(context)?.settings.arguments;
     final result = args is PaymentResult ? args : null;
 
     return Scaffold(
-      backgroundColor: bgLight,
+      backgroundColor: const Color(0xFFF5F5FF),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        automaticallyImplyLeading: false,
+        title: const Text('Konfirmasi Pembayaran',
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 18)),
+        centerTitle: true,
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              const Spacer(),
-              Container(
-                width: 92,
-                height: 92,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 18, offset: const Offset(0, 10)),
-                  ],
-                ),
-                child: const Icon(Icons.check, color: primaryPurple, size: 46),
-              ),
-              const SizedBox(height: 28),
-              const Text(
-                'Pembayaran Berhasil!',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Terima kasih, pembayaran Anda telah kami terima.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 17, height: 1.35),
-              ),
-              const SizedBox(height: 28),
+              // ── Success banner ──────────────────────────────────────────
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.18)),
+                  gradient: const LinearGradient(
+                    colors: [_purple, _navy],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
                   children: [
-                    const Text('Total Pembayaran', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(30),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_circle_rounded,
+                          color: Colors.white, size: 44),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Pembayaran Dikonfirmasi',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800)),
                     const SizedBox(height: 6),
                     Text(
                       result == null ? '-' : formatCurrency(result.totalAmount),
-                      style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900),
                     ),
-                    const SizedBox(height: 16),
-                    Divider(color: Colors.white.withOpacity(0.18), height: 1),
-                    const SizedBox(height: 16),
-                    _SuccessRow(label: 'Virtual Account', value: result?.virtualAccount ?? '-'),
-                    const SizedBox(height: 10),
-                    _SuccessRow(label: 'Metode', value: result?.method ?? '-'),
-                    const SizedBox(height: 10),
-                    _SuccessRow(label: 'No. PO', value: result?.poNumber ?? '-'),
                   ],
                 ),
               ),
-              const Spacer(),
+
+              const SizedBox(height: 20),
+
+              // ── VA number card ──────────────────────────────────────────
+              if (result != null) ...[
+                _card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                                color: _mandiriBlue,
+                                borderRadius: BorderRadius.circular(8)),
+                            alignment: Alignment.center,
+                            child: const Text('M',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900)),
+                          ),
+                          const SizedBox(width: 10),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Mandiri Virtual Account',
+                                  style: TextStyle(
+                                      fontSize: 14, fontWeight: FontWeight.w700)),
+                              Text('Nomor VA untuk pembayaran',
+                                  style:
+                                      TextStyle(color: Colors.black54, fontSize: 11)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              result.virtualAccount,
+                              style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2,
+                                  color: _purple),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              Clipboard.setData(
+                                  ClipboardData(text: result.virtualAccount));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Nomor VA disalin.'),
+                                    duration: Duration(seconds: 2)),
+                              );
+                            },
+                            icon: const Icon(Icons.copy_rounded,
+                                color: _purple, size: 22),
+                            tooltip: 'Salin',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time_rounded,
+                              size: 14, color: Colors.orange),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Berlaku hingga ${formatDateTime(result.expiredAt)}',
+                            style: const TextStyle(
+                                color: Colors.orange,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Order details ─────────────────────────────────────────
+                _card(
+                  child: Column(
+                    children: [
+                      _detailRow('No. Pesanan', result.poNumber),
+                      const Divider(height: 20),
+                      _detailRow('Metode', 'Mandiri Virtual Account'),
+                      const Divider(height: 20),
+                      _detailRow('Status', 'Menunggu Pembayaran'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Instructions ──────────────────────────────────────────
+                _card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Cara Pembayaran',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 12),
+                      ...result.instructions.asMap().entries.map(
+                            (e) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                        color: _purple.withAlpha(20),
+                                        shape: BoxShape.circle),
+                                    alignment: Alignment.center,
+                                    child: Text('${e.key + 1}',
+                                        style: const TextStyle(
+                                            color: _purple,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800)),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(e.value,
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.black87,
+                                            height: 1.4)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+
               SizedBox(
                 width: double.infinity,
-                height: 56,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false),
-                  style: OutlinedButton.styleFrom(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _purple,
                     foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white, width: 1.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
                   ),
-                  child: const Text('KEMBALI KE BERANDA', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text('KEMBALI KE BERANDA',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton(
+                  onPressed: () =>
+                      Navigator.of(context).pushNamedAndRemoveUntil('/history', (_) => false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _purple,
+                    side: const BorderSide(color: _purple),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('LIHAT RIWAYAT PESANAN',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -93,29 +264,26 @@ class PaymentSuccessPage extends StatelessWidget {
       ),
     );
   }
-}
 
-class _SuccessRow extends StatelessWidget {
-  const _SuccessRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14))),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800),
-          ),
+  Widget _card({required Widget child}) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFD7D1EA)),
         ),
-      ],
-    );
-  }
+        child: child,
+      );
+
+  Widget _detailRow(String label, String value) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: const TextStyle(color: Colors.black54, fontSize: 13)),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w700)),
+        ],
+      );
 }

@@ -12,6 +12,11 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddProblemDetails();
+builder.Services.AddHttpClient("mandiri");
+
+var mandiriConfig = builder.Configuration.GetSection("Mandiri").Get<MandiriSnapConfig>() ?? new MandiriSnapConfig();
+builder.Services.AddSingleton(mandiriConfig);
+builder.Services.AddSingleton<MandiriSnapService>();
 
 var app = builder.Build();
 
@@ -256,6 +261,62 @@ auth.MapPost("/reset-password", async (ResetPasswordRequest request, IConfigurat
     return Results.Ok(new { message = "Password berhasil diperbarui." });
 });
 
+auth.MapPut("/profile", async (UpdateProfileRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var email = NormalizeEmail(request.Email);
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(request.DisplayName))
+    {
+        return Results.BadRequest(new { message = "Email dan nama wajib diisi." });
+    }
+
+    var connectionString = ConnectionStringFactory.Build(configuration);
+    await using var connection = new SqlConnection(connectionString);
+    await connection.OpenAsync(cancellationToken);
+
+    var user = await AuthDatabase.FindUserByEmailAsync(connection, email, cancellationToken);
+    if (user is null)
+    {
+        return Results.NotFound(new { message = "Akun tidak ditemukan." });
+    }
+
+    await AuthDatabase.UpdateProfileAsync(connection, email, request, cancellationToken);
+
+    var updated = await AuthDatabase.FindUserByEmailAsync(connection, email, cancellationToken);
+    return Results.Ok(AuthSession.FromUser(updated!));
+});
+
+auth.MapPost("/change-password", async (ChangePasswordRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var email = NormalizeEmail(request.Email);
+    if (string.IsNullOrWhiteSpace(email) ||
+        string.IsNullOrWhiteSpace(request.CurrentPassword) ||
+        string.IsNullOrWhiteSpace(request.NewPassword))
+    {
+        return Results.BadRequest(new { message = "Semua field wajib diisi." });
+    }
+
+    if (request.NewPassword.Length < 8)
+    {
+        return Results.BadRequest(new { message = "Password baru minimal 8 karakter." });
+    }
+
+    if (request.NewPassword != request.ConfirmNewPassword)
+    {
+        return Results.BadRequest(new { message = "Konfirmasi password tidak cocok." });
+    }
+
+    var connectionString = ConnectionStringFactory.Build(configuration);
+    await using var connection = new SqlConnection(connectionString);
+    await connection.OpenAsync(cancellationToken);
+
+    var success = await AuthDatabase.ChangePasswordAsync(
+        connection, email, request.CurrentPassword, request.NewPassword, cancellationToken);
+
+    return success
+        ? Results.Ok(new { message = "Password berhasil diubah." })
+        : Results.BadRequest(new { message = "Password lama tidak sesuai." });
+});
+
 auth.MapPost("/upload-ktp", async (HttpRequest request, IWebHostEnvironment environment, CancellationToken cancellationToken) =>
 {
     if (!request.HasFormContentType)
@@ -341,9 +402,9 @@ orders.MapGet("/{poNumber}", async (string poNumber, IConfiguration configuratio
         : Results.Ok(order);
 });
 
-orders.MapPost("/{poNumber}/payment", async (string poNumber, PaymentRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+orders.MapPost("/{poNumber}/payment", async (string poNumber, IConfiguration configuration, MandiriSnapService mandiriSnap, CancellationToken cancellationToken) =>
 {
-    var payment = await CommerceDatabase.PayOrderAsync(configuration, poNumber, request, cancellationToken);
+    var payment = await CommerceDatabase.PayOrderAsync(configuration, poNumber, mandiriSnap, cancellationToken);
     return payment is null
         ? Results.NotFound(new { message = "Pesanan tidak ditemukan." })
         : Results.Ok(payment);

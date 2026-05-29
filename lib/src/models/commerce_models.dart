@@ -206,6 +206,8 @@ class PaymentResult {
     required this.virtualAccount,
     required this.totalAmount,
     required this.status,
+    required this.expiredAt,
+    required this.instructions,
   });
 
   factory PaymentResult.fromJson(Map<String, dynamic> json) {
@@ -215,6 +217,8 @@ class PaymentResult {
       virtualAccount: json['virtualAccount'] as String,
       totalAmount: (json['totalAmount'] as num).toDouble(),
       status: json['status'] as String,
+      expiredAt: DateTime.parse(json['expiredAt'] as String),
+      instructions: (json['instructions'] as List<dynamic>).cast<String>(),
     );
   }
 
@@ -223,6 +227,8 @@ class PaymentResult {
   final String virtualAccount;
   final double totalAmount;
   final String status;
+  final DateTime expiredAt;
+  final List<String> instructions;
 }
 
 class AppNotification {

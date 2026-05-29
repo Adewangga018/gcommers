@@ -75,6 +75,20 @@ public sealed record RegisterTransportirRequest(
     }
 }
 
+public sealed record UpdateProfileRequest(
+    string Email,
+    string DisplayName,
+    string? PicName = null,
+    string? Phone = null,
+    string? Address = null,
+    string? AvatarImageBase64 = null);
+
+public sealed record ChangePasswordRequest(
+    string Email,
+    string CurrentPassword,
+    string NewPassword,
+    string ConfirmNewPassword);
+
 public sealed record ForgotPasswordRequest(string Email);
 public sealed record ForgotPasswordResponse(string Email, string Otp, int ExpiresInSeconds);
 public sealed record VerifyOtpRequest(string Email, string Otp);
@@ -85,13 +99,31 @@ public sealed record AuthSession(
     string Role,
     string DisplayName,
     string Token,
+    string? Phone = null,
+    string? PicName = null,
+    string? Address = null,
+    string? Region = null,
     string? TransportirName = null,
     string? CompanyName = null,
     string? PoliceNumber = null,
-    string? VehicleType = null)
+    string? VehicleType = null,
+    string? AvatarImageBase64 = null)
 {
     public static AuthSession FromUser(AuthUserRecord user)
-        => new(user.Email, user.Role, user.DisplayName, Guid.NewGuid().ToString("N"), user.TransportirName, user.CompanyName, user.PoliceNumber, user.VehicleType);
+        => new(
+            user.Email,
+            user.Role,
+            user.DisplayName,
+            Guid.NewGuid().ToString("N"),
+            user.Phone,
+            user.PicName,
+            user.Address,
+            user.Region,
+            user.TransportirName,
+            user.CompanyName,
+            user.PoliceNumber,
+            user.VehicleType,
+            user.AvatarImage is { Length: > 0 } bytes ? Convert.ToBase64String(bytes) : null);
 }
 
 public sealed record AuthUserRecord(
@@ -101,6 +133,10 @@ public sealed record AuthUserRecord(
     byte[] PasswordSalt,
     string Role,
     string DisplayName,
+    string? Phone,
+    string? PicName,
+    string? Address,
+    string? Region,
     string? TransportirName,
     string? CompanyName,
     string? PoliceNumber,
@@ -111,4 +147,5 @@ public sealed record AuthUserRecord(
     DateTimeOffset? ResetOtpVerifiedAt,
     int FailedLoginCount,
     DateTimeOffset? LastFailedLoginAt,
-    DateTimeOffset? LockoutUntil);
+    DateTimeOffset? LockoutUntil,
+    byte[]? AvatarImage = null);

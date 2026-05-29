@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/auth_models.dart';
@@ -14,6 +17,8 @@ class SessionManager {
   static const _keyPhone = 'session_phone';
   static const _keyAddress = 'session_address';
   static const _keyPicName = 'session_pic_name';
+  static const _keyRegion = 'session_region';
+  static const _keyAvatarB64 = 'session_avatar_b64';
 
   late final SharedPreferences _prefs;
   bool _initialized = false;
@@ -26,7 +31,7 @@ class SessionManager {
 
   Future<void> saveSession(AuthSession session) async {
     await _ensureInit();
-    await Future.wait([
+    final futures = <Future>[
       _prefs.setString(_keyEmail, session.email),
       _prefs.setString(_keyRole, session.role),
       _prefs.setString(_keyDisplayName, session.displayName),
@@ -38,7 +43,18 @@ class SessionManager {
       _prefs.setString(_keyPhone, session.phone ?? ''),
       _prefs.setString(_keyAddress, session.address ?? ''),
       _prefs.setString(_keyPicName, session.picName ?? ''),
-    ]);
+      _prefs.setString(_keyRegion, session.region ?? ''),
+    ];
+    // Sync avatar from server response into local binary cache
+    if (session.avatarImageBase64 != null && session.avatarImageBase64!.isNotEmpty) {
+      try {
+        base64Decode(session.avatarImageBase64!); // validate before storing
+        futures.add(_prefs.setString(_keyAvatarB64, session.avatarImageBase64!));
+      } catch (e) {
+        debugPrint('SessionManager: invalid avatar base64 from server: $e');
+      }
+    }
+    await Future.wait(futures);
   }
 
   Future<AuthSession?> getSession() async {
@@ -54,6 +70,7 @@ class SessionManager {
     final phone = _prefs.getString(_keyPhone);
     final address = _prefs.getString(_keyAddress);
     final picName = _prefs.getString(_keyPicName);
+    final region = _prefs.getString(_keyRegion);
 
     if (email == null || role == null || displayName == null) {
       return null;
@@ -68,10 +85,23 @@ class SessionManager {
       policeNumber: policeNumber?.isNotEmpty == true ? policeNumber : null,
       vehicleType: vehicleType?.isNotEmpty == true ? vehicleType : null,
       token: token,
-      phone: phone,
-      address: address,
-      picName: picName,
+      phone: phone?.isEmpty == true ? null : phone,
+      address: address?.isEmpty == true ? null : address,
+      picName: picName?.isEmpty == true ? null : picName,
+      region: region?.isEmpty == true ? null : region,
     );
+  }
+
+  Future<void> saveAvatarBytes(Uint8List bytes) async {
+    await _ensureInit();
+    await _prefs.setString(_keyAvatarB64, base64Encode(bytes));
+  }
+
+  Future<Uint8List?> loadAvatarBytes() async {
+    await _ensureInit();
+    final str = _prefs.getString(_keyAvatarB64);
+    if (str == null || str.isEmpty) return null;
+    return base64Decode(str);
   }
 
   Future<void> clearSession() async {
@@ -88,6 +118,8 @@ class SessionManager {
       _prefs.remove(_keyPhone),
       _prefs.remove(_keyAddress),
       _prefs.remove(_keyPicName),
+      _prefs.remove(_keyRegion),
+      _prefs.remove(_keyAvatarB64),
     ]);
   }
 
