@@ -320,9 +320,22 @@ class _TransportirReportClaimPageState
       );
       return;
     }
-    Navigator.of(context).pushNamed(
-      '/transportir-report-success',
-      arguments: widget.session,
+    final claim = ClaimRecord(
+      id: ClaimStore.instance.generateId(_period),
+      submittedAt: DateTime.now(),
+      period: _period,
+      total: _total,
+      shippingCost: _parse(_shippingCtrl.text),
+      fuelCost: _parse(_fuelCtrl.text),
+      otherCost: _parse(_otherCtrl.text),
+      note: _noteCtrl.text.trim(),
+      status: ClaimStatus.menunggu,
+    );
+    ClaimStore.instance.add(claim);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TransportirReportSuccessPage(session: widget.session, claim: claim),
+      ),
     );
   }
 
@@ -542,9 +555,10 @@ class _TransportirReportClaimPageState
 }
 
 class TransportirReportSuccessPage extends StatelessWidget {
-  const TransportirReportSuccessPage({super.key, this.session});
+  const TransportirReportSuccessPage({super.key, this.session, this.claim});
 
   final AuthSession? session;
+  final ClaimRecord? claim;
 
   @override
   Widget build(BuildContext context) {
@@ -587,13 +601,22 @@ class TransportirReportSuccessPage extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFD2D5E8))),
-                      child: const Column(
+                      child: Column(
                         children: [
-                          _InfoLine(label: 'Nomor Referensi', value: 'CLM-202311-082'),
-                          Divider(height: 24),
-                          _InfoLine(label: 'Tanggal', value: '14 Nov 2023'),
-                          Divider(height: 24),
-                          _InfoLine(label: 'Total Pengajuan', value: 'Rp 1.650.000', isEmphasized: true),
+                          _InfoLine(label: 'Nomor Referensi', value: claim?.id ?? 'CLM-202311-082'),
+                          const Divider(height: 24),
+                          _InfoLine(
+                            label: 'Tanggal',
+                            value: claim != null
+                                ? '${claim!.submittedAt.day.toString().padLeft(2, '0')} ${_monthNames[claim!.submittedAt.month - 1]} ${claim!.submittedAt.year}'
+                                : '14 Nov 2023',
+                          ),
+                          const Divider(height: 24),
+                          _InfoLine(
+                            label: 'Total Pengajuan',
+                            value: claim != null ? _fmtRupiah(claim!.total.toDouble()) : 'Rp 1.650.000',
+                            isEmphasized: true,
+                          ),
                         ],
                       ),
                     ),
@@ -657,18 +680,14 @@ class TransportirReportHistoryPage extends StatefulWidget {
 
 class _TransportirReportHistoryPageState
     extends State<TransportirReportHistoryPage> {
-  final _service = CommerceService();
   final _searchCtrl = TextEditingController();
+  String _filter = 'Semua';
 
-  List<OrderSummary> _orders = [];
-  bool _loading = true;
-  String? _error;
-  String _filter = 'Semua'; // Semua | Selesai | Proses | Batal
+  static const _filters = ['Semua', 'Menunggu', 'Diverifikasi', 'Disetujui', 'Ditolak'];
 
   @override
   void initState() {
     super.initState();
-    _load();
     _searchCtrl.addListener(() => setState(() {}));
   }
 
@@ -678,41 +697,31 @@ class _TransportirReportHistoryPageState
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      final data = await _service.getOrders(userEmail: widget.session?.email);
-      if (mounted) setState(() { _orders = data; _loading = false; });
-    } catch (e) {
-      if (mounted) setState(() { _error = '$e'; _loading = false; });
-    }
-  }
-
-  List<OrderSummary> get _filtered {
-    var list = _orders.toList();
+  List<ClaimRecord> get _filtered {
+    var list = ClaimStore.instance.claims.toList();
     final q = _searchCtrl.text.trim().toLowerCase();
     if (q.isNotEmpty) {
-      list = list.where((o) => o.poNumber.toLowerCase().contains(q)).toList();
+      list = list.where((c) => c.id.toLowerCase().contains(q)).toList();
     }
     if (_filter != 'Semua') {
-      list = list.where((o) {
-        return switch (_filter) {
-          'Selesai' => o.status == 'delivered' || o.status == 'completed',
-          'Proses'  => o.status == 'paid' || o.status == 'shipping',
-          'Batal'   => o.status == 'cancelled',
-          _          => true,
-        };
-      }).toList();
+      final targetStatus = switch (_filter) {
+        'Menunggu'    => ClaimStatus.menunggu,
+        'Diverifikasi'=> ClaimStatus.diverifikasi,
+        'Disetujui'   => ClaimStatus.disetujui,
+        'Ditolak'     => ClaimStatus.ditolak,
+        _              => null,
+      };
+      if (targetStatus != null) {
+        list = list.where((c) => c.status == targetStatus).toList();
+      }
     }
-    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
   }
 
   @override
   Widget build(BuildContext context) {
-    final session = widget.session;
     final filtered = _filtered;
-    final filters = ['Semua', 'Selesai', 'Proses', 'Batal'];
+    final total = ClaimStore.instance.claims.length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FF),
@@ -725,14 +734,14 @@ class _TransportirReportHistoryPageState
           icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4438A7)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Semua Riwayat Klaim',
-            style: TextStyle(color: Color(0xFF4438A7), fontWeight: FontWeight.w800)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF4438A7)),
-            onPressed: _load,
-          ),
-        ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Riwayat Klaim',
+                style: TextStyle(color: Color(0xFF4438A7), fontWeight: FontWeight.w800, fontSize: 16)),
+            Text('$total pengajuan', style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12, fontWeight: FontWeight.w500)),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -742,7 +751,7 @@ class _TransportirReportHistoryPageState
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Cari nomor pesanan...',
+                hintText: 'Cari nomor klaim (CLM-...)...',
                 hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
                 prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6D6E86)),
                 filled: true,
@@ -772,25 +781,23 @@ class _TransportirReportHistoryPageState
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              itemCount: filters.length,
+              itemCount: _filters.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
-                final active = _filter == filters[i];
+                final active = _filter == _filters[i];
                 return GestureDetector(
-                  onTap: () => setState(() => _filter = filters[i]),
+                  onTap: () => setState(() => _filter = _filters[i]),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
                       color: active ? const Color(0xFF4438A7) : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: active
-                              ? const Color(0xFF4438A7)
-                              : const Color(0xFFD3D6E7)),
+                          color: active ? const Color(0xFF4438A7) : const Color(0xFFD3D6E7)),
                     ),
                     child: Text(
-                      filters[i],
+                      _filters[i],
                       style: TextStyle(
                         color: active ? Colors.white : const Color(0xFF4A5568),
                         fontWeight: FontWeight.w700,
@@ -803,51 +810,44 @@ class _TransportirReportHistoryPageState
             ),
           ),
           const SizedBox(height: 10),
-          // ── Body ─────────────────────────────────────────────────────────
+          // ── Claim list ────────────────────────────────────────────────
           Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? _ErrorView(error: _error!, onRetry: _load)
-                    : filtered.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.inbox_outlined,
-                                    size: 48, color: Colors.grey[350]),
-                                const SizedBox(height: 10),
-                                Text(
-                                  _searchCtrl.text.isNotEmpty
-                                      ? 'Pesanan tidak ditemukan'
-                                      : 'Belum ada riwayat pesanan',
-                                  style: TextStyle(color: Colors.grey[500]),
-                                ),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _load,
-                            child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 10),
-                              itemBuilder: (_, i) {
-                                final order = filtered[i];
-                                return _OrderHistoryCard(
-                                  order: order,
-                                  onTap: () => Navigator.of(context).pushNamed(
-                                    '/transportir-report-detail',
-                                    arguments: TransportirReportDetailArgs.fromOrder(order),
-                                  ),
-                                );
-                              },
-                            ),
+            child: filtered.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.receipt_long_outlined, size: 52, color: Colors.grey[300]),
+                        const SizedBox(height: 12),
+                        Text(
+                          _searchCtrl.text.isNotEmpty
+                              ? 'Klaim tidak ditemukan'
+                              : 'Belum ada klaim untuk filter ini',
+                          style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) {
+                      final claim = filtered[i];
+                      return _ClaimHistoryCard(
+                        claim: claim,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => TransportirClaimDetailPage(claim: claim),
                           ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
-      bottomNavigationBar: TransportirBottomNav(currentIndex: 3, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 3, session: widget.session),
     );
   }
 }
@@ -1490,105 +1490,6 @@ class _ClaimField extends StatelessWidget {
   }
 }
 
-// ─── Order History Card (for history list) ───────────────────────────────────
-
-class _OrderHistoryCard extends StatelessWidget {
-  const _OrderHistoryCard({required this.order, this.onTap});
-
-  final OrderSummary order;
-  final VoidCallback? onTap;
-
-  static const _statusColors = {
-    'delivered':  (Color(0xFF6AE8A1), Color(0xFFE1FAEA)),
-    'completed':  (Color(0xFF6AE8A1), Color(0xFFE1FAEA)),
-    'paid':       (Color(0xFF4A7DFF), Color(0xFFE7EEFF)),
-    'shipping':   (Color(0xFF4A7DFF), Color(0xFFE7EEFF)),
-    'pending_payment': (Color(0xFFF2C98E), Color(0xFFFFF3E0)),
-    'cancelled':  (Color(0xFFF2A7A4), Color(0xFFFFEBEB)),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = _statusColors[order.status] ??
-        (const Color(0xFF9E9E9E), const Color(0xFFF5F5F5));
-    final fg = colors.$1;
-    final bg = colors.$2;
-
-    final d = order.createdAt;
-    final dateStr =
-        '${d.day.toString().padLeft(2, '0')} ${_monthNames[d.month - 1].substring(0, 3)} ${d.year}';
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFD3D6E7)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.receipt_long_rounded, color: fg, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    order.poNumber,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF17203A)),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '$dateStr  •  ${order.itemCount} item',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF6A6780)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: bg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    order.statusLabel,
-                    style: TextStyle(
-                        color: fg, fontSize: 10, fontWeight: FontWeight.w800),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _fmtRupiah(order.totalAmount),
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF4438A7)),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _InfoLine extends StatelessWidget {
   const _InfoLine({required this.label, required this.value, this.isEmphasized = false});
 
@@ -1655,7 +1556,7 @@ class TransportirReportDetailArgs {
     final dateStr =
         '${d.day.toString().padLeft(2, '0')} ${_monthNames[d.month - 1]} ${d.year}';
     final periodStr = '${_monthNames[d.month - 1]} ${d.year}';
-    const _colors = {
+    const statusColors = {
       'delivered': Color(0xFF6AE8A1), 'completed': Color(0xFF6AE8A1),
       'paid':      Color(0xFF4A7DFF), 'shipping':   Color(0xFF4A7DFF),
       'cancelled': Color(0xFFF2A7A4),
@@ -1667,7 +1568,7 @@ class TransportirReportDetailArgs {
       amount: _fmtRupiah(order.totalAmount),
       statusLabel: order.statusLabel,
       statusIcon: Icons.receipt_long_outlined,
-      badgeColor: _colors[order.status] ?? const Color(0xFFF2C98E),
+      badgeColor: statusColors[order.status] ?? const Color(0xFFF2C98E),
       shippingCost: '-',
       fuelCost: '-',
       otherCost: '-',
@@ -1703,6 +1604,507 @@ class _DetailRow extends StatelessWidget {
       children: [
         Text(label, style: TextStyle(color: const Color(0xFF5E6076), fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600)),
         Text(value, style: TextStyle(color: const Color(0xFF17203A), fontWeight: FontWeight.w900, fontSize: emphasize ? 18 : 14)),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Claim data model + in-session store
+// ═══════════════════════════════════════════════════════════════
+
+enum ClaimStatus { menunggu, diverifikasi, disetujui, ditolak }
+
+extension ClaimStatusX on ClaimStatus {
+  String get label => switch (this) {
+        ClaimStatus.menunggu     => 'Menunggu Verifikasi',
+        ClaimStatus.diverifikasi => 'Sedang Diverifikasi',
+        ClaimStatus.disetujui    => 'Disetujui',
+        ClaimStatus.ditolak      => 'Ditolak',
+      };
+
+  Color get color => switch (this) {
+        ClaimStatus.menunggu     => const Color(0xFFFFB74D),
+        ClaimStatus.diverifikasi => const Color(0xFF42A5F5),
+        ClaimStatus.disetujui    => const Color(0xFF66BB6A),
+        ClaimStatus.ditolak      => const Color(0xFFEF5350),
+      };
+
+  Color get bg => switch (this) {
+        ClaimStatus.menunggu     => const Color(0xFFFFF3E0),
+        ClaimStatus.diverifikasi => const Color(0xFFE3F2FD),
+        ClaimStatus.disetujui    => const Color(0xFFE8F5E9),
+        ClaimStatus.ditolak      => const Color(0xFFFFEBEE),
+      };
+
+  IconData get icon => switch (this) {
+        ClaimStatus.menunggu     => Icons.hourglass_empty_rounded,
+        ClaimStatus.diverifikasi => Icons.manage_search_rounded,
+        ClaimStatus.disetujui    => Icons.check_circle_rounded,
+        ClaimStatus.ditolak      => Icons.cancel_rounded,
+      };
+}
+
+class ClaimRecord {
+  ClaimRecord({
+    required this.id,
+    required this.submittedAt,
+    required this.period,
+    required this.total,
+    required this.shippingCost,
+    required this.fuelCost,
+    required this.otherCost,
+    required this.note,
+    required this.status,
+  });
+
+  final String id;
+  final DateTime submittedAt;
+  final DateTime period;
+  final int total;
+  final int shippingCost;
+  final int fuelCost;
+  final int otherCost;
+  final String note;
+  ClaimStatus status;
+}
+
+class ClaimStore {
+  ClaimStore._() {
+    _claims = [
+      ClaimRecord(
+        id: 'CLM-202604-001',
+        submittedAt: DateTime(2026, 4, 15),
+        period: DateTime(2026, 4),
+        total: 1650000,
+        shippingCost: 1000000,
+        fuelCost: 450000,
+        otherCost: 200000,
+        note: 'Pengiriman bulan April 2026.',
+        status: ClaimStatus.disetujui,
+      ),
+      ClaimRecord(
+        id: 'CLM-202603-001',
+        submittedAt: DateTime(2026, 3, 10),
+        period: DateTime(2026, 3),
+        total: 1920000,
+        shippingCost: 1400000,
+        fuelCost: 320000,
+        otherCost: 200000,
+        note: 'Tiga rute pengiriman Maret 2026.',
+        status: ClaimStatus.disetujui,
+      ),
+      ClaimRecord(
+        id: 'CLM-202605-001',
+        submittedAt: DateTime(2026, 5, 20),
+        period: DateTime(2026, 5),
+        total: 2100000,
+        shippingCost: 1500000,
+        fuelCost: 400000,
+        otherCost: 200000,
+        note: '',
+        status: ClaimStatus.diverifikasi,
+      ),
+      ClaimRecord(
+        id: 'CLM-202602-001',
+        submittedAt: DateTime(2026, 2, 5),
+        period: DateTime(2026, 2),
+        total: 800000,
+        shippingCost: 600000,
+        fuelCost: 200000,
+        otherCost: 0,
+        note: 'Dokumen pendukung kurang lengkap.',
+        status: ClaimStatus.ditolak,
+      ),
+    ];
+  }
+
+  static final ClaimStore instance = ClaimStore._();
+
+  late List<ClaimRecord> _claims;
+  List<ClaimRecord> get claims => List.unmodifiable(_claims);
+
+  int get _nextSeq => _claims.where((c) {
+        final now = DateTime.now();
+        return c.submittedAt.year == now.year && c.submittedAt.month == now.month;
+      }).length + 1;
+
+  String generateId(DateTime period) {
+    final seq = _nextSeq.toString().padLeft(3, '0');
+    return 'CLM-${period.year}${period.month.toString().padLeft(2, '0')}-$seq';
+  }
+
+  void add(ClaimRecord claim) => _claims.insert(0, claim);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Claim History Card
+// ═══════════════════════════════════════════════════════════════
+
+class _ClaimHistoryCard extends StatelessWidget {
+  const _ClaimHistoryCard({required this.claim, required this.onTap});
+
+  final ClaimRecord claim;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = claim.submittedAt;
+    final dateStr = '${d.day.toString().padLeft(2, '0')} ${_monthNames[d.month - 1].substring(0, 3)} ${d.year}';
+    final periodStr = '${_monthNames[claim.period.month - 1]} ${claim.period.year}';
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE4E0F0)),
+          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 3))],
+        ),
+        child: Row(
+          children: [
+            // Status color bar
+            Container(
+              width: 5,
+              height: 80,
+              decoration: BoxDecoration(
+                color: claim.status.color,
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), bottomLeft: Radius.circular(14)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Icon
+            Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(color: claim.status.bg, borderRadius: BorderRadius.circular(11)),
+              child: Icon(claim.status.icon, color: claim.status.color, size: 22),
+            ),
+            const SizedBox(width: 12),
+            // Info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(claim.id, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                    const SizedBox(height: 3),
+                    Text('Periode: $periodStr', style: const TextStyle(fontSize: 11, color: Color(0xFF7A7490))),
+                    const SizedBox(height: 2),
+                    Text(dateStr, style: const TextStyle(fontSize: 11, color: Color(0xFFADA6C0))),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Amount + status
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(_fmtRupiah(claim.total.toDouble()),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF4438A7))),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: claim.status.bg, borderRadius: BorderRadius.circular(20)),
+                    child: Text(claim.status.label,
+                        style: TextStyle(color: claim.status.color, fontSize: 10, fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Claim Detail Page  (full status timeline)
+// ═══════════════════════════════════════════════════════════════
+
+class TransportirClaimDetailPage extends StatelessWidget {
+  const TransportirClaimDetailPage({super.key, required this.claim});
+  final ClaimRecord claim;
+
+  static const _primary = Color(0xFF4438A7);
+
+  @override
+  Widget build(BuildContext context) {
+    final d = claim.submittedAt;
+    final dateStr = '${d.day.toString().padLeft(2, '0')} ${_monthNames[d.month - 1]} ${d.year}';
+    final periodStr = '${_monthNames[claim.period.month - 1]} ${claim.period.year}';
+    final steps = _buildSteps(claim.status);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F7FF),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        centerTitle: false,
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: _primary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Detail Klaim', style: TextStyle(color: _primary, fontWeight: FontWeight.w800)),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+        children: [
+          // Header card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_primary, const Color(0xFF6C5CE7)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 52, height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(claim.status.icon, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(claim.id, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text(claim.status.label,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(_fmtRupiah(claim.total.toDouble()),
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 4),
+                    Text(periodStr, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Status timeline
+          _SectionCard(
+            title: 'Status Pengajuan',
+            child: Column(
+              children: steps.asMap().entries.map((e) {
+                final i = e.key;
+                final step = e.value;
+                return _ClaimTimelineStep(
+                  step: step,
+                  isLast: i == steps.length - 1,
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Cost breakdown
+          _SectionCard(
+            title: 'Rincian Pengeluaran',
+            child: Column(
+              children: [
+                _CostRow(label: 'Biaya Pengiriman', value: claim.shippingCost),
+                const SizedBox(height: 10),
+                _CostRow(label: 'Biaya Bensin', value: claim.fuelCost),
+                const SizedBox(height: 10),
+                _CostRow(label: 'Biaya Lain-lain', value: claim.otherCost),
+                const Divider(height: 20),
+                _CostRow(label: 'TOTAL', value: claim.total, emphasize: true),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Info
+          _SectionCard(
+            title: 'Informasi Pengajuan',
+            child: Column(
+              children: [
+                _DetailRow(label: 'Tanggal Diajukan', value: dateStr),
+                const SizedBox(height: 10),
+                _DetailRow(label: 'Periode Klaim', value: periodStr),
+                if (claim.note.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _DetailRow(label: 'Catatan', value: claim.note),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              child: const Text('Kembali'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_ClaimStep> _buildSteps(ClaimStatus status) {
+    final diajukan = _ClaimStep(
+      title: 'Klaim Diajukan',
+      subtitle: '${claim.submittedAt.day.toString().padLeft(2, '0')} ${_monthNames[claim.submittedAt.month - 1]} ${claim.submittedAt.year}',
+      state: _StepState.done,
+    );
+    final verifikasi = _ClaimStep(
+      title: 'Sedang Diverifikasi',
+      subtitle: status == ClaimStatus.menunggu ? 'Menunggu giliran' : 'Oleh tim Kantor Pusat',
+      state: status == ClaimStatus.menunggu
+          ? _StepState.pending
+          : _StepState.done,
+    );
+    final keputusan = _ClaimStep(
+      title: status == ClaimStatus.ditolak ? 'Klaim Ditolak' : 'Klaim Disetujui',
+      subtitle: status == ClaimStatus.disetujui
+          ? 'Dana akan ditransfer dalam 3-5 hari kerja'
+          : status == ClaimStatus.ditolak
+              ? 'Hubungi admin untuk informasi lebih lanjut'
+              : 'Menunggu keputusan verifikator',
+      state: (status == ClaimStatus.disetujui || status == ClaimStatus.ditolak)
+          ? _StepState.done
+          : _StepState.pending,
+      isRejected: status == ClaimStatus.ditolak,
+    );
+    return [diajukan, verifikasi, keputusan];
+  }
+}
+
+enum _StepState { done, active, pending }
+
+class _ClaimStep {
+  const _ClaimStep({required this.title, required this.subtitle, required this.state, this.isRejected = false});
+  final String title;
+  final String subtitle;
+  final _StepState state;
+  final bool isRejected;
+}
+
+class _ClaimTimelineStep extends StatelessWidget {
+  const _ClaimTimelineStep({required this.step, required this.isLast});
+  final _ClaimStep step;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color dotColor = step.isRejected
+        ? const Color(0xFFEF5350)
+        : step.state == _StepState.done
+            ? const Color(0xFF66BB6A)
+            : step.state == _StepState.active
+                ? const Color(0xFF42A5F5)
+                : const Color(0xFFD0C8E8);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            Container(
+              width: 28, height: 28,
+              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              child: Icon(
+                step.state == _StepState.pending
+                    ? Icons.circle_outlined
+                    : step.isRejected
+                        ? Icons.close_rounded
+                        : Icons.check_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+            if (!isLast)
+              Container(width: 2, height: 36, color: const Color(0xFFE0D8F0)),
+          ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(step.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: step.state == _StepState.pending ? const Color(0xFFADA6C0) : const Color(0xFF17203A))),
+                const SizedBox(height: 2),
+                Text(step.subtitle, style: TextStyle(fontSize: 12, color: step.state == _StepState.pending ? const Color(0xFFCCC7DE) : const Color(0xFF7A7490))),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child});
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE4E0F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title.toUpperCase(),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF9A93AC), letterSpacing: 0.7)),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _CostRow extends StatelessWidget {
+  const _CostRow({required this.label, required this.value, this.emphasize = false});
+  final String label;
+  final int value;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: emphasize ? const Color(0xFF17203A) : const Color(0xFF5E6076),
+            fontWeight: emphasize ? FontWeight.w800 : FontWeight.w500, fontSize: emphasize ? 14 : 13)),
+        Text(value == 0 ? '-' : _fmtRupiah(value.toDouble()),
+            style: TextStyle(color: emphasize ? const Color(0xFF4438A7) : const Color(0xFF17203A),
+                fontWeight: FontWeight.w800, fontSize: emphasize ? 15 : 13)),
       ],
     );
   }

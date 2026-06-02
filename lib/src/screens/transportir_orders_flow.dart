@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../models/auth_models.dart';
 import '../widgets/transportir_bottom_nav.dart';
@@ -367,9 +368,27 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                                 BoxShadow(color: Color(0x12000000), blurRadius: 12, offset: Offset(0, 6)),
                               ],
                             ),
-                            child: const Center(
-                              child: Icon(Icons.qr_code_2_rounded, color: Color(0xFF2B2B39), size: 72),
+                            child: Center(
+                              child: QrImageView(
+                                data: shipment.shipmentNumber,
+                                version: QrVersions.auto,
+                                size: 88,
+                                backgroundColor: Colors.white,
+                                eyeStyle: const QrEyeStyle(
+                                  eyeShape: QrEyeShape.square,
+                                  color: primaryPurple,
+                                ),
+                                dataModuleStyle: const QrDataModuleStyle(
+                                  dataModuleShape: QrDataModuleShape.square,
+                                  color: Color(0xFF1C1B33),
+                                ),
+                              ),
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            shipment.shipmentNumber,
+                            style: const TextStyle(color: primaryPurple, fontSize: 12, fontWeight: FontWeight.w900),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -519,7 +538,7 @@ Future<Uint8List> _buildShipmentPdf({
   required TransportirShipmentRecord shipment,
   required AuthSession? session,
 }) async {
-  final logoData = await rootBundle.load('gcs.jpg');
+  final logoData = await rootBundle.load('gcs.png');
   final logo = pw.MemoryImage(logoData.buffer.asUint8List());
   final pdf = pw.Document();
 
@@ -527,6 +546,7 @@ Future<Uint8List> _buildShipmentPdf({
   final ownerName   = _firstFilled([session?.companyName, session?.transportirName, shipment.transportirName]);
   final phone       = _firstFilled([session?.phone, '-']);
   final policeNumber = _firstFilled([session?.policeNumber, shipment.policeNumber]);
+  final qrData = shipment.shipmentNumber;
 
   pw.Widget infoRow(String label, String value, {double labelWidth = 110}) {
     return pw.Row(
@@ -556,7 +576,7 @@ Future<Uint8List> _buildShipmentPdf({
             pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
-                pw.Image(logo, width: 60, height: 60, fit: pw.BoxFit.contain),
+                pw.Image(logo, width: 90, height: 90, fit: pw.BoxFit.contain),
                 pw.SizedBox(width: 12),
                 pw.Expanded(
                   child: pw.Column(
@@ -564,12 +584,12 @@ Future<Uint8List> _buildShipmentPdf({
                     children: [
                       pw.Text(
                         'PT. GRESIK CIPTA SEJAHTERA',
-                        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
                       ),
                       pw.Text('Jl. KIG Raya Selatan Blok A5 - Gresik',
-                          style: const pw.TextStyle(fontSize: 9)),
+                          style: const pw.TextStyle(fontSize: 10)),
                       pw.Text('Telp. (031) 3985543, 3984822, 3973239',
-                          style: const pw.TextStyle(fontSize: 9)),
+                          style: const pw.TextStyle(fontSize: 10)),
                     ],
                   ),
                 ),
@@ -630,16 +650,15 @@ Future<Uint8List> _buildShipmentPdf({
                       ),
                       pw.SizedBox(height: 5),
                       pw.Text('Kepada Yth.',
-                          style: const pw.TextStyle(fontSize: 9)),
+                          style: const pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(height: 2),
                       pw.Text(
                         shipment.recipientName,
-                        style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
                       ),
-                      pw.Text('Di', style: const pw.TextStyle(fontSize: 9)),
-                      pw.Text(
-                        shipment.destinationAddress,
-                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
-                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text('Di ${shipment.destinationAddress}',
+                          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -675,6 +694,34 @@ Future<Uint8List> _buildShipmentPdf({
                       _pdfCell('TON', align: pw.TextAlign.center),
                     ],
                   ),
+              ],
+            ),
+
+            pw.SizedBox(height: 10),
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(child: pw.SizedBox()),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(6),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: const PdfColor.fromInt(0xFF534AB7), width: 1.2),
+                    borderRadius: pw.BorderRadius.circular(6),
+                  ),
+                  child: pw.Column(
+                    children: [
+                      pw.BarcodeWidget(
+                        barcode: pw.Barcode.qrCode(),
+                        data: qrData,
+                        width: 70,
+                        height: 70,
+                      ),
+                      pw.SizedBox(height: 3),
+                      pw.Text(qrData, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('Scan untuk konfirmasi kios', style: const pw.TextStyle(fontSize: 6)),
+                    ],
+                  ),
+                ),
               ],
             ),
 
@@ -775,6 +822,321 @@ String _firstFilled(List<String?> values) {
     if (trimmed != null && trimmed.isNotEmpty) return trimmed;
   }
   return '-';
+}
+
+// ── BPTP PDF ──────────────────────────────────────────────────
+
+Future<void> _downloadBptpPdf(
+  BuildContext context, {
+  required TransportirOrderRecord order,
+  required TransportirShipmentRecord shipment,
+  required AuthSession? session,
+}) async {
+  try {
+    final bytes = await _buildBptpPdf(order: order, shipment: shipment, session: session);
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'bptp-${order.bptpReference}.pdf',
+    );
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gagal membuat PDF BPTP: $error')),
+    );
+  }
+}
+
+Future<Uint8List> _buildBptpPdf({
+  required TransportirOrderRecord order,
+  required TransportirShipmentRecord shipment,
+  required AuthSession? session,
+}) async {
+  final logoData = await rootBundle.load('petro.png');
+  final logo = pw.MemoryImage(logoData.buffer.asUint8List());
+  final pdf = pw.Document();
+
+  final driverName   = _firstFilled([session?.transportirName, session?.displayName, shipment.driverName]).toUpperCase();
+  final buyerName    = _firstFilled([session?.companyName, 'PT. GRESIK CIPTA SEJAHTERA']);
+  final vehicleType  = _firstFilled([session?.vehicleType, 'Truk Gandeng']);
+  final policeNumber = _firstFilled([session?.policeNumber, shipment.policeNumber]);
+  final alat         = '$vehicleType / Truk Gandeng / Pick-Up / Kontainer *)';
+
+  // Parse items into (salesOrderNo, produk, qty)
+  List<(String, String, String)> itemRows = shipment.items.map((item) {
+    String salesOrder;
+    String produk;
+    if (item.name.contains(' DO. ')) {
+      final parts = item.name.split(' DO. ');
+      produk     = parts[0].trim().toUpperCase();
+      salesOrder = parts[1].trim();
+    } else if (item.name.contains(' / BA.')) {
+      final parts = item.name.split(' / ');
+      produk     = parts[0].trim().toUpperCase();
+      salesOrder = parts.last.trim();
+    } else {
+      produk     = item.name.trim().toUpperCase();
+      salesOrder = order.bptpReference;
+    }
+    return (salesOrder, produk, '${item.quantityText} TON');
+  }).toList();
+
+  // Ensure minimum 4 data rows
+  while (itemRows.length < 4) {
+    itemRows.add(('', '', ''));
+  }
+
+  // Calculate total quantity
+  final totalQty = shipment.items.fold<double>(0, (s, it) {
+    final clean = it.quantityText.replaceAll(',', '.');
+    return s + (double.tryParse(clean) ?? 0);
+  });
+  final totalStr = '${totalQty % 1 == 0 ? totalQty.toInt() : totalQty} TON';
+
+  // Document number (strip BPTP- prefix for footer)
+  final docNumber = order.bptpReference.replaceAll('BPTP-', '#');
+
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4.landscape,
+      margin: const pw.EdgeInsets.fromLTRB(36, 28, 36, 24),
+      build: (ctx) {
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            // ── Header ────────────────────────────────────────────────────
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                // Left: logo + company
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Image(logo, width: 140, height: 140, fit: pw.BoxFit.contain),
+                    pw.SizedBox(height: 6),
+                  ],
+                ),
+                pw.SizedBox(width: 22),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'PENGANTAR PENGAMBILAN BARANG',
+                        style: pw.TextStyle(
+                          fontSize: 19,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.Text(
+                        'PT. GRESIK CIPTA SEJAHTERA',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        'Jl. KIG Raya Selatan Blok A5 - Gresik',
+                        style: const pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal),
+                      ),
+                      pw.Text(
+                        'Telp. (031) 3985543, 3984822, 3973239',
+                        style: const pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 18),
+            pw.Divider(thickness: 2.5),
+            pw.SizedBox(height: 16),
+
+            // ── Kepada Yth ────────────────────────────────────────────────
+            pw.Text('Kepada Yth.', style: const pw.TextStyle(fontSize: 9)),
+            pw.Text('Kepala Gudang Penyangga',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            pw.Text('PT. PETROKIMIA GRESIK',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 10),
+
+            // ── Intro text ────────────────────────────────────────────────
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text(
+                  'Dengan ini kami sampaikan pengambilan barang pada tanggal ',
+                  style: const pw.TextStyle(fontSize: 9),
+                ),
+                pw.SizedBox(
+                  width: 110,
+                  child: pw.Container(
+                    decoration: const pw.BoxDecoration(
+                      border: pw.Border(bottom: pw.BorderSide(width: 0.5)),
+                    ),
+                    child: pw.Text('  ', style: const pw.TextStyle(fontSize: 9)),
+                  ),
+                ),
+                pw.Text(' dengan rincian sebagai berikut :',
+                    style: const pw.TextStyle(fontSize: 9)),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+
+            // ── Table ─────────────────────────────────────────────────────
+            pw.Table(
+              border: pw.TableBorder.all(width: 0.7),
+              columnWidths: const {
+                0: pw.FixedColumnWidth(30),
+                1: pw.FlexColumnWidth(1.5),
+                2: pw.FlexColumnWidth(2.5),
+                3: pw.FixedColumnWidth(80),
+              },
+              children: [
+                // Header
+                pw.TableRow(
+                  children: [
+                    _pdfCell('NO', bold: true, align: pw.TextAlign.center),
+                    _pdfCell('NO. SALES ORDER', bold: true, align: pw.TextAlign.center),
+                    _pdfCell('PRODUK', bold: true, align: pw.TextAlign.center),
+                    _pdfCell('KUANTITAS', bold: true, align: pw.TextAlign.center),
+                  ],
+                ),
+                // Data rows (minimum 4)
+                for (var i = 0; i < itemRows.length; i++)
+                  pw.TableRow(
+                    children: [
+                      _pdfCell('${i + 1}.', align: pw.TextAlign.center),
+                      _pdfCell(itemRows[i].$1, bold: itemRows[i].$1.isNotEmpty),
+                      _pdfCell(itemRows[i].$2, bold: itemRows[i].$2.isNotEmpty),
+                      _pdfCell(itemRows[i].$3, align: pw.TextAlign.center),
+                    ],
+                  ),
+                // Total row
+                pw.TableRow(
+                  children: [
+                    _pdfCell(''),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                      child: pw.Text(
+                        'TOTAL',
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                        textAlign: pw.TextAlign.right,
+                      ),
+                    ),
+                    _pdfCell(''),
+                    _pdfCell(totalStr, bold: true, align: pw.TextAlign.center),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 10),
+
+            // ── Info rows ─────────────────────────────────────────────────
+            _bptpInfoRow('Pembeli / Distibutor', buyerName),
+            pw.SizedBox(height: 4),
+            _bptpInfoRow('Alat Angkut', alat),
+            pw.SizedBox(height: 4),
+            _bptpInfoRow('No. Polisi', policeNumber),
+            pw.SizedBox(height: 4),
+            _bptpInfoRow('Nama Sopir', driverName),
+            pw.SizedBox(height: 4),
+            pw.Text('*) Coret yang tidak perlu',
+                style: const pw.TextStyle(fontSize: 8)),
+
+            pw.Spacer(),
+
+            // ── Signature section ──────────────────────────────────────────
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _bptpSignColumn('Mengetahui :', 'PEMBELI / DISTRIBUTOR'),
+                pw.SizedBox(width: 18),
+                _bptpSignColumn('Pihak yang mengambil :', 'EXPEDITUR / SOPIR'),
+                pw.SizedBox(width: 18),
+                _bptpSignColumn('Pihak yang melayani :', 'KEPALA GUDANG'),
+              ],
+            ),
+            pw.SizedBox(height: 6),
+
+            // ── Doc number ────────────────────────────────────────────────
+            pw.Text(docNumber,
+                style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+          ],
+        );
+      },
+    ),
+  );
+
+  return pdf.save();
+}
+
+pw.Widget _bptpInfoRow(String label, String value) {
+  return pw.Row(
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      pw.SizedBox(
+        width: 140,
+        child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
+      ),
+      pw.Text(':  ', style: const pw.TextStyle(fontSize: 9)),
+      pw.Expanded(
+        child: pw.Text(value,
+            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+      ),
+    ],
+  );
+}
+
+pw.Widget _bptpSignColumn(String heading, String roleLabel) {
+  return pw.Expanded(
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(heading, style: const pw.TextStyle(fontSize: 9)),
+        pw.SizedBox(height: 3),
+        pw.Container(
+          width: double.infinity,
+          decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
+          child: pw.Column(
+            children: [
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.symmetric(vertical: 5),
+                decoration: const pw.BoxDecoration(
+                  border: pw.Border(bottom: pw.BorderSide(width: 0.6)),
+                ),
+                child: pw.Text(
+                  roleLabel,
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.SizedBox(height: 44),
+              pw.Padding(
+                padding: const pw.EdgeInsets.fromLTRB(8, 0, 8, 8),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.Text('(  ', style: const pw.TextStyle(fontSize: 9)),
+                    pw.Expanded(
+                      child: pw.Container(
+                        decoration: const pw.BoxDecoration(
+                          border: pw.Border(bottom: pw.BorderSide(width: 0.5)),
+                        ),
+                        child: pw.Text('  ', style: const pw.TextStyle(fontSize: 9)),
+                      ),
+                    ),
+                    pw.Text('  )', style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _TransportirOrderCard extends StatelessWidget {
@@ -1037,7 +1399,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    icon: const Icon(Icons.qr_code_2_rounded),
+                    icon: const Icon(Icons.qr_code_2_rounded, size: 26),
                     label: const Text('Download Surat Jalan', style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
                 ),
@@ -1046,14 +1408,14 @@ class _ShipmentSummaryCard extends StatelessWidget {
                   width: double.infinity,
                   height: 48,
                   child: OutlinedButton.icon(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Download BPTP sedang disiapkan.'))),
+                    onPressed: () => _downloadBptpPdf(context, order: order, shipment: shipment, session: session),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF3D394A),
                       side: const BorderSide(color: Color(0xFFD1CBE4)),
                       backgroundColor: const Color(0xFFF7F4FC),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    icon: const Icon(Icons.download_rounded),
+                    icon: const Icon(Icons.download_rounded, size: 26),
                     label: const Text('Download BPTP', style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
                 ),

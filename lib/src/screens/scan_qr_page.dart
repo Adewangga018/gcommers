@@ -1,17 +1,169 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
-class ScanQrPage extends StatelessWidget {
+import '../theme/app_theme.dart';
+
+class ScanQrPage extends StatefulWidget {
   const ScanQrPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final poNumber = ModalRoute.of(context)?.settings.arguments as String? ?? 'PO-2026-10-9842';
-    const Color bg = Color(0xFF1F203A);
-    const Color primaryPurple = Color(0xFF3B309E);
-    const Color accent = Color(0xFF6A5CF7);
+  State<ScanQrPage> createState() => _ScanQrPageState();
+}
 
+class _ScanQrPageState extends State<ScanQrPage> with WidgetsBindingObserver {
+  static const Color _bg = AppTheme.navy;
+  static const Color _primary = AppTheme.primary;
+  static const Color _accent = AppTheme.primary;
+
+  late final MobileScannerController _controller;
+  bool _scanned = false;
+  bool _torchOn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _controller = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_scanned) _controller.start();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_controller.value.isInitialized) return;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (!_scanned) _controller.start();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+        _controller.stop();
+        break;
+      default:
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_scanned) return;
+    final code = capture.barcodes.firstOrNull?.rawValue;
+    if (code == null || code.isEmpty) return;
+    _scanned = true;
+    _controller.stop();
+    // Auto-confirm and show success dialog
+    _showCompletionDialog(code);
+  }
+
+  Future<void> _showCompletionDialog(String code) async {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: const Color(0xFF1F203A),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16C38A).withOpacity(0.16),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Color(0xFF16C38A), size: 48),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Pesanan Dikonfirmasi!',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                code,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/history',
+                    (route) => false,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF16C38A),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Lanjut ke Riwayat',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _toggleTorch() {
+    _controller.toggleTorch();
+    setState(() => _torchOn = !_torchOn);
+  }
+
+  void _showManualInput() {
+    final textController = TextEditingController();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _ManualInputSheet(
+        controller: textController,
+        onConfirm: (code) {
+          Navigator.pop(ctx);
+          if (code.isNotEmpty) {
+            _scanned = true;
+            _controller.stop();
+            Navigator.of(context).pushReplacementNamed('/received-goods', arguments: code);
+          }
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: _bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -26,208 +178,225 @@ class ScanQrPage extends StatelessWidget {
                   ),
                   const Text(
                     'GCommers',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.flash_on_outlined, color: Colors.white),
-                    onPressed: () {},
+                    icon: Icon(
+                      _torchOn ? Icons.flash_on : Icons.flash_off_outlined,
+                      color: _torchOn ? Colors.amber : Colors.white,
+                    ),
+                    onPressed: _toggleTorch,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             const Text(
               'Pindai QR Kode',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             const Text(
               'Arahkan ke QR pada Surat Jalan',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white60, fontSize: 14),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
+            // Camera viewport
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF3A345F), Color(0xFF1C1C33)],
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black45,
-                            blurRadius: 24,
-                            offset: Offset(0, 18),
-                          ),
-                        ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      MobileScanner(
+                        controller: _controller,
+                        onDetect: _onDetect,
+                        errorBuilder: (context, error, child) {
+                          return _CameraErrorView(error: error.errorCode.name);
+                        },
                       ),
-                    ),
-                    Container(
-                      width: 280,
-                      height: 280,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: accent, width: 3),
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                    ),
-                    Positioned(
-                      top: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 3,
-                        color: accent,
-                      ),
-                    ),
-                    Container(
-                      width: 210,
-                      height: 210,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.withOpacity(0.25),
-                            blurRadius: 40,
-                            spreadRadius: 18,
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.qr_code_2_rounded, color: Colors.black87, size: 110),
-                      ),
-                    ),
-                  ],
+                      // Corner guides overlay
+                      CustomPaint(painter: _CornerPainter(color: _accent)),
+                      // Center scan hint
+                      // Hint removed for kios role
+                    ],
+                  ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Camera error view ─────────────────────────────────────────
+
+class _CameraErrorView extends StatelessWidget {
+  const _CameraErrorView({required this.error});
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF1A1B30),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.no_photography_outlined, color: Colors.white38, size: 56),
+          const SizedBox(height: 16),
+          const Text(
+            'Kamera tidak dapat dibuka',
+            style: TextStyle(color: Colors.white70, fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Pastikan izin kamera telah diberikan',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Scanner corner overlay ────────────────────────────────────
+
+class _CornerPainter extends CustomPainter {
+  const _CornerPainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    const len = 32.0;
+    const r = 16.0;
+
+    final corners = [
+      // top-left
+      () {
+        canvas.drawLine(const Offset(r, 2), const Offset(r + len, 2), paint);
+        canvas.drawLine(const Offset(2, r), const Offset(2, r + len), paint);
+        canvas.drawArc(const Rect.fromLTWH(2, 2, r * 2, r * 2), 3.14159, 1.5708, false, paint);
+      },
+      // top-right
+      () {
+        canvas.drawLine(Offset(size.width - r, 2), Offset(size.width - r - len, 2), paint);
+        canvas.drawLine(Offset(size.width - 2, r), Offset(size.width - 2, r + len), paint);
+        canvas.drawArc(Rect.fromLTWH(size.width - r * 2 - 2, 2, r * 2, r * 2), -1.5708, 1.5708, false, paint);
+      },
+      // bottom-left
+      () {
+        canvas.drawLine(Offset(2, size.height - r), Offset(2, size.height - r - len), paint);
+        canvas.drawLine(Offset(r, size.height - 2), Offset(r + len, size.height - 2), paint);
+        canvas.drawArc(Rect.fromLTWH(2, size.height - r * 2 - 2, r * 2, r * 2), 1.5708, 1.5708, false, paint);
+      },
+      // bottom-right
+      () {
+        canvas.drawLine(Offset(size.width - 2, size.height - r), Offset(size.width - 2, size.height - r - len), paint);
+        canvas.drawLine(Offset(size.width - r, size.height - 2), Offset(size.width - r - len, size.height - 2), paint);
+        canvas.drawArc(Rect.fromLTWH(size.width - r * 2 - 2, size.height - r * 2 - 2, r * 2, r * 2), 0, 1.5708, false, paint);
+      },
+    ];
+    for (final fn in corners) {
+      fn();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+// ── Manual input bottom sheet ────────────────────────────────
+
+class _ManualInputSheet extends StatelessWidget {
+  const _ManualInputSheet({required this.controller, required this.onConfirm});
+
+  final TextEditingController controller;
+  final void Function(String code) onConfirm;
+
+  static const Color _primary = Color(0xFF534AB7);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C1D38),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
               child: Container(
-                padding: const EdgeInsets.all(16),
+                width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF232443),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white12),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF362F68),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.inventory_2_outlined, color: accent),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Menunggu Pindai',
-                            style: TextStyle(color: Colors.white54, fontSize: 13),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            poNumber,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Tujuan',
-                          style: TextStyle(color: Colors.white54, fontSize: 13),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Kios Berkah',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(99),
                 ),
               ),
             ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryPurple,
-                    side: const BorderSide(color: primaryPurple, width: 1.6),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  icon: const Icon(Icons.keyboard_outlined),
-                  label: const Text(
-                    'Input Kode Manual',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
+            const SizedBox(height: 20),
+            const Text(
+              'Input Kode Surat Jalan',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Masukkan nomor yang tertera pada Surat Jalan',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+              cursorColor: _primary,
+              decoration: InputDecoration(
+                hintText: 'Contoh: SJ-20231024-001',
+                hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
+                filled: true,
+                fillColor: const Color(0xFF2A2B48),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
                 ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _primary, width: 2),
+                ),
+                prefixIcon: const Icon(Icons.qr_code_outlined, color: _primary),
               ),
             ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pushNamed('/received-goods', arguments: poNumber),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6A5CF7),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 12,
-                    shadowColor: const Color(0xFF6A5CF7).withOpacity(0.45),
-                  ),
-                  child: const Text(
-                    'Lanjut Verifikasi →',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                  ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () => onConfirm(controller.text.trim()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
                 ),
+                child: const Text('Konfirmasi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               ),
             ),
           ],

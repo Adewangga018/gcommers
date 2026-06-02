@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
 class OrderHistoryDetailPage extends StatefulWidget {
@@ -206,7 +207,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.of(context).pushNamed('/scan-qr', arguments: order.poNumber),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0E9AA7),
+                          backgroundColor: AppTheme.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
