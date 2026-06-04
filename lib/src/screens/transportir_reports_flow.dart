@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/auth_models.dart';
 import '../models/commerce_models.dart';
@@ -185,7 +188,7 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
 
                       // ── History ──────────────────────────────────────────
                       const Text(
-                        'Riwayat Bulan Sebelumnya',
+                        'Riwayat Sebelumnya',
                         style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
@@ -271,6 +274,13 @@ class _TransportirReportClaimPageState
   final _otherCtrl    = TextEditingController();
   final _noteCtrl     = TextEditingController();
 
+  /// Proof-of-transaction photos (mandatory, multi-photo).
+  final List<Uint8List> _proofPhotos = [];
+  final _picker = ImagePicker();
+  bool _photoError = false;
+
+  static const int _maxPhotos = 8;
+
   int get _total =>
       _parse(_shippingCtrl.text) + _parse(_fuelCtrl.text) + _parse(_otherCtrl.text);
 
@@ -289,6 +299,90 @@ class _TransportirReportClaimPageState
     _otherCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _addPhoto(ImageSource source) async {
+    if (_proofPhotos.length >= _maxPhotos) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maksimal $_maxPhotos foto.')),
+      );
+      return;
+    }
+    try {
+      final file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1600,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (mounted) {
+        setState(() {
+          _proofPhotos.add(bytes);
+          _photoError = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih foto: $e')),
+        );
+      }
+    }
+  }
+
+  void _removePhoto(int index) => setState(() => _proofPhotos.removeAt(index));
+
+  void _showPhotoSourceSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEDE9FF),
+                  child: Icon(Icons.camera_alt_outlined, color: Color(0xFF4438A7)),
+                ),
+                title: const Text('Ambil Foto',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addPhoto(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEDE9FF),
+                  child: Icon(Icons.photo_library_outlined, color: Color(0xFF4438A7)),
+                ),
+                title: const Text('Pilih dari Galeri',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addPhoto(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   int _parse(String v) =>
@@ -317,6 +411,16 @@ class _TransportirReportClaimPageState
     if (_total == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Isi minimal satu rincian pengeluaran.')),
+      );
+      return;
+    }
+    if (_proofPhotos.isEmpty) {
+      setState(() => _photoError = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unggah minimal 1 bukti transaksi.'),
+          backgroundColor: Color(0xFFEF5350),
+        ),
       );
       return;
     }
@@ -440,37 +544,165 @@ class _TransportirReportClaimPageState
           ),
           const SizedBox(height: 20),
 
-          // ── Bukti Transaksi ──────────────────────────────────────────────
-          const Text('Unggah Bukti Transaksi / Struk', style: labelStyle),
-          const SizedBox(height: 8),
-          Container(
-            height: 140,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: const Color(0xFFD3D6E7)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E7FF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.photo_camera_outlined, color: purple, size: 26),
+          // ── Bukti Transaksi (wajib, multi-foto) ──────────────────────────
+          Row(
+            children: [
+              const Text('Bukti Transaksi / Struk', style: labelStyle),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                const SizedBox(height: 12),
-                const Text('Ambil Foto atau Pilih Galeri',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                const SizedBox(height: 4),
-                const Text('Format JPG, PNG (Maks. 5 MB)',
-                    style: TextStyle(color: Color(0xFF6C6D80), fontSize: 12)),
-              ],
-            ),
+                child: const Text('WAJIB',
+                    style: TextStyle(
+                        color: Color(0xFFEF5350),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800)),
+              ),
+            ],
           ),
+          const SizedBox(height: 4),
+          Text(
+            '${_proofPhotos.length}/$_maxPhotos foto diunggah',
+            style: TextStyle(
+                fontSize: 12,
+                color: _photoError
+                    ? const Color(0xFFEF5350)
+                    : const Color(0xFF9CA3AF)),
+          ),
+          const SizedBox(height: 8),
+          // Photo grid
+          if (_proofPhotos.isNotEmpty) ...[
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1,
+              ),
+              itemCount: _proofPhotos.length +
+                  (_proofPhotos.length < _maxPhotos ? 1 : 0),
+              itemBuilder: (_, i) {
+                if (i == _proofPhotos.length) {
+                  // "Add more" tile
+                  return GestureDetector(
+                    onTap: _showPhotoSourceSheet,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: const Color(0xFF4438A7), width: 1.5,
+                            style: BorderStyle.solid),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              color: Color(0xFF4438A7), size: 28),
+                          SizedBox(height: 4),
+                          Text('Tambah',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF4438A7),
+                                  fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                // Photo thumbnail
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.memory(
+                        _proofPhotos[i],
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => _removePhoto(i),
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close_rounded,
+                              color: Colors.white, size: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+          // Initial add button (shown when no photos yet)
+          if (_proofPhotos.isEmpty)
+            GestureDetector(
+              onTap: _showPhotoSourceSheet,
+              child: Container(
+                height: 130,
+                decoration: BoxDecoration(
+                  color: _photoError
+                      ? const Color(0xFFFFF5F5)
+                      : Colors.white,
+                  border: Border.all(
+                    color: _photoError
+                        ? const Color(0xFFEF5350)
+                        : const Color(0xFFD3D6E7),
+                    width: _photoError ? 1.5 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _photoError
+                            ? const Color(0xFFFFEBEE)
+                            : const Color(0xFFE0E7FF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.add_photo_alternate_outlined,
+                          color: _photoError
+                              ? const Color(0xFFEF5350)
+                              : purple,
+                          size: 26),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Ambil Foto atau Pilih Galeri',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: _photoError
+                              ? const Color(0xFFEF5350)
+                              : const Color(0xFF17203A)),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('Format JPG / PNG · Bisa lebih dari 1 foto',
+                        style: TextStyle(
+                            color: Color(0xFF6C6D80), fontSize: 12)),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 20),
 
           // ── Total ────────────────────────────────────────────────────────

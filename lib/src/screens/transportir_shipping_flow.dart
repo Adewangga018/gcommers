@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,22 +20,20 @@ class TransportirShipmentsPage extends StatefulWidget {
   const TransportirShipmentsPage({super.key, this.session});
   final AuthSession? session;
 
-  @override
-  State<TransportirShipmentsPage> createState() => _TransportirShipmentsPageState();
-}
-
-class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
-  static const List<TransportirShipmentCardData> _shipments = [
+  /// Public list of all shipments — used by the dashboard to find the active one.
+  static const List<TransportirShipmentCardData> shipments = [
     TransportirShipmentCardData(
       shipmentNumber: 'SJ-20231024-001',
       statusLabel: 'Siap Muat',
       statusColor: Color(0xFF4D8FE8),
       statusBackground: Color(0xFFDDEBFF),
       scheduleLabel: 'Hari ini, 09.00 WIB',
-      origin: 'Gudang Utama, Jakarta',
-      destination: 'Pabrik Perakitan, Bekasi',
-      destinationSubtitle: 'Pabrik Perakitan, Bekasi',
-      actionPrimaryLabel: 'Muat Masuk',
+      origin: 'Gudang GCS – Jl. KIG Raya Selatan Blok A5, Kebomas, Kab. Gresik, Jawa Timur 61123',
+      destination: 'Kios Tani Makmur – Jl. Raya Driyorejo No. 12, Driyorejo, Kab. Gresik, Jawa Timur 61177',
+      destinationSubtitle: 'Kios Tani Makmur, Driyorejo – Gresik',
+      originLatLng: LatLng(-7.1553, 112.6547),
+      destinationLatLng: LatLng(-7.3450, 112.5734),
+      actionPrimaryLabel: 'Load In',
       actionSecondaryLabel: '',
       actionSecondaryKind: TransportirShipmentActionKind.none,
     ),
@@ -41,14 +43,24 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
       statusColor: Color(0xFFB86B22),
       statusBackground: Color(0xFFF4E0CB),
       scheduleLabel: 'Est. Tiba: 14.30 WIB',
-      origin: 'Gudang Utama, Jakarta',
-      destination: 'Pabrik Perakitan, Bekasi',
-      destinationSubtitle: 'Pabrik Perakitan, Bekasi',
+      origin: 'Gudang GCS – Jl. KIG Raya Selatan Blok A5, Kebomas, Kab. Gresik, Jawa Timur 61123',
+      destination: 'Kios Sumber Tani – Jl. Rungkut Industri VIII No. 8, Rungkut, Kota Surabaya, Jawa Timur 60293',
+      destinationSubtitle: 'Kios Sumber Tani, Rungkut – Surabaya',
+      originLatLng: LatLng(-7.1553, 112.6547),
+      destinationLatLng: LatLng(-7.3130, 112.7963),
       actionPrimaryLabel: 'Lacak',
-      actionSecondaryLabel: 'Muat Keluar',
+      actionSecondaryLabel: 'Load Out',
       actionSecondaryKind: TransportirShipmentActionKind.loadOut,
     ),
   ];
+
+  @override
+  State<TransportirShipmentsPage> createState() => _TransportirShipmentsPageState();
+}
+
+class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
+  static List<TransportirShipmentCardData> get _shipments =>
+      TransportirShipmentsPage.shipments;
 
   final Map<String, ShipmentProgress> _shipmentProgress = {};
   final TextEditingController _searchController = TextEditingController();
@@ -122,45 +134,85 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
         children: [
-          const Text(
-            'Daftar Pengiriman',
-            style: TextStyle(fontSize: 30 / 2, fontWeight: FontWeight.w900, color: Color(0xFF17203A)),
+          // Page header
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Daftar Pengiriman',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF17203A)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Kelola dan pantau status muatan',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
+          // Search bar
           Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            height: 50,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: const Color(0xFFD3CFE2)),
-            ),
-            child: Row(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(Icons.search, color: Color(0xFF8D88A3)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x08000000), 
+                  blurRadius: 8, 
+                  offset: Offset(0, 2),
                 ),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: 'Cari No. Surat Jalan...',
-                      hintStyle: TextStyle(color: Color(0xFFB0AAC4), fontSize: 15),
-                    ),
-                  ),
-                ),
-                if (_searchQuery.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFF8D88A3)),
-                    onPressed: () {
-                      _searchController.clear();
-                    },
-                  ),
               ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              textAlignVertical: TextAlignVertical.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF20202D),
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                border: InputBorder.none, // Menghilangkan border default TextField
+                hintText: 'Cari nomor surat jalan…',
+                hintStyle: const TextStyle(
+                  color: Color(0xFFB0AAC4), 
+                  fontSize: 14,
+                ),
+                contentPadding: EdgeInsets.zero, // Wajib zero agar sejajar dengan icon
+                
+                // Ikon Kiri (Search)
+                prefixIcon: const Icon(
+                  Icons.search_rounded, 
+                  color: Color(0xFF9A93AC), 
+                  size: 22,
+                ),
+                
+                // Ikon Kanan (Clear) - Otomatis hilang jika kosong
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.cancel, // Menggunakan icon cancel bawaan yang sudah membulat
+                          color: Color(0xFFD3CFE2),
+                          size: 20,
+                        ),
+                        onPressed: _searchController.clear,
+                        splashRadius: 20, // Memperkecil efek sentuhan agar tetap rapi
+                      )
+                    : null,
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -210,154 +262,561 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
 }
 
 class TransportirShipmentDetailPage extends StatelessWidget {
-  const TransportirShipmentDetailPage({super.key, required this.shipment, required this.progress, this.session});
+  const TransportirShipmentDetailPage(
+      {super.key, required this.shipment, required this.progress, this.session});
 
   final TransportirShipmentCardData shipment;
   final ShipmentProgress progress;
   final AuthSession? session;
 
+  static const Color _primary = Color(0xFF3B309E);
+  static const Color _done = Color(0xFF16C38A);
+
+  String get _currentStatusLabel {
+    if (progress.completed) return 'Selesai';
+    if (progress.muatKeluarCompleted) return 'Menuju Tujuan';
+    if (progress.muatMasukCompleted) return 'Dalam Perjalanan';
+    return shipment.statusLabel;
+  }
+
+  Color get _currentStatusColor {
+    if (progress.completed) return _done;
+    if (progress.muatMasukCompleted) return const Color(0xFFB86B22);
+    return shipment.statusColor;
+  }
+
+  Color get _currentStatusBg {
+    if (progress.completed) return const Color(0xFFD5F3E2);
+    if (progress.muatMasukCompleted) return const Color(0xFFF4E0CB);
+    return shipment.statusBackground;
+  }
+
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPad = screenWidth < 380 ? 12.0 : 16.0;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F4FB),
+      backgroundColor: const Color(0xFFF5F3FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0.5,
+        elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: primaryPurple),
+          icon: const Icon(Icons.arrow_back_rounded, color: _primary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Detail Pengiriman', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.w800)),
+        title: Column(
+          children: [
+            const Text('Detail Pengiriman',
+                style: TextStyle(
+                    color: _primary, fontWeight: FontWeight.w800, fontSize: 15)),
+            Text(shipment.shipmentNumber,
+                style: const TextStyle(color: Color(0xFF9A93AC), fontSize: 11)),
+          ],
+        ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+        padding: EdgeInsets.fromLTRB(horizontalPad, 16, horizontalPad, 24),
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFD3CFE2)),
-            ),
+          // ── Info card ──────────────────────────────────────────────
+          _card(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF0FF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.description_outlined,
+                          color: Color(0xFF2F77C4), size: 22),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Pengiriman', style: TextStyle(color: Color(0xFF6B6780), fontSize: 12)),
-                          const SizedBox(height: 4),
-                          Text(shipment.shipmentNumber, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
+                          const Text('No. Surat Jalan',
+                              style: TextStyle(color: Color(0xFF6B6780), fontSize: 11)),
+                          const SizedBox(height: 2),
+                          Text(shipment.shipmentNumber,
+                              style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF20202D))),
                         ],
                       ),
                     ),
                     _StatusChip(
-                      label: progress.completed ? 'Selesai' : progress.muatMasukCompleted ? 'Dalam Perjalanan' : shipment.statusLabel,
-                      foreground: progress.completed ? const Color(0xFF16C38A) : progress.muatMasukCompleted ? const Color(0xFFB86B22) : shipment.statusColor,
-                      background: progress.completed ? const Color(0xFFD5F3E2) : progress.muatMasukCompleted ? const Color(0xFFF4E0CB) : shipment.statusBackground,
+                      label: _currentStatusLabel,
+                      foreground: _currentStatusColor,
+                      background: _currentStatusBg,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Divider(height: 1),
                 const SizedBox(height: 14),
-                _KeyValue(label: 'Asal', value: shipment.origin),
-                const SizedBox(height: 12),
-                _KeyValue(label: 'Tujuan', value: shipment.destination),
-                const SizedBox(height: 12),
-                _KeyValue(label: 'Jadwal', value: shipment.scheduleLabel),
+                const Divider(height: 1, color: Color(0xFFECE9F3)),
+                const SizedBox(height: 14),
+                _infoRow(Icons.warehouse_outlined, 'Asal', shipment.origin),
+                const SizedBox(height: 10),
+                _infoRow(Icons.store_outlined, 'Tujuan', shipment.destination),
+                const SizedBox(height: 10),
+                _infoRow(Icons.schedule_rounded, 'Jadwal', shipment.scheduleLabel),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFFFF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFD3CFE2)),
-            ),
+          const SizedBox(height: 14),
+
+          // ── Timeline card ──────────────────────────────────────────
+          _card(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Pesanan tiba pada ${shipment.scheduleLabel}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _DetailStatusChip(label: 'Sedang Dikirim', active: progress.muatMasukCompleted || progress.muatKeluarCompleted || progress.completed),
-                    _DetailStatusChip(label: 'Menuju Alamatmu', active: progress.muatKeluarCompleted || progress.completed),
-                    _DetailStatusChip(label: 'Pesanan Tiba', active: progress.completed),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFD3CFE2)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Bukti Muat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
-                const SizedBox(height: 12),
                 Row(
-                  children: [
-                    Expanded(child: _DetailStatusChip(label: 'Muat Masuk', active: progress.muatMasukCompleted)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _DetailStatusChip(label: 'Muat Keluar', active: progress.muatKeluarCompleted)),
+                  children: const [
+                    Icon(Icons.timeline_rounded, color: _primary, size: 18),
+                    SizedBox(width: 8),
+                    Text('Status Pengiriman',
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF17203A))),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Text('Foto Muat Masuk', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF20202D))),
-                const SizedBox(height: 10),
-                _DetailImageCard(photoBase64: progress.muatMasukPhotoBase64, label: 'Muat Masuk'),
-                const SizedBox(height: 16),
-                const Text('Foto Muat Keluar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF20202D))),
-                const SizedBox(height: 10),
-                _DetailImageCard(photoBase64: progress.muatKeluarPhotoBase64, label: 'Muat Keluar'),
-                const SizedBox(height: 16),
-                const Text('Keterangan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF20202D))),
-                const SizedBox(height: 10),
-                Text(progress.statusDetail, style: const TextStyle(fontSize: 12, color: Color(0xFF5E5B70))),
-                const SizedBox(height: 8),
-                Text(progress.deliveryNote, style: const TextStyle(fontSize: 12, color: Color(0xFF5E5B70))),
-                if (progress.muatMasukPhotoBase64 == null && progress.muatKeluarPhotoBase64 == null) ...[
-                  const SizedBox(height: 16),
-                  const Text('Belum ada bukti muat yang tersimpan untuk pengiriman ini.', style: TextStyle(fontSize: 12, color: Color(0xFF8D88A3))),
+                const SizedBox(height: 18),
+                _TimelineItem(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Load In',
+                  subtitle: progress.muatMasukCompleted
+                      ? 'Foto tersimpan — barang dimuat ke kendaraan'
+                      : 'Menunggu proses pemuatan',
+                  done: progress.muatMasukCompleted,
+                  isLast: false,
+                ),
+                _TimelineItem(
+                  icon: Icons.local_shipping_outlined,
+                  title: 'Dalam Perjalanan',
+                  subtitle: progress.muatMasukCompleted
+                      ? 'Kendaraan berangkat menuju tujuan'
+                      : 'Belum dimulai',
+                  done: progress.muatMasukCompleted,
+                  isLast: false,
+                ),
+                _TimelineItem(
+                  icon: Icons.move_to_inbox_outlined,
+                  title: 'Load Out',
+                  subtitle: progress.muatKeluarCompleted
+                      ? 'Foto tersimpan — barang tiba di tujuan'
+                      : 'Menunggu konfirmasi tiba',
+                  done: progress.muatKeluarCompleted,
+                  isLast: false,
+                ),
+                _TimelineItem(
+                  icon: Icons.check_circle_outline_rounded,
+                  title: 'Selesai',
+                  subtitle: progress.completed
+                      ? 'Pengiriman berhasil diselesaikan'
+                      : 'Estimasi: ${shipment.scheduleLabel}',
+                  done: progress.completed,
+                  isLast: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // ── Proof photos card ──────────────────────────────────────
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.photo_library_outlined, color: _primary, size: 18),
+                    SizedBox(width: 8),
+                    Text('Bukti Foto Muat',
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF17203A))),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Side-by-side photos on wide screens, stacked on small
+                LayoutBuilder(builder: (_, constraints) {
+                  final wide = constraints.maxWidth > 320;
+                  if (wide) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _ProofPhotoSection(
+                            label: 'Load In',
+                            photoBase64: progress.muatMasukPhotoBase64,
+                            done: progress.muatMasukCompleted,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ProofPhotoSection(
+                            label: 'Load Out',
+                            photoBase64: progress.muatKeluarPhotoBase64,
+                            done: progress.muatKeluarCompleted,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      _ProofPhotoSection(
+                        label: 'Load In',
+                        photoBase64: progress.muatMasukPhotoBase64,
+                        done: progress.muatMasukCompleted,
+                      ),
+                      const SizedBox(height: 14),
+                      _ProofPhotoSection(
+                        label: 'Load Out',
+                        photoBase64: progress.muatKeluarPhotoBase64,
+                        done: progress.muatKeluarCompleted,
+                      ),
+                    ],
+                  );
+                }),
+                if (progress.statusDetail.isNotEmpty &&
+                    progress.statusDetail != 'Menunggu proses muat') ...[
+                  const SizedBox(height: 14),
+                  const Divider(height: 1, color: Color(0xFFECE9F3)),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.notes_rounded,
+                          size: 16, color: Color(0xFF9A93AC)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Keterangan',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF52506A))),
+                            const SizedBox(height: 4),
+                            Text(progress.statusDetail,
+                                style: const TextStyle(
+                                    fontSize: 13, color: Color(0xFF5E5B70))),
+                            if (progress.deliveryNote.isNotEmpty &&
+                                progress.deliveryNote !=
+                                    'Detail pengiriman akan muncul di sini.') ...[
+                              const SizedBox(height: 4),
+                              Text(progress.deliveryNote,
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Color(0xFF8D88A3))),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+
+          // Back button
           SizedBox(
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryPurple,
+                backgroundColor: _primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape:
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
               ),
-              child: const Text('Kembali', style: TextStyle(fontWeight: FontWeight.w800)),
+              child: const Text('Kembali',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             ),
           ),
         ],
       ),
       bottomNavigationBar: TransportirBottomNav(currentIndex: 2, session: session),
+    );
+  }
+
+  // Shared card wrapper
+  Widget _card({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE4E0EF)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 3)),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF9A93AC)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF9A93AC))),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF20202D))),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Timeline step with connecting vertical line ────────────────
+
+class _TimelineItem extends StatelessWidget {
+  const _TimelineItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.done,
+    required this.isLast,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool done;
+  final bool isLast;
+
+  static const _done = Color(0xFF16C38A);
+  static const _pending = Color(0xFFD4D0E3);
+  static const _lineActive = Color(0xFF16C38A);
+  static const _lineIdle = Color(0xFFE4E0EF);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left: indicator + line
+        SizedBox(
+          width: 36,
+          child: Column(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: done ? _done : const Color(0xFFF4F1FD),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: done ? _done : _pending,
+                    width: done ? 0 : 2,
+                  ),
+                  boxShadow: done
+                      ? const [
+                          BoxShadow(
+                              color: Color(0x3316C38A), blurRadius: 8)
+                        ]
+                      : null,
+                ),
+                child: Icon(icon,
+                    size: 16,
+                    color: done ? Colors.white : const Color(0xFFB0AAC4)),
+              ),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 36,
+                  margin: const EdgeInsets.symmetric(vertical: 3),
+                  decoration: BoxDecoration(
+                    color: done ? _lineActive : _lineIdle,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Right: text
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: done
+                              ? const Color(0xFF17203A)
+                              : const Color(0xFF8D88A3),
+                        ),
+                      ),
+                    ),
+                    if (done)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD5F3E2),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text('Selesai',
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF0E8F61),
+                                fontWeight: FontWeight.w800)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(subtitle,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: done
+                            ? const Color(0xFF6B6780)
+                            : const Color(0xFFB0AAC4))),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Proof photo section ────────────────────────────────────────
+
+class _ProofPhotoSection extends StatelessWidget {
+  const _ProofPhotoSection({
+    required this.label,
+    required this.photoBase64,
+    required this.done,
+  });
+
+  final String label;
+  final String? photoBase64;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = photoBase64 != null && photoBase64!.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              done ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 14,
+              color:
+                  done ? const Color(0xFF16C38A) : const Color(0xFFB0AAC4),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: done
+                    ? const Color(0xFF17203A)
+                    : const Color(0xFF9A93AC),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            height: 150,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F1FD),
+              border: Border.all(
+                color: done
+                    ? const Color(0xFFB8EDD7)
+                    : const Color(0xFFE4E0EF),
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: hasPhoto
+                ? Image.memory(
+                    _decodePhoto(photoBase64!),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (_, __, ___) => _placeholder(),
+                  )
+                : _placeholder(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Uint8List _decodePhoto(String base64str) {
+    try {
+      return base64Decode(base64str);
+    } catch (_) {
+      return Uint8List(0);
+    }
+  }
+
+  Widget _placeholder() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            done ? Icons.broken_image_outlined : Icons.camera_alt_outlined,
+            size: 32,
+            color: const Color(0xFFB0AAC4),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            done ? 'Foto tidak dapat dimuat' : 'Belum ada foto',
+            style: const TextStyle(
+                fontSize: 11, color: Color(0xFFB0AAC4)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -786,6 +1245,8 @@ class TransportirShipmentCardData {
     required this.actionPrimaryLabel,
     required this.actionSecondaryLabel,
     required this.actionSecondaryKind,
+    this.originLatLng,
+    this.destinationLatLng,
     this.completed = false,
   });
 
@@ -800,6 +1261,9 @@ class TransportirShipmentCardData {
   final String actionPrimaryLabel;
   final String actionSecondaryLabel;
   final TransportirShipmentActionKind actionSecondaryKind;
+  /// Precise GPS coordinates — when set the map uses these directly (no geocoding needed).
+  final LatLng? originLatLng;
+  final LatLng? destinationLatLng;
   final bool completed;
 }
 
@@ -825,13 +1289,13 @@ class _ShipmentSummaryCard extends StatelessWidget {
   bool get completed => progress.completed;
 
   String get _primaryLabel {
-    if (!muatMasukDone && shipment.actionPrimaryLabel == 'Muat Masuk') return 'Muat Masuk';
+    if (!muatMasukDone && shipment.actionPrimaryLabel == 'Load In') return 'Load In';
     return 'Lacak';
   }
 
   bool get _showSecondary => !completed && (muatMasukDone || shipment.actionSecondaryKind != TransportirShipmentActionKind.none);
 
-  String get _secondaryLabel => muatMasukDone ? 'Muat Keluar' : shipment.actionSecondaryLabel;
+  String get _secondaryLabel => muatMasukDone ? 'Load Out' : shipment.actionSecondaryLabel;
 
   String get _statusLabel {
     if (completed) return 'Selesai';
@@ -955,8 +1419,8 @@ class _ShipmentSummaryCard extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            _DetailStatusChip(label: 'Muat Masuk', active: muatMasukDone),
-                            _DetailStatusChip(label: 'Muat Keluar', active: muatKeluarDone),
+                            _DetailStatusChip(label: 'Load In', active: muatMasukDone),
+                            _DetailStatusChip(label: 'Load Out', active: muatKeluarDone),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -1122,47 +1586,6 @@ class _PhotoPreview extends StatelessWidget {
   }
 }
 
-class _DetailImageCard extends StatelessWidget {
-  const _DetailImageCard({this.photoBase64, required this.label});
-
-  final String? photoBase64;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = photoBase64 != null && photoBase64!.isNotEmpty;
-    final Uint8List? bytes = hasImage ? base64Decode(photoBase64!) : null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          height: 180,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E0EA)),
-            color: const Color(0xFFF7F4FB),
-            image: hasImage ? DecorationImage(image: MemoryImage(bytes!), fit: BoxFit.cover) : null,
-          ),
-          child: !hasImage
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.photo_camera_outlined, color: Color(0xFF9A93AC), size: 36),
-                      SizedBox(height: 8),
-                      Text('Belum ada foto', style: TextStyle(color: Color(0xFF9A93AC), fontSize: 12, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                )
-              : null,
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF5E5B70))),
-      ],
-    );
-  }
-}
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({required this.label, required this.primary, required this.onTap});
@@ -1761,7 +2184,7 @@ class _TandaTangan extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Muat Kamera Page  (Muat Masuk / Muat Keluar)
+// Muat Kamera Page  (embedded in-app camera — Muat Masuk / Keluar)
 // ═══════════════════════════════════════════════════════════════
 
 class TransportirMuatKameraPage extends StatefulWidget {
@@ -1780,78 +2203,111 @@ class TransportirMuatKameraPage extends StatefulWidget {
   State<TransportirMuatKameraPage> createState() => _TransportirMuatKameraPageState();
 }
 
-class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage> {
-  static const Color _primary = AppTheme.primary;
-
-  final ImagePicker _picker = ImagePicker();
-  Uint8List? _photoBytes;
-  bool _isStarting = true;
+class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
+    with WidgetsBindingObserver {
+  CameraController? _controller;
+  Uint8List? _capturedBytes;
+  bool _initializing = true;
+  bool _isCapturing = false;
   bool _isProcessing = false;
-  String? _cameraError;
+  String? _error;
 
-  String get _title => widget.muatType == 'masuk' ? 'Muat Masuk' : 'Muat Keluar';
+  String get _title => widget.muatType == 'masuk' ? 'Load In' : 'Load Out';
+  Color get _accentColor =>
+      widget.muatType == 'masuk' ? const Color(0xFF16C38A) : const Color(0xFF4A3AFF);
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _pickCameraImage();
-    });
+    WidgetsBinding.instance.addObserver(this);
+    _initCamera();
   }
 
-  Future<void> _pickCameraImage() async {
-    if (!mounted) return;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    if (state == AppLifecycleState.inactive) {
+      ctrl.dispose();
+      _controller = null;
+    } else if (state == AppLifecycleState.resumed && _capturedBytes == null) {
+      _initCamera();
+    }
+  }
+
+  Future<void> _initCamera() async {
     setState(() {
-      _isStarting = true;
-      _cameraError = null;
+      _initializing = true;
+      _error = null;
     });
 
+    // Ensure camera permission is granted on iOS/Android.
     try {
-      final photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1600,
-        maxHeight: 1200,
-        imageQuality: 85,
-      );
-      if (!mounted) return;
-
-      if (photo == null) {
-        setState(() {
-          _cameraError = 'Foto dibatalkan. Silakan coba lagi.';
-          _isStarting = false;
-        });
+      final status = await Permission.camera.request();
+      if (!status.isGranted) {
+        if (mounted) {
+          setState(() {
+            _error = 'Izin kamera ditolak. Aktifkan permission kamera di pengaturan.';
+            _initializing = false;
+          });
+        }
         return;
       }
+    } catch (e) {
+      // Continue to attempt camera init; some platforms may not support runtime permission request.
+    }
 
-      final bytes = await photo.readAsBytes();
-      if (!mounted) return;
-
-      setState(() {
-        _photoBytes = bytes;
-        _cameraError = null;
-        _isStarting = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _cameraError = 'Gagal membuka kamera: $error';
-        _isStarting = false;
-      });
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) throw Exception('Tidak ada kamera tersedia.');
+      final back = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+      final ctrl = CameraController(
+        back,
+        ResolutionPreset.high,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+      await ctrl.initialize();
+      if (!mounted) {
+        ctrl.dispose();
+        return;
+      }
+      _controller = ctrl;
+      setState(() => _initializing = false);
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _initializing = false; });
     }
   }
 
-  Future<void> _confirm() async {
-    if (_photoBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ambil foto terlebih dahulu.')),
-      );
-      return;
+  Future<void> _capture() async {
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized || _isCapturing) return;
+    setState(() => _isCapturing = true);
+    try {
+      final file = await ctrl.takePicture();
+      final bytes = await file.readAsBytes();
+      if (mounted) setState(() { _capturedBytes = bytes; _isCapturing = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCapturing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengambil foto: $e')),
+        );
+      }
     }
+  }
 
+  void _retake() => setState(() => _capturedBytes = null);
+
+  Future<void> _confirm() async {
+    final bytes = _capturedBytes;
+    if (bytes == null) return;
     setState(() => _isProcessing = true);
-    await Future<void>.delayed(const Duration(milliseconds: 350));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$_title berhasil disimpan!'),
@@ -1860,189 +2316,334 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
-
-    final payload = TransportirMuatResult(
-      muatType: widget.muatType,
-      photoBase64: base64Encode(_photoBytes!),
-      timestamp: DateTime.now(),
+    Navigator.pop(
+      context,
+      TransportirMuatResult(
+        muatType: widget.muatType,
+        photoBase64: base64Encode(bytes),
+        timestamp: DateTime.now(),
+      ),
     );
-    Navigator.pop(context, payload);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isStarting) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(child: _buildViewport()),
+            _buildControls(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 6, 16, 6),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => Navigator.pop(context, null),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _title,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800),
+                ),
+                Text(
+                  widget.shipment.shipmentNumber,
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: _accentColor.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _accentColor.withValues(alpha: 0.5)),
+            ),
+            child: Text(
+              _title.toUpperCase(),
+              style: TextStyle(
+                  color: _accentColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewport() {
+    // Show captured photo preview
+    if (_capturedBytes != null) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.memory(_capturedBytes!, fit: BoxFit.cover),
+          const CustomPaint(painter: _MuatCornerGuide()),
+          // "Preview" badge
+          const Positioned(
+            top: 12,
+            left: 12,
+            child: _CameraBadge(label: 'PREVIEW', color: Color(0xFFFFA000)),
+          ),
+        ],
+      );
+    }
+
+    // Loading / error states
+    if (_initializing) {
+      return Container(
+        color: const Color(0xFF0D0D14),
+        child: const Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(color: Color(0xFF3B309E)),
-              const SizedBox(height: 20),
-              Text(
-                'Membuka kamera...',
-                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 15),
-              ),
+              CircularProgressIndicator(color: Color(0xFF3B309E), strokeWidth: 3),
+              SizedBox(height: 18),
+              Text('Membuka kamera…',
+                  style: TextStyle(color: Colors.white54, fontSize: 14)),
             ],
           ),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F4FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: _primary),
-          onPressed: () => Navigator.pop(context, false),
-        ),
-        title: Text(_title, style: const TextStyle(color: _primary, fontWeight: FontWeight.w800)),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: _cameraError != null
-                    ? _buildCameraError(_cameraError!)
-                    : Container(
-                        color: const Color(0xFF1A1B30),
-                        child: Center(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: _photoBytes != null
-                                ? Image.memory(_photoBytes!, key: const ValueKey('photoPreview'), fit: BoxFit.cover, width: double.infinity, height: double.infinity)
-                                : Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      Icon(Icons.camera_alt_outlined, color: Colors.white70, size: 68),
-                                      SizedBox(height: 16),
-                                      Text('Mengambil foto...', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                                    ],
-                                  ),
-                        ),
-                      ),
+    if (_error != null) {
+      return Container(
+        color: const Color(0xFF0D0D14),
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.no_photography_outlined, color: Colors.white24, size: 64),
+            const SizedBox(height: 18),
+            const Text('Kamera tidak dapat dibuka',
+                style: TextStyle(
+                    color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(_error!,
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _initCamera,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w800)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B309E),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-          ),
-          _buildInfoCard(),
-        ],
-      ),
+          ],
+        ),
+      );
+    }
+
+    // Live camera preview
+    final ctrl = _controller!;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CameraPreview(ctrl),
+        const CustomPaint(painter: _MuatCornerGuide()),
+        // Live badge
+        const Positioned(
+          top: 12,
+          left: 12,
+          child: _CameraBadge(label: '● LIVE', color: Color(0xFF16C38A)),
+        ),
+        // Capture flash overlay
+        if (_isCapturing)
+          Container(color: Colors.white.withValues(alpha: 0.3)),
+      ],
     );
   }
 
-  Widget _buildCameraError(String message) {
-    return Container(
-      color: const Color(0xFF1A1B30),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.no_photography_outlined, color: Colors.white38, size: 56),
-              const SizedBox(height: 16),
-              const Text(
-                'Kamera tidak dapat dibuka',
-                style: TextStyle(color: Colors.white70, fontSize: 15, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                message,
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _retryCamera,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B309E),
+  Widget _buildControls() {
+    if (_capturedBytes != null) {
+      // Retake + Confirm
+      return Container(
+        color: Colors.black,
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _retake,
+                  icon: const Icon(Icons.replay_rounded),
+                  label: const Text('Ulangi', style: TextStyle(fontWeight: FontWeight.w800)),
+                  style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white38),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text('Coba lagi', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              flex: 2,
+              child: SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _isProcessing ? null : _confirm,
+                  icon: _isProcessing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.check_circle_outline),
+                  label: Text(
+                    _isProcessing ? 'Menyimpan…' : 'Konfirmasi',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF16C38A),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildInfoCard() {
-    final now = DateTime.now();
-    final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} WIB';
+    // Shutter button row
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD4D0E3)),
-      ),
-      child: Column(
+      color: Colors.black,
+      padding: const EdgeInsets.fromLTRB(0, 14, 0, 32),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(color: const Color(0xFFEBE8F8), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.camera_alt_outlined, color: _primary, size: 20),
+          // Cancel
+          IconButton(
+            iconSize: 28,
+            icon: const Icon(Icons.close_rounded, color: Colors.white54),
+            onPressed: () => Navigator.pop(context, null),
+          ),
+          // Shutter
+          GestureDetector(
+            onTap: (_initializing || _isCapturing) ? null : _capture,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 80),
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 4),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.shipment.shipmentNumber,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
-                    const SizedBox(height: 2),
-                    Text('${widget.shipment.origin} → ${widget.shipment.destination}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF7A7490))),
-                  ],
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 80),
+                  width: _isCapturing ? 50 : 60,
+                  height: _isCapturing ? 50 : 60,
+                  decoration: BoxDecoration(
+                    color: _isCapturing ? Colors.grey.shade400 : Colors.white,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-              Text(time, style: const TextStyle(fontSize: 12, color: Color(0xFF7A7490), fontWeight: FontWeight.w700)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: _isProcessing ? null : _confirm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
-              ),
-              icon: _isProcessing
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.check_circle_outline),
-              label: Text(_isProcessing ? 'Menyimpan...' : 'Konfirmasi',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             ),
           ),
+          // Spacer to balance
+          const SizedBox(width: 48),
         ],
       ),
     );
   }
 }
 
+// ── Camera helper widgets ─────────────────────────────────────
+
+class _CameraBadge extends StatelessWidget {
+  const _CameraBadge({required this.label, required this.color});
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              color: color, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+    );
+  }
+}
+
+class _MuatCornerGuide extends CustomPainter {
+  const _MuatCornerGuide();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.75)
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    const len = 28.0;
+    const pad = 22.0;
+    // top-left
+    canvas.drawLine(const Offset(pad, pad + len), const Offset(pad, pad), paint);
+    canvas.drawLine(const Offset(pad, pad), const Offset(pad + len, pad), paint);
+    // top-right
+    canvas.drawLine(Offset(size.width - pad - len, pad), Offset(size.width - pad, pad), paint);
+    canvas.drawLine(Offset(size.width - pad, pad), Offset(size.width - pad, pad + len), paint);
+    // bottom-left
+    canvas.drawLine(
+        Offset(pad, size.height - pad - len), Offset(pad, size.height - pad), paint);
+    canvas.drawLine(
+        Offset(pad, size.height - pad), Offset(pad + len, size.height - pad), paint);
+    // bottom-right
+    canvas.drawLine(Offset(size.width - pad - len, size.height - pad),
+        Offset(size.width - pad, size.height - pad), paint);
+    canvas.drawLine(Offset(size.width - pad, size.height - pad),
+        Offset(size.width - pad, size.height - pad - len), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+
+
 // ═══════════════════════════════════════════════════════════════
-// Map Tracking Page  (Shopee-style route view)
+// Map Tracking Page  (real OSM map with GPS)
 // ═══════════════════════════════════════════════════════════════
 
 class TransportirMapTrackingPage extends StatefulWidget {
@@ -2055,29 +2656,166 @@ class TransportirMapTrackingPage extends StatefulWidget {
   State<TransportirMapTrackingPage> createState() => _TransportirMapTrackingPageState();
 }
 
-class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
-    with TickerProviderStateMixin {
+class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage> {
   static const Color _primary = Color(0xFF3B309E);
 
-  late AnimationController _pulseCtrl;
-  late Animation<double> _pulseAnim;
+  final MapController _mapCtrl = MapController();
+
+  late final LatLng _originCoords;
+  late final LatLng _destCoords;
+
+  /// 0 = Gudang (Load In), 1 = Kios (Load Out / arrived)
+  int _currentStop = 0;
+  bool _following = true;
+  bool _validating = false;
+
+  LatLng get _truckPos => _currentStop == 0 ? _originCoords : _destCoords;
+  bool get _arrived => _currentStop >= 1;
+
+  double get _distanceKm =>
+      const Distance().as(LengthUnit.Kilometer, _truckPos, _destCoords);
+
+  String get _distLabel {
+    final d = _distanceKm;
+    if (d < 1) return '${(d * 1000).round()} m';
+    return '${d.toStringAsFixed(1)} km';
+  }
+
+  String get _etaLabel {
+    if (_arrived) return 'Tiba';
+    final mins = (_distanceKm / 60 * 60).round();
+    if (mins < 60) return '$mins mnt';
+    return '${(mins / 60).floor()}j ${mins % 60}m';
+  }
+
+  String get _actionLabel {
+    if (_arrived) return 'Pengiriman Selesai';
+    if (_currentStop == 0) return 'Load In  –  Konfirmasi di Gudang';
+    return 'Load Out  –  Konfirmasi di Kios';
+  }
 
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
-      ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.85, end: 1.15)
-        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _originCoords = widget.shipment.originLatLng ?? _coordsFor(widget.shipment.origin);
+    _destCoords   = widget.shipment.destinationLatLng ?? _coordsFor(widget.shipment.destination);
+  }
+
+  static LatLng _coordsFor(String location) {
+    final l = location.toLowerCase();
+    if (l.contains('gresik') || l.contains('kig')) return const LatLng(-7.1400, 112.6300);
+    if (l.contains('surabaya'))                    return const LatLng(-7.2600, 112.7500);
+    if (l.contains('jakarta') || l.contains('gudang utama')) return const LatLng(-6.2088, 106.8456);
+    if (l.contains('bekasi')  || l.contains('perakitan'))    return const LatLng(-6.2456, 106.9824);
+    if (l.contains('bandung'))                     return const LatLng(-6.9175, 107.6191);
+    if (l.contains('semarang'))                    return const LatLng(-6.9667, 110.4167);
+    return const LatLng(-7.1400, 112.6300);
+  }
+
+  // ── GPS proximity → Load In / Load Out ───────────────────────────────────
+
+  Future<void> _advanceCheckpoint() async {
+    if (_arrived || _validating) return;
+    setState(() => _validating = true);
+
+    final target = _currentStop == 0 ? _originCoords : _destCoords;
+    final name   = _currentStop == 0 ? 'Gudang' : 'Kios Tujuan';
+
+    final ok = await _checkProximity(target, name);
+    if (!ok || !mounted) {
+      setState(() => _validating = false);
+      return;
+    }
+
+    setState(() {
+      _validating = false;
+      _currentStop = 1;
+    });
+    if (_following) {
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (mounted) _mapCtrl.move(_truckPos, _mapCtrl.camera.zoom);
+    }
+  }
+
+  Future<bool> _checkProximity(LatLng target, String name) async {
+    try {
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('GPS tidak tersedia. Konfirmasi di $name diterima.'),
+            backgroundColor: const Color(0xFFFFA000),
+          ));
+        }
+        return true;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      ).timeout(const Duration(seconds: 8));
+
+      final distM = const Distance().as(
+          LengthUnit.Meter, LatLng(pos.latitude, pos.longitude), target);
+
+      if (distM > 500) {
+        if (!mounted) return false;
+        final bypass = await _showFarDialog(name, distM.round());
+        return bypass ?? false;
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<bool?> _showFarDialog(String name, int distMeters) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(
+          children: [
+            Icon(Icons.location_off_rounded, color: Color(0xFFEF5350)),
+            SizedBox(width: 8),
+            Text('Lokasi Tidak Sesuai',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Text(
+          'Anda berada ${distMeters}m dari $name.\n\n'
+          'Harap pastikan kendaraan sudah berada di lokasi yang benar '
+          'sebelum mengkonfirmasi.',
+          style: const TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kembali',
+                style: TextStyle(color: Color(0xFF6A6780))),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF5350)),
+            child: const Text('Konfirmasi Tetap'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   void dispose() {
-    _pulseCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _openMaps() async {
+  Future<void> _openGoogleMaps() async {
     final origin = Uri.encodeComponent(widget.shipment.origin);
     final dest = Uri.encodeComponent(widget.shipment.destination);
     final url = Uri.parse(
@@ -2085,91 +2823,217 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
     );
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka Google Maps.')),
-        );
-      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka Google Maps.')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final truck = _truckPos;
+    final mapCenter = LatLng(
+      (_originCoords.latitude + _destCoords.latitude) / 2,
+      (_originCoords.longitude + _destCoords.longitude) / 2,
+    );
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1929),
+      backgroundColor: const Color(0xFF0C1524),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF131E30),
+        backgroundColor: const Color(0xFF0C1524),
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Pelacakan Rute', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        title: Column(
+          children: [
+            const Text('Pelacakan Rute',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+            Text(widget.shipment.shipmentNumber,
+                style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          ],
+        ),
         actions: [
           IconButton(
+            icon: Icon(
+              _following ? Icons.center_focus_strong : Icons.center_focus_weak,
+              color: _following ? const Color(0xFF16C38A) : Colors.white54,
+            ),
+            onPressed: () {
+              setState(() => _following = !_following);
+              if (_following) _mapCtrl.move(truck, _mapCtrl.camera.zoom);
+            },
+            tooltip: 'Pusatkan peta',
+          ),
+          IconButton(
             icon: const Icon(Icons.open_in_new_rounded, color: Colors.white70),
-            onPressed: _openMaps,
-            tooltip: 'Buka di Maps',
+            onPressed: _openGoogleMaps,
+            tooltip: 'Buka di Google Maps',
           ),
         ],
       ),
       body: Column(
         children: [
-          // ── Map area ──
+          // ── Map ─────────────────────────────────────────────────────────
           Expanded(
             flex: 5,
             child: Stack(
-              fit: StackFit.expand,
               children: [
-                AnimatedBuilder(
-                  animation: _pulseAnim,
-                  builder: (_, __) => CustomPaint(
-                    painter: _MapRoutePainter(pulseScale: _pulseAnim.value),
+                FlutterMap(
+                  mapController: _mapCtrl,
+                  options: MapOptions(
+                    initialCenter: mapCenter,
+                    initialZoom: 11.0,
+                    onPositionChanged: (_, hasGesture) {
+                      if (hasGesture && _following) {
+                        setState(() => _following = false);
+                      }
+                    },
                   ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                      subdomains: const ['a', 'b', 'c', 'd'],
+                      userAgentPackageName: 'com.gcommers.app',
+                      maxNativeZoom: 19,
+                    ),
+                    // Completed portion (bright)
+                    if (_arrived)
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: [_originCoords, _destCoords],
+                            color: const Color(0xFF534AB7),
+                            strokeWidth: 5,
+                          ),
+                        ],
+                      ),
+                    // Remaining portion (dimmed)
+                    if (!_arrived)
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: [_originCoords, _destCoords],
+                            color: const Color(0x774A3AFF),
+                            strokeWidth: 4,
+                          ),
+                        ],
+                      ),
+                    MarkerLayer(
+                      markers: [
+                        // Origin (Gudang)
+                        Marker(
+                          point: _originCoords,
+                          width: 40,
+                          height: 40,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _currentStop > 0
+                                  ? const Color(0xFF16C38A)
+                                  : const Color(0xFF16C38A),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x6616C38A), blurRadius: 10),
+                              ],
+                            ),
+                            child: const Icon(Icons.warehouse,
+                                color: Colors.white, size: 18),
+                          ),
+                        ),
+                        // Destination (Kios)
+                        Marker(
+                          point: _destCoords,
+                          width: 40,
+                          height: 40,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _arrived
+                                  ? const Color(0xFF16C38A)
+                                  : const Color(0xFFFF5050),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x66FF5050), blurRadius: 10),
+                              ],
+                            ),
+                            child: Icon(
+                              _arrived ? Icons.check : Icons.store,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        // Truck at current stop
+                        Marker(
+                          point: truck,
+                          width: 52,
+                          height: 52,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _arrived ? const Color(0xFF16C38A) : _primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x993B309E), blurRadius: 16),
+                              ],
+                            ),
+                            child: Icon(
+                              _arrived
+                                  ? Icons.check_rounded
+                                  : Icons.local_shipping,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                // Origin chip
+                // Status badge top-left
                 Positioned(
-                  top: 14,
-                  left: 14,
-                  child: _MapChip(
-                    icon: Icons.radio_button_checked,
-                    color: const Color(0xFF16C38A),
-                    label: widget.shipment.origin,
-                  ),
-                ),
-                // Destination chip
-                Positioned(
-                  top: 14,
-                  right: 14,
-                  child: _MapChip(
-                    icon: Icons.location_on,
-                    color: const Color(0xFFFF5050),
-                    label: widget.shipment.destination,
-                    alignRight: true,
-                  ),
-                ),
-                // ETA card
-                Positioned(
-                  bottom: 12,
+                  top: 12,
                   left: 12,
-                  right: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: const Color(0xDD131E30),
-                      borderRadius: BorderRadius.circular(14),
+                      color: const Color(0xEE0C1524),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.white12),
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _EtaCell(icon: Icons.access_time_rounded, label: 'ETA', value: '14.30 WIB'),
-                        _EtaDivider(),
-                        _EtaCell(icon: Icons.straighten_rounded, label: 'Jarak', value: '32 km'),
-                        _EtaDivider(),
-                        _EtaCell(icon: Icons.speed_rounded, label: 'Kecepatan', value: '65 km/h'),
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: _arrived
+                                ? const Color(0xFF16C38A)
+                                : _currentStop == 0
+                                    ? const Color(0xFF7B6FFF)
+                                    : const Color(0xFFFFA000),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _arrived
+                              ? 'Tiba di Kios'
+                              : _currentStop == 0
+                                  ? 'Di Gudang – menunggu Load In'
+                                  : 'Dalam Perjalanan ke Kios',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700),
+                        ),
                       ],
                     ),
                   ),
@@ -2177,80 +3041,151 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
               ],
             ),
           ),
-          // ── Info + timeline ──
-          Expanded(
-            flex: 4,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-              ),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-                children: [
-                  // Route summary
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F0FF),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFD8D3EA)),
-                    ),
-                    child: Column(
-                      children: [
-                        _RouteRow(
-                          icon: Icons.radio_button_checked,
+          // ── Bottom panel ─────────────────────────────────────────────────
+          Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDDD9EA),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Route endpoints
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _RouteEndpoint(
+                          icon: Icons.warehouse,
                           iconColor: const Color(0xFF16C38A),
-                          label: 'Asal',
+                          label: 'Asal (Gudang)',
                           value: widget.shipment.origin,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 10),
-                          child: Column(
-                            children: List.generate(
-                              3,
-                              (_) => Container(
-                                width: 2, height: 5,
-                                margin: const EdgeInsets.symmetric(vertical: 2),
-                                color: const Color(0xFFCCC7E0),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Column(
+                          children: List.generate(
+                            4,
+                            (_) => Container(
+                              width: 2,
+                              height: 4,
+                              margin: const EdgeInsets.symmetric(vertical: 2),
+                              color: const Color(0xFFCCC7E0),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: _RouteEndpoint(
+                          icon: Icons.store,
+                          iconColor: const Color(0xFFFF5050),
+                          label: 'Tujuan (Kios)',
+                          value: widget.shipment.destination,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Distance / ETA info row
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Row(
+                    children: [
+                      _InfoPill(
+                        icon: Icons.straighten_rounded,
+                        label: _arrived ? '0 km' : _distLabel,
+                        color: const Color(0xFF7B6FFF),
+                      ),
+                      const SizedBox(width: 8),
+                      _InfoPill(
+                        icon: Icons.access_time_rounded,
+                        label: _etaLabel,
+                        color: const Color(0xFF4FC3F7),
+                      ),
+                      const SizedBox(width: 8),
+                      _InfoPill(
+                        icon: Icons.local_shipping_outlined,
+                        label: _arrived
+                            ? 'Tiba'
+                            : _currentStop == 0
+                                ? 'Gudang'
+                                : 'Menuju Kios',
+                        color: const Color(0xFFFFA726),
+                      ),
+                    ],
+                  ),
+                ),
+                // Action buttons
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: Row(
+                    children: [
+                      if (!_arrived) ...[
+                        Expanded(
+                          child: SizedBox(
+                            height: 52,
+                            child: ElevatedButton.icon(
+                              onPressed: _validating ? null : _advanceCheckpoint,
+                              icon: _validating
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white))
+                                  : const Icon(Icons.check_circle_outline,
+                                      size: 18),
+                              label: Text(
+                                _validating ? 'Memeriksa…' : _actionLabel,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _currentStop == 0
+                                    ? const Color(0xFF16C38A)
+                                    : const Color(0xFFFF5050),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
                               ),
                             ),
                           ),
                         ),
-                        _RouteRow(
-                          icon: Icons.location_on,
-                          iconColor: const Color(0xFFFF5050),
-                          label: 'Tujuan',
-                          value: widget.shipment.destination,
-                        ),
+                        const SizedBox(width: 10),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Status timeline
-                  const Text('Status Pengiriman',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
-                  const SizedBox(height: 12),
-                  _TimelineStep(active: true, title: 'Pemuatan Dimulai', subtitle: '09.00 WIB · Gudang Utama', icon: Icons.inventory_2_outlined),
-                  _TimelineStep(active: true, title: 'Dalam Perjalanan', subtitle: '10.15 WIB · Koridor Jalan Raya', icon: Icons.local_shipping_outlined),
-                  _TimelineStep(active: false, title: 'Tiba di Tujuan', subtitle: 'Estimasi ${widget.shipment.scheduleLabel}', icon: Icons.flag_outlined),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: _openMaps,
-                      icon: const Icon(Icons.map_outlined),
-                      label: const Text('Buka di Google Maps', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 0,
+                      SizedBox(
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: _openGoogleMaps,
+                          icon: const Icon(Icons.map_outlined, size: 18),
+                          label: const Text('Maps',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -2259,226 +3194,44 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
   }
 }
 
-// ── Map route painter ─────────────────────────────────────────
+// ── Supporting widgets ────────────────────────────────────────
 
-class _MapRoutePainter extends CustomPainter {
-  const _MapRoutePainter({required this.pulseScale});
-  final double pulseScale;
-
-  static const _progress = 0.45; // truck at 45% of route
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // Background
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF0F1929));
-
-    // Street grid (faint)
-    final gridPaint = Paint()
-      ..color = const Color(0xFF1A2A3A)
-      ..strokeWidth = 1;
-    for (double x = 0; x < w; x += 36) {
-      canvas.drawLine(Offset(x, 0), Offset(x, h), gridPaint);
-    }
-    for (double y = 0; y < h; y += 36) {
-      canvas.drawLine(Offset(0, y), Offset(w, y), gridPaint);
-    }
-
-    // Major roads
-    final roadPaint = Paint()
-      ..color = const Color(0xFF1E3048)
-      ..strokeWidth = 18
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(0, h * 0.38), Offset(w, h * 0.38), roadPaint);
-    canvas.drawLine(Offset(w * 0.55, 0), Offset(w * 0.55, h), roadPaint);
-    canvas.drawLine(Offset(0, h * 0.72), Offset(w, h * 0.72), roadPaint);
-    canvas.drawLine(Offset(w * 0.22, 0), Offset(w * 0.22, h), roadPaint);
-
-    // Bezier route definition
-    final p0 = Offset(w * 0.08, h * 0.82);   // origin
-    final c1 = Offset(w * 0.28, h * 0.75);
-    final c2 = Offset(w * 0.45, h * 0.38);
-    final p3 = Offset(w * 0.92, h * 0.15);   // destination
-
-    // Shadow under route
-    final shadowPath = Path()
-      ..moveTo(p0.dx, p0.dy)
-      ..cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, p3.dx, p3.dy);
-    canvas.drawPath(shadowPath, Paint()
-      ..color = const Color(0x443B309E)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 14
-      ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
-
-    // Travelled portion (solid bright)
-    final travelledPt = _cubic(p0, c1, c2, p3, _progress);
-    canvas.drawPath(
-      _partialCubicPath(p0, c1, c2, p3, 0, _progress),
-      Paint()
-        ..color = const Color(0xFF534AB7)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 6
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Remaining portion (dashed grey)
-    _drawDashedPath(canvas, p0, c1, c2, p3, _progress, 1.0,
-        Paint()
-          ..color = const Color(0xFF3A4A5E)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
-          ..strokeCap = StrokeCap.round);
-
-    // Origin circle
-    canvas.drawCircle(p0, 10, Paint()..color = const Color(0xFF16C38A));
-    canvas.drawCircle(p0, 6, Paint()..color = Colors.white);
-
-    // Destination pin
-    canvas.drawCircle(p3, 10, Paint()..color = const Color(0xFFFF5050));
-    canvas.drawCircle(p3, 5, Paint()..color = Colors.white);
-
-    // Truck pulse ring
-    canvas.drawCircle(
-      travelledPt,
-      18 * pulseScale,
-      Paint()..color = const Color(0x554A3AFF),
-    );
-    // Truck body
-    canvas.drawCircle(travelledPt, 12, Paint()..color = const Color(0xFF4A3AFF));
-    // Truck icon (small white circle inside)
-    canvas.drawCircle(travelledPt, 6, Paint()..color = Colors.white.withValues(alpha: 0.9));
-  }
-
-  Offset _cubic(Offset p0, Offset c1, Offset c2, Offset p3, double t) {
-    final mt = 1 - t;
-    return Offset(
-      mt * mt * mt * p0.dx + 3 * mt * mt * t * c1.dx + 3 * mt * t * t * c2.dx + t * t * t * p3.dx,
-      mt * mt * mt * p0.dy + 3 * mt * mt * t * c1.dy + 3 * mt * t * t * c2.dy + t * t * t * p3.dy,
-    );
-  }
-
-  Path _partialCubicPath(Offset p0, Offset c1, Offset c2, Offset p3, double from, double to) {
-    const steps = 40;
-    final path = Path();
-    for (int i = 0; i <= steps; i++) {
-      final t = from + (to - from) * i / steps;
-      final pt = _cubic(p0, c1, c2, p3, t);
-      if (i == 0) {
-        path.moveTo(pt.dx, pt.dy);
-      } else {
-        path.lineTo(pt.dx, pt.dy);
-      }
-    }
-    return path;
-  }
-
-  void _drawDashedPath(Canvas canvas, Offset p0, Offset c1, Offset c2, Offset p3,
-      double from, double to, Paint paint) {
-    const steps = 60;
-    const dashLen = 8.0;
-    const gapLen = 6.0;
-    double accumulated = 0;
-    bool drawing = true;
-
-    for (int i = 0; i < steps; i++) {
-      final t0 = from + (to - from) * i / steps;
-      final t1 = from + (to - from) * (i + 1) / steps;
-      final a = _cubic(p0, c1, c2, p3, t0);
-      final b = _cubic(p0, c1, c2, p3, t1);
-      final segLen = math.sqrt(math.pow(b.dx - a.dx, 2) + math.pow(b.dy - a.dy, 2));
-      accumulated += segLen;
-      if (drawing) {
-        canvas.drawLine(a, b, paint);
-        if (accumulated >= dashLen) {
-          accumulated = 0;
-          drawing = false;
-        }
-      } else {
-        if (accumulated >= gapLen) {
-          accumulated = 0;
-          drawing = true;
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MapRoutePainter old) => old.pulseScale != pulseScale;
-}
-
-// ── Map helper widgets ────────────────────────────────────────
-
-class _MapChip extends StatelessWidget {
-  const _MapChip({required this.icon, required this.color, required this.label, this.alignRight = false});
-
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.icon, required this.label, required this.color});
   final IconData icon;
-  final Color color;
   final String label;
-  final bool alignRight;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xDD131E30),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-            ),
-          ),
+          Icon(icon, color: color, size: 13),
+          const SizedBox(width: 5),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 }
 
-class _EtaCell extends StatelessWidget {
-  const _EtaCell({required this.icon, required this.label, required this.value});
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: const Color(0xFF534AB7), size: 18),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
-      ],
-    );
-  }
-}
-
-class _EtaDivider extends StatelessWidget {
-  const _EtaDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(width: 1, height: 36, color: Colors.white12);
-  }
-}
-
-class _RouteRow extends StatelessWidget {
-  const _RouteRow({required this.icon, required this.iconColor, required this.label, required this.value});
+class _RouteEndpoint extends StatelessWidget {
+  const _RouteEndpoint({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+  });
 
   final IconData icon;
   final Color iconColor;
@@ -2488,15 +3241,33 @@ class _RouteRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: iconColor, size: 18),
-        const SizedBox(width: 10),
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor, size: 16),
+        ),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF9A93AC))),
-              Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF17203A))),
+              Text(label,
+                  style:
+                      const TextStyle(fontSize: 10, color: Color(0xFF9A93AC))),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF17203A)),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
             ],
           ),
         ),
@@ -2504,3 +3275,4 @@ class _RouteRow extends StatelessWidget {
     );
   }
 }
+
