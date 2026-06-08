@@ -87,7 +87,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 obscureText: _obscurePassword,
                 suffixIcon: Icon(
                   _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: const Color(0xFF938DA8),
+                  color: const Color(0xFF6B8C73),
                 ),
                 onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
               ),
@@ -102,7 +102,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 obscureText: _obscureConfirm,
                 suffixIcon: Icon(
                   _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: const Color(0xFF938DA8),
+                  color: const Color(0xFF6B8C73),
                 ),
                 onSuffixTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
               ),
@@ -138,7 +138,7 @@ class _StrengthBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: level,
             minHeight: 6,
-            backgroundColor: const Color(0xFFE0DBEA),
+            backgroundColor: const Color(0xFFC5DECC),
             valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
           ),
         ),

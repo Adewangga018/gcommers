@@ -146,7 +146,7 @@ class AuthTextField extends StatelessWidget {
         ? null
         : Padding(
             padding: const EdgeInsets.only(left: 12, right: 8),
-            child: Icon(icon, color: const Color(0xFF938DA8), size: 20),
+            child: Icon(icon, color: const Color(0xFF6B8C73), size: 20),
           );
 
     return Column(
@@ -241,7 +241,7 @@ class StepHeader extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 8,
-            backgroundColor: const Color(0xFFE0DBEA),
+            backgroundColor: const Color(0xFFC5DECC),
             valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
           ),
         ),

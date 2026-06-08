@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
@@ -17,8 +17,8 @@ class _PaymentPageState extends State<PaymentPage> {
   String? _poNumber;
   bool _submitting = false;
 
-  static const _primaryPurple = Color(0xFF3B309E);
-  static const _bgLight = Color(0xFFF9F9FF);
+  static const _primaryPurple = Color(0xFF38804B);
+  static const _bgLight = Color(0xFFF4FAF5);
 
   @override
   void didChangeDependencies() {
@@ -209,7 +209,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                   decoration: const BoxDecoration(
                       color: Colors.white,
-                      border: Border(top: BorderSide(color: Color(0xFFE2DDF1)))),
+                      border: Border(top: BorderSide(color: Color(0xFFD0E8D4)))),
                   child: SizedBox(
                     width: double.infinity,
                     height: 50,

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primary = Color(0xFF534AB7);
-  static const Color primaryDark = Color(0xFF3C3489);
-  static const Color navy = Color(0xFF1C1B33);
-  static const Color background = Color(0xFFFAF8FF);
+  static const Color primary = Color(0xFF38804B);
+  static const Color primaryDark = Color(0xFF2F6C3F);
+  static const Color navy = Color(0xFF0F261F);
+  static const Color gold = Color(0xFFDAA628);
+  static const Color background = Color(0xFFF4FAF5);
   static const Color card = Colors.white;
-  static const Color text = Color(0xFF242333);
-  static const Color muted = Color(0xFF78738D);
-  static const Color border = Color(0xFFC7C0E2);
+  static const Color text = Color(0xFF0F261F);
+  static const Color muted = Color(0xFF5E7D66);
+  static const Color border = Color(0xFFB5D4BC);
 
   static ThemeData light() {
     final base = ThemeData.light(useMaterial3: true);
@@ -38,7 +39,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
-        hintStyle: const TextStyle(color: Color(0xFFB5AFC7)),
+        hintStyle: const TextStyle(color: Color(0xFFA0C4A8)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

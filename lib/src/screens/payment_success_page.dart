@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/commerce_models.dart';
@@ -8,7 +8,7 @@ class PaymentSuccessPage extends StatelessWidget {
   const PaymentSuccessPage({super.key});
 
   static const _navy = Color(0xFF1A237E);
-  static const _purple = Color(0xFF3B309E);
+  static const _purple = Color(0xFF38804B);
   static const _mandiriBlue = Color(0xFF003D7C);
 
   @override

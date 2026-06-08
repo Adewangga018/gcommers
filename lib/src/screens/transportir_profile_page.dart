@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -58,7 +58,7 @@ class _TransportirProfilePageState extends State<TransportirProfilePage> {
         ),
         title: const Text(
           'GCommers',
-          style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
+          style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
         actions: const [NotificationBadge()],

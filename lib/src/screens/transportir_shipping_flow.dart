@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -125,12 +125,12 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4A3AFF)),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF409557)),
           onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: widget.session),
         ),
         title: const Text(
           'GCommers',
-          style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
+          style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800),
         ),
       ),
       body: ListView(
@@ -269,7 +269,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
   final ShipmentProgress progress;
   final AuthSession? session;
 
-  static const Color _primary = Color(0xFF3B309E);
+  static const Color _primary = Color(0xFF38804B);
   static const Color _done = Color(0xFF16C38A);
 
   String get _currentStatusLabel {
@@ -829,7 +829,7 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
+    const Color primaryPurple = Color(0xFF38804B);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F4FB),
@@ -982,7 +982,7 @@ class TransportirShipmentProofPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
+    const Color primaryPurple = Color(0xFF38804B);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F4FB),
@@ -1550,9 +1550,9 @@ class _DetailStatusChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(active ? Icons.check_circle : Icons.info_outline, size: 14, color: active ? const Color(0xFF3B309E) : const Color(0xFF7A7490)),
+          Icon(active ? Icons.check_circle : Icons.info_outline, size: 14, color: active ? const Color(0xFF38804B) : const Color(0xFF6B8C73)),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: active ? const Color(0xFF3B309E) : const Color(0xFF7A7490), fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(label, style: TextStyle(color: active ? const Color(0xFF38804B) : const Color(0xFF6B8C73), fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -1665,7 +1665,7 @@ class _TimelineStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = active ? const Color(0xFF3B309E) : const Color(0xFFB6B1C6);
+    final fg = active ? const Color(0xFF38804B) : const Color(0xFF8DB89A);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -1674,7 +1674,7 @@ class _TimelineStep extends StatelessWidget {
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: active ? const Color(0xFF3B309E) : const Color(0xFFE2DDF1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: active ? const Color(0xFF38804B) : const Color(0xFFD0E8D4), shape: BoxShape.circle),
             child: Icon(icon, size: 18, color: active ? Colors.white : fg),
           ),
           const SizedBox(width: 12),
@@ -1734,7 +1734,7 @@ class _ActionMiniButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = filled ? Colors.white : const Color(0xFF443C53);
-    final bg = filled ? const Color(0xFF4A3AFF) : Colors.transparent;
+    final bg = filled ? const Color(0xFF409557) : Colors.transparent;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1794,7 +1794,7 @@ class TransportirSuratJalanPage extends StatelessWidget {
   final TransportirShipmentCardData shipment;
   final AuthSession? session;
 
-  static const _primaryPurple = Color(0xFF3B309E);
+  static const _primaryPurple = Color(0xFF38804B);
 
   @override
   Widget build(BuildContext context) {
@@ -1898,7 +1898,7 @@ class _SuratJalanDocument extends StatelessWidget {
                 child: Image.asset('gcs.png', width: 120, height: 120, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
                       width: 120, height: 120,
-                      decoration: BoxDecoration(color: const Color(0xFF3B309E), borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: const Color(0xFF38804B), borderRadius: BorderRadius.circular(10)),
                       child: const Icon(Icons.business, color: Colors.white, size: 56),
                     )),
               ),
@@ -1934,7 +1934,7 @@ class _SuratJalanDocument extends StatelessWidget {
           const Text('SURAT PENGANTAR',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.3, color: Color(0xFF17203A))),
           const Text('Surat Jalan Pengiriman Barang',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF7A7490))),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B8C73))),
           const SizedBox(height: 18),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1956,7 +1956,7 @@ class _SuratJalanDocument extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Pengiriman kepada Yth.',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF7A7490))),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B8C73))),
                   Text(shipment.destination.split(',').first,
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
                   const SizedBox(height: 4),
@@ -1999,7 +1999,7 @@ class _SuratJalanDocument extends StatelessWidget {
       decoration: const BoxDecoration(color: Color(0xFFF4F0FF)),
       children: cells.map((c) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        child: Text(c, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF3B309E))),
+        child: Text(c, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF38804B))),
       )).toList(),
     );
   }
@@ -2048,7 +2048,7 @@ class _SuratJalanDocument extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      border: Border.all(color: const Color(0xFF3B309E), width: 2),
+                      border: Border.all(color: const Color(0xFF38804B), width: 2),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 8, offset: Offset(0, 3))],
                     ),
@@ -2059,11 +2059,11 @@ class _SuratJalanDocument extends StatelessWidget {
                       backgroundColor: Colors.white,
                       eyeStyle: const QrEyeStyle(
                         eyeShape: QrEyeShape.square,
-                        color: Color(0xFF3B309E),
+                        color: Color(0xFF38804B),
                       ),
                       dataModuleStyle: const QrDataModuleStyle(
                         dataModuleShape: QrDataModuleShape.square,
-                        color: Color(0xFF1C1B33),
+                        color: Color(0xFF0F261F),
                       ),
                     ),
                   ),
@@ -2076,7 +2076,7 @@ class _SuratJalanDocument extends StatelessWidget {
                     ),
                     child: Text(
                       sjNumber,
-                      style: const TextStyle(fontSize: 9, color: Color(0xFF3B309E), fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                      style: const TextStyle(fontSize: 9, color: Color(0xFF38804B), fontWeight: FontWeight.w900, letterSpacing: 0.5),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -2146,9 +2146,9 @@ class _MetaRow extends StatelessWidget {
       children: [
         SizedBox(
           width: 130,
-          child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF7A7490))),
+          child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B8C73))),
         ),
-        const Text(': ', style: TextStyle(fontSize: 12, color: Color(0xFF7A7490))),
+        const Text(': ', style: TextStyle(fontSize: 12, color: Color(0xFF6B8C73))),
         Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF17203A)))),
       ],
     );
@@ -2214,7 +2214,7 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
 
   String get _title => widget.muatType == 'masuk' ? 'Load In' : 'Load Out';
   Color get _accentColor =>
-      widget.muatType == 'masuk' ? const Color(0xFF16C38A) : const Color(0xFF4A3AFF);
+      widget.muatType == 'masuk' ? const Color(0xFF16C38A) : const Color(0xFF409557);
 
   @override
   void initState() {
@@ -2422,7 +2422,7 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Color(0xFF3B309E), strokeWidth: 3),
+              CircularProgressIndicator(color: Color(0xFF38804B), strokeWidth: 3),
               SizedBox(height: 18),
               Text('Membuka kamera…',
                   style: TextStyle(color: Colors.white54, fontSize: 14)),
@@ -2454,7 +2454,7 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w800)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B309E),
+                backgroundColor: const Color(0xFF38804B),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -2657,20 +2657,25 @@ class TransportirMapTrackingPage extends StatefulWidget {
 }
 
 class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage> {
-  static const Color _primary = Color(0xFF3B309E);
+  static const Color _primary = Color(0xFF38804B);
 
   final MapController _mapCtrl = MapController();
 
   late final LatLng _originCoords;
   late final LatLng _destCoords;
 
-  /// 0 = Gudang (Load In), 1 = Kios (Load Out / arrived)
+  /// 0 = Gudang (Load In pending)
+  /// 1 = Kios  (Load Out pending — truck moved to kiosk after Load In)
+  /// 2 = Selesai (Load Out done)
   int _currentStop = 0;
   bool _following = true;
   bool _validating = false;
 
   LatLng get _truckPos => _currentStop == 0 ? _originCoords : _destCoords;
-  bool get _arrived => _currentStop >= 1;
+  /// true once the truck has moved to the kiosk (after Load In)
+  bool get _atKios => _currentStop >= 1;
+  /// true after Load Out is confirmed — order complete
+  bool get _completed => _currentStop >= 2;
 
   double get _distanceKm =>
       const Distance().as(LengthUnit.Kilometer, _truckPos, _destCoords);
@@ -2682,16 +2687,16 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
   }
 
   String get _etaLabel {
-    if (_arrived) return 'Tiba';
+    if (_atKios) return 'Tiba';
     final mins = (_distanceKm / 60 * 60).round();
     if (mins < 60) return '$mins mnt';
     return '${(mins / 60).floor()}j ${mins % 60}m';
   }
 
   String get _actionLabel {
-    if (_arrived) return 'Pengiriman Selesai';
     if (_currentStop == 0) return 'Load In  –  Konfirmasi di Gudang';
-    return 'Load Out  –  Konfirmasi di Kios';
+    if (_currentStop == 1) return 'Load Out  –  Konfirmasi di Kios';
+    return 'Pesanan Selesai';
   }
 
   @override
@@ -2715,7 +2720,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
   // ── GPS proximity → Load In / Load Out ───────────────────────────────────
 
   Future<void> _advanceCheckpoint() async {
-    if (_arrived || _validating) return;
+    if (_atKios || _validating) return;
     setState(() => _validating = true);
 
     final target = _currentStop == 0 ? _originCoords : _destCoords;
@@ -2878,6 +2883,45 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
       ),
       body: Column(
         children: [
+          // ── Stats bar (ETA · Jarak · Posisi) ────────────────────────────
+          Container(
+            color: const Color(0xFF111D2E),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _MapStatTile(
+                    icon: Icons.access_time_rounded,
+                    label: 'ETA',
+                    value: _atKios ? 'Tiba' : _etaLabel,
+                    color: const Color(0xFF7B6FFF),
+                  ),
+                ),
+                Container(width: 1, height: 30, color: Colors.white12),
+                Expanded(
+                  child: _MapStatTile(
+                    icon: Icons.straighten_rounded,
+                    label: 'Jarak',
+                    value: _atKios ? '0 km' : _distLabel,
+                    color: const Color(0xFF4FC3F7),
+                  ),
+                ),
+                Container(width: 1, height: 30, color: Colors.white12),
+                Expanded(
+                  child: _MapStatTile(
+                    icon: Icons.local_shipping_outlined,
+                    label: 'Posisi',
+                    value: _atKios
+                        ? 'Kios'
+                        : _currentStop == 0
+                            ? 'Gudang'
+                            : 'Menuju Kios',
+                    color: const Color(0xFFFFA726),
+                  ),
+                ),
+              ],
+            ),
+          ),
           // ── Map ─────────────────────────────────────────────────────────
           Expanded(
             flex: 5,
@@ -2897,29 +2941,29 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                   children: [
                     TileLayer(
                       urlTemplate:
-                          'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                       subdomains: const ['a', 'b', 'c', 'd'],
                       userAgentPackageName: 'com.gcommers.app',
                       maxNativeZoom: 19,
                     ),
                     // Completed portion (bright)
-                    if (_arrived)
+                    if (_atKios)
                       PolylineLayer(
                         polylines: [
                           Polyline(
                             points: [_originCoords, _destCoords],
-                            color: const Color(0xFF534AB7),
+                            color: const Color(0xFF38804B),
                             strokeWidth: 5,
                           ),
                         ],
                       ),
                     // Remaining portion (dimmed)
-                    if (!_arrived)
+                    if (!_atKios)
                       PolylineLayer(
                         polylines: [
                           Polyline(
                             points: [_originCoords, _destCoords],
-                            color: const Color(0x774A3AFF),
+                            color: const Color(0x7738804B),
                             strokeWidth: 4,
                           ),
                         ],
@@ -2953,7 +2997,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                           height: 40,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: _arrived
+                              color: _atKios
                                   ? const Color(0xFF16C38A)
                                   : const Color(0xFFFF5050),
                               shape: BoxShape.circle,
@@ -2963,7 +3007,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                               ],
                             ),
                             child: Icon(
-                              _arrived ? Icons.check : Icons.store,
+                              _atKios ? Icons.check : Icons.store,
                               color: Colors.white,
                               size: 18,
                             ),
@@ -2976,15 +3020,15 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                           height: 52,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: _arrived ? const Color(0xFF16C38A) : _primary,
+                              color: _atKios ? const Color(0xFF16C38A) : _primary,
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 3),
                               boxShadow: const [
-                                BoxShadow(color: Color(0x993B309E), blurRadius: 16),
+                                BoxShadow(color: Color(0x9938804B), blurRadius: 16),
                               ],
                             ),
                             child: Icon(
-                              _arrived
+                              _atKios
                                   ? Icons.check_rounded
                                   : Icons.local_shipping,
                               color: Colors.white,
@@ -3003,9 +3047,12 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: const Color(0xEE0C1524),
+                      color: Colors.white.withValues(alpha: 0.93),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white12),
+                      border: Border.all(color: const Color(0xFFD3CFE2)),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x22000000), blurRadius: 6),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -3014,7 +3061,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                           width: 7,
                           height: 7,
                           decoration: BoxDecoration(
-                            color: _arrived
+                            color: _atKios
                                 ? const Color(0xFF16C38A)
                                 : _currentStop == 0
                                     ? const Color(0xFF7B6FFF)
@@ -3024,13 +3071,13 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          _arrived
+                          _atKios
                               ? 'Tiba di Kios'
                               : _currentStop == 0
                                   ? 'Di Gudang – menunggu Load In'
                                   : 'Dalam Perjalanan ke Kios',
                           style: const TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFF17203A),
                               fontSize: 11,
                               fontWeight: FontWeight.w700),
                         ),
@@ -3098,40 +3145,13 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                   ),
                 ),
                 // Distance / ETA info row
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: Row(
-                    children: [
-                      _InfoPill(
-                        icon: Icons.straighten_rounded,
-                        label: _arrived ? '0 km' : _distLabel,
-                        color: const Color(0xFF7B6FFF),
-                      ),
-                      const SizedBox(width: 8),
-                      _InfoPill(
-                        icon: Icons.access_time_rounded,
-                        label: _etaLabel,
-                        color: const Color(0xFF4FC3F7),
-                      ),
-                      const SizedBox(width: 8),
-                      _InfoPill(
-                        icon: Icons.local_shipping_outlined,
-                        label: _arrived
-                            ? 'Tiba'
-                            : _currentStop == 0
-                                ? 'Gudang'
-                                : 'Menuju Kios',
-                        color: const Color(0xFFFFA726),
-                      ),
-                    ],
-                  ),
-                ),
+                
                 // Action buttons
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: Row(
                     children: [
-                      if (!_arrived) ...[
+                      if (!_atKios) ...[
                         Expanded(
                           child: SizedBox(
                             height: 52,
@@ -3195,6 +3215,35 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
 }
 
 // ── Supporting widgets ────────────────────────────────────────
+
+class _MapStatTile extends StatelessWidget {
+  const _MapStatTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 15),
+        const SizedBox(height: 3),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+        Text(label,
+            style: const TextStyle(color: Colors.white38, fontSize: 10)),
+      ],
+    );
+  }
+}
 
 class _InfoPill extends StatelessWidget {
   const _InfoPill({required this.icon, required this.label, required this.color});

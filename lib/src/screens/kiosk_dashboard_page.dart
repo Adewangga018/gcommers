@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -43,7 +43,7 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final Color primaryPurple = AppTheme.primary;
-    const Color bgLight = Color(0xFFF9F9FF);
+    const Color bgLight = Color(0xFFF4FAF5);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -70,7 +70,7 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFF534AB7), Color(0xFF3C3489)],
+                        colors: [Color(0xFF38804B), Color(0xFF2F6C3F)],
                       ),
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(20),
@@ -250,7 +250,7 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2DDF1)),
+            border: Border.all(color: const Color(0xFFD0E8D4)),
             boxShadow: const [
               BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
             ],
@@ -281,7 +281,7 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2DDF1)),
+        border: Border.all(color: const Color(0xFFD0E8D4)),
         boxShadow: const [
           BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
         ],
@@ -328,7 +328,7 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2DDF1)),
+          border: Border.all(color: const Color(0xFFD0E8D4)),
           boxShadow: const [
             BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
           ],
@@ -368,7 +368,7 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
               children: [
                 Text(
                   formatCurrency(order.totalAmount),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF3B309E)),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF38804B)),
                 ),
                 const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBC8D8), size: 20),
               ],

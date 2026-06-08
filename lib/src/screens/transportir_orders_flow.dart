@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -112,18 +112,18 @@ class TransportirOrdersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F4FA),
+      backgroundColor: const Color(0xFFF4FAF5),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4A3AFF)),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF409557)),
           onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session),
         ),
         title: const Text(
           'GCommers',
-          style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800),
+          style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800),
         ),
 
       ),
@@ -168,17 +168,17 @@ class TransportirOrderDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F4FA),
+      backgroundColor: const Color(0xFFF4FAF5),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4A3AFF)),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF409557)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('GCommers', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800)),
-        actions: const [NotificationBadge(iconColor: Color(0xFF4A3AFF))],
+        title: const Text('GCommers', style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800)),
+        actions: const [NotificationBadge(iconColor: Color(0xFF409557))],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
@@ -228,8 +228,8 @@ class TransportirShipmentDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Color primaryBlue = Color(0xFF2F77C4);
-    const Color primaryPurple = Color(0xFF3B309E);
-    const Color bgLight = Color(0xFFF9F9FF);
+    const Color primaryPurple = Color(0xFF38804B);
+    const Color bgLight = Color(0xFFF4FAF5);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -380,7 +380,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                                 ),
                                 dataModuleStyle: const QrDataModuleStyle(
                                   dataModuleShape: QrDataModuleShape.square,
-                                  color: Color(0xFF1C1B33),
+                                  color: Color(0xFF0F261F),
                                 ),
                               ),
                             ),
@@ -705,7 +705,7 @@ Future<Uint8List> _buildShipmentPdf({
                 pw.Container(
                   padding: const pw.EdgeInsets.all(6),
                   decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: const PdfColor.fromInt(0xFF534AB7), width: 1.2),
+                    border: pw.Border.all(color: const PdfColor.fromInt(0xFF38804B), width: 1.2),
                     borderRadius: pw.BorderRadius.circular(6),
                   ),
                   child: pw.Column(
@@ -856,7 +856,7 @@ class _TransportirOrderCard extends StatelessWidget {
                       color: const Color(0xFFEAE8FF),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF4A3AFF)),
+                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF409557)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -877,7 +877,7 @@ class _TransportirOrderCard extends StatelessWidget {
                 children: [
                   Expanded(child: _KeyText(label: 'Tanggal', value: order.createdAtLabel)),
                   const SizedBox(width: 12),
-                  Expanded(child: _KeyText(label: 'Nilai Tagihan', value: order.totalAmountLabel, valueColor: const Color(0xFF4A3AFF))),
+                  Expanded(child: _KeyText(label: 'Nilai Tagihan', value: order.totalAmountLabel, valueColor: const Color(0xFF409557))),
                 ],
               ),
               const SizedBox(height: 10),
@@ -889,7 +889,7 @@ class _TransportirOrderCard extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: onTap,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4A3AFF),
+                    foregroundColor: const Color(0xFF409557),
                     side: const BorderSide(color: Color(0xFFB9B5E4)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -1086,7 +1086,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                   child: Row(
                     children: [
                       const Icon(Icons.admin_panel_settings_outlined,
-                          color: Color(0xFF534AB7), size: 16),
+                          color: Color(0xFF38804B), size: 16),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(

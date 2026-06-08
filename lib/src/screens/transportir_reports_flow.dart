@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -67,17 +67,6 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
   int _count(DateTime d) => _forMonth(d).length;
   int _items(DateTime d) => _forMonth(d).fold(0, (s, o) => s + o.itemCount);
 
-  // Past 3 months before the selected one
-  List<DateTime> get _history {
-    final list = <DateTime>[];
-    var cur = DateTime(_selected.year, _selected.month - 1);
-    for (var i = 0; i < 3; i++) {
-      list.add(cur);
-      cur = DateTime(cur.year, cur.month - 1);
-    }
-    return list;
-  }
-
   Future<void> _openMonthPicker() async {
     final picked = await showDialog<DateTime>(
       context: context,
@@ -93,22 +82,25 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
     final totalAmt = _total(_selected);
     final tripCnt  = _count(_selected);
     final itemCnt  = _items(_selected);
+    
+    // Mengambil 3 riwayat klaim terakhir
+    final recentClaims = ClaimStore.instance.claims.take(3).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F4FA),
+      backgroundColor: const Color(0xFFF4FAF5),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4A3AFF)),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF409557)),
           onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session),
         ),
         title: const Text('GCommers',
-            style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w800)),
+            style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF4A3AFF)),
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF409557)),
             onPressed: _load,
           ),
         ],
@@ -186,35 +178,32 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
                         _EmptyMonthCard(month: _monthLabel(_selected)),
                       const SizedBox(height: 22),
 
-                      // ── History ──────────────────────────────────────────
+                      // ── History (3 Klaim Terakhir) ────────────────────────
                       const Text(
-                        'Riwayat Sebelumnya',
+                        '3 Riwayat Klaim Terakhir',
                         style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF17203A)),
                       ),
                       const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFD3D6E7)),
-                        ),
-                        child: Column(
-                          children: [
-                            for (var i = 0; i < _history.length; i++) ...[
-                              _MonthHistoryTile(
-                                month: _history[i],
-                                total: _total(_history[i]),
-                                count: _count(_history[i]),
+                      if (recentClaims.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text('Belum ada riwayat klaim diajukan.', style: TextStyle(color: Color(0xFF6A6780))),
+                        )
+                      else
+                        ...recentClaims.map((claim) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ClaimHistoryCard(
+                            claim: claim,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => TransportirClaimDetailPage(claim: claim),
                               ),
-                              if (i < _history.length - 1)
-                                const Divider(height: 1, indent: 16, endIndent: 16),
-                            ],
-                          ],
-                        ),
-                      ),
+                            ),
+                          ),
+                        )),
                       const SizedBox(height: 18),
 
                       // ── Actions ──────────────────────────────────────────
@@ -545,23 +534,17 @@ class _TransportirReportClaimPageState
           const SizedBox(height: 20),
 
           // ── Bukti Transaksi (wajib, multi-foto) ──────────────────────────
-          Row(
-            children: [
-              const Text('Bukti Transaksi / Struk', style: labelStyle),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFEBEE),
-                  borderRadius: BorderRadius.circular(4),
+          RichText(
+            text: const TextSpan(
+              text: 'Bukti Transaksi / Struk ',
+              style: labelStyle,
+              children: [
+                TextSpan(
+                  text: '*',
+                  style: TextStyle(color: Color(0xFFEF5350), fontSize: 14, fontWeight: FontWeight.w900),
                 ),
-                child: const Text('WAJIB',
-                    style: TextStyle(
-                        color: Color(0xFFEF5350),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800)),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -859,7 +842,7 @@ class TransportirReportSuccessPage extends StatelessWidget {
                       decoration: BoxDecoration(color: const Color(0xFFF2F4FF), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFC8CDEF))),
                       child: const Row(
                         children: [
-                          Icon(Icons.info_outline, color: Color(0xFF4A3AFF)),
+                          Icon(Icons.info_outline, color: Color(0xFF409557)),
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -1170,7 +1153,7 @@ class TransportirReportDetailPage extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: Color(0xFF4A3AFF)),
+                const Icon(Icons.info_outline, color: Color(0xFF409557)),
                 const SizedBox(width: 10),
                 Expanded(child: Text(args.note, style: const TextStyle(color: Color(0xFF5A5C73), height: 1.35))),
               ],
@@ -1219,7 +1202,7 @@ class _MonthSelectorButton extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF4A3AFF)),
+            icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF409557)),
             onPressed: onPrev,
           ),
           Expanded(
@@ -1244,7 +1227,7 @@ class _MonthSelectorButton extends StatelessWidget {
           ),
           IconButton(
             icon: Icon(Icons.chevron_right_rounded,
-                color: onNext != null ? const Color(0xFF4A3AFF) : Colors.grey[300]),
+                color: onNext != null ? const Color(0xFF409557) : Colors.grey[300]),
             onPressed: onNext,
           ),
         ],
@@ -1293,7 +1276,7 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF4A3AFF)),
+                  icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF409557)),
                   onPressed: () => setState(() => _year--),
                 ),
                 Text(
@@ -1303,7 +1286,7 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
                 ),
                 IconButton(
                   icon: Icon(Icons.chevron_right_rounded,
-                      color: _year < _now.year ? const Color(0xFF4A3AFF) : Colors.grey[300]),
+                      color: _year < _now.year ? const Color(0xFF409557) : Colors.grey[300]),
                   onPressed: _year < _now.year ? () => setState(() => _year++) : null,
                 ),
               ],
@@ -1465,75 +1448,6 @@ class _EmptyMonthCard extends StatelessWidget {
   }
 }
 
-// ─── Month History Tile ──────────────────────────────────────────────────────
-
-class _MonthHistoryTile extends StatelessWidget {
-  const _MonthHistoryTile({
-    required this.month,
-    required this.total,
-    required this.count,
-  });
-
-  final DateTime month;
-  final double total;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasData = count > 0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: hasData ? const Color(0xFFE7E4FF) : const Color(0xFFF0F0F0),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(
-              hasData ? Icons.bar_chart_rounded : Icons.remove_circle_outline,
-              color: hasData ? const Color(0xFF4438A7) : Colors.grey[400],
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _monthLabel(month),
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF17203A)),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  hasData ? '$count pesanan' : 'Tidak ada data',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: hasData ? const Color(0xFF6A6780) : Colors.grey[400]),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            hasData ? _fmtRupiah(total) : '-',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: hasData ? const Color(0xFF4438A7) : Colors.grey[400],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Error View ───────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
@@ -1638,7 +1552,7 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF4A3AFF)),
+          Icon(icon, size: 20, color: const Color(0xFF409557)),
           const SizedBox(height: 6),
           Text(title, style: const TextStyle(fontSize: 13, color: Color(0xFF5E6076))),
           const SizedBox(height: 10),
@@ -1648,7 +1562,6 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
-
 
 // ─── Claim Input Field ───────────────────────────────────────────────────────
 
@@ -1741,7 +1654,6 @@ class _InfoLine extends StatelessWidget {
   }
 }
 
-
 class TransportirHistoryRecord {
   const TransportirHistoryRecord(this.number, this.date, this.amount, this.badge, this.badgeColor);
 
@@ -1820,7 +1732,6 @@ class TransportirReportDetailArgs {
   final String otherCost;
   final String note;
 }
-
 
 class _DetailRow extends StatelessWidget {
   const _DetailRow({required this.label, required this.value, this.emphasize = false});
@@ -1973,6 +1884,10 @@ class ClaimStore {
 // Claim History Card
 // ═══════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════
+// Claim History Card
+// ═══════════════════════════════════════════════════════════════
+
 class _ClaimHistoryCard extends StatelessWidget {
   const _ClaimHistoryCard({required this.claim, required this.onTap});
 
@@ -1995,61 +1910,73 @@ class _ClaimHistoryCard extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE4E0F0)),
           boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 3))],
         ),
-        child: Row(
-          children: [
-            // Status color bar
-            Container(
-              width: 5,
-              height: 80,
-              decoration: BoxDecoration(
-                color: claim.status.color,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), bottomLeft: Radius.circular(14)),
+        // SOLUSI: Dibungkus dengan IntrinsicHeight agar CrossAxisAlignment.stretch tidak error
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Status color bar
+              Container(
+                width: 5,
+                decoration: BoxDecoration(
+                  color: claim.status.color,
+                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), bottomLeft: Radius.circular(14)),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            // Icon
-            Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(color: claim.status.bg, borderRadius: BorderRadius.circular(11)),
-              child: Icon(claim.status.icon, color: claim.status.color, size: 22),
-            ),
-            const SizedBox(width: 12),
-            // Info
-            Expanded(
-              child: Padding(
+              const SizedBox(width: 12),
+              // Icon
+              Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Container(
+                  width: 42, height: 42,
+                  decoration: BoxDecoration(color: claim.status.bg, borderRadius: BorderRadius.circular(11)),
+                  child: Icon(claim.status.icon, color: claim.status.color, size: 22),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Info (Expanded untuk fluid responsive)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(claim.id, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                      const SizedBox(height: 3),
+                      Text('Periode: $periodStr', style: const TextStyle(fontSize: 11, color: Color(0xFF6B8C73))),
+                      const SizedBox(height: 2),
+                      Text(dateStr, style: const TextStyle(fontSize: 11, color: Color(0xFFADA6C0))),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Amount + status (responsive fix)
+              Padding(
+                padding: const EdgeInsets.only(right: 12, left: 4),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(claim.id, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
-                    const SizedBox(height: 3),
-                    Text('Periode: $periodStr', style: const TextStyle(fontSize: 11, color: Color(0xFF7A7490))),
-                    const SizedBox(height: 2),
-                    Text(dateStr, style: const TextStyle(fontSize: 11, color: Color(0xFFADA6C0))),
+                    Text(_fmtRupiah(claim.total.toDouble()),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF4438A7))),
+                    const SizedBox(height: 6),
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 100), 
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: claim.status.bg, borderRadius: BorderRadius.circular(6)), 
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(claim.status.label,
+                            style: TextStyle(color: claim.status.color, fontSize: 10, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            // Amount + status
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(_fmtRupiah(claim.total.toDouble()),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF4438A7))),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: claim.status.bg, borderRadius: BorderRadius.circular(20)),
-                    child: Text(claim.status.label,
-                        style: TextStyle(color: claim.status.color, fontSize: 10, fontWeight: FontWeight.w800)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -2284,7 +2211,7 @@ class _ClaimTimelineStep extends StatelessWidget {
               children: [
                 Text(step.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: step.state == _StepState.pending ? const Color(0xFFADA6C0) : const Color(0xFF17203A))),
                 const SizedBox(height: 2),
-                Text(step.subtitle, style: TextStyle(fontSize: 12, color: step.state == _StepState.pending ? const Color(0xFFCCC7DE) : const Color(0xFF7A7490))),
+                Text(step.subtitle, style: TextStyle(fontSize: 12, color: step.state == _StepState.pending ? const Color(0xFFCCC7DE) : const Color(0xFF6B8C73))),
               ],
             ),
           ),

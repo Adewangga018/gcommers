@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
@@ -71,8 +71,8 @@ class _OrderPageState extends State<OrderPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
-    const Color bgLight = Color(0xFFF9F9FF);
+    const Color primaryPurple = Color(0xFF38804B);
+    const Color bgLight = Color(0xFFF4FAF5);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -204,7 +204,7 @@ class _OrderPageState extends State<OrderPage> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
           decoration: const BoxDecoration(
             color: Colors.white,
-            border: Border(top: BorderSide(color: Color(0xFFE2DDF1))),
+            border: Border(top: BorderSide(color: Color(0xFFD0E8D4))),
           ),
           child: Row(
             children: [
@@ -268,7 +268,7 @@ class _TabChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
+    const Color primaryPurple = Color(0xFF38804B);
 
     return InkWell(
       onTap: onTap,
@@ -308,7 +308,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
+    const Color primaryPurple = Color(0xFF38804B);
 
     return Material(
       color: Colors.transparent,
@@ -391,8 +391,8 @@ class ProductDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
-    const Color bgLight = Color(0xFFF9F9FF);
+    const Color primaryPurple = Color(0xFF38804B);
+    const Color bgLight = Color(0xFFF4FAF5);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -560,7 +560,7 @@ class _InfoChip extends StatelessWidget {
       decoration: BoxDecoration(color: const Color(0xFFF3EFFB), borderRadius: BorderRadius.circular(999)),
       child: Text(
         text,
-        style: const TextStyle(color: Color(0xFF3B309E), fontSize: 12, fontWeight: FontWeight.w700),
+        style: const TextStyle(color: Color(0xFF38804B), fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }

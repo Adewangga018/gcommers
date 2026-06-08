@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
@@ -27,8 +27,8 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
   @override
   Widget build(BuildContext context) {
     const Color primaryBlue = Color(0xFF2F77C4);
-    const Color primaryPurple = Color(0xFF3B309E);
-    const Color bgLight = Color(0xFFF9F9FF);
+    const Color primaryPurple = Color(0xFF38804B);
+    const Color bgLight = Color(0xFFF4FAF5);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -192,7 +192,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.of(context).pushNamed('/payment', arguments: order.poNumber),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF3B309E),
+                          backgroundColor: const Color(0xFF38804B),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
@@ -251,7 +251,7 @@ class _StatusStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.isActive ? const Color(0xFF3B309E) : const Color(0xFFC8C1DE);
+    final color = item.isActive ? const Color(0xFF38804B) : const Color(0xFFB5D4BC);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -310,7 +310,7 @@ class _ItemRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           formatCurrency(item.totalPrice),
-          style: const TextStyle(color: Color(0xFF3B309E), fontSize: 14, fontWeight: FontWeight.w800),
+          style: const TextStyle(color: Color(0xFF38804B), fontSize: 14, fontWeight: FontWeight.w800),
         ),
       ],
     );

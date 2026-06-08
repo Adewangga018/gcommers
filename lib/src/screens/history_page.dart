@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
@@ -35,7 +35,7 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     final Color primaryPurple = AppTheme.primary;
-    const Color bgLight = Color(0xFFF9F9FF);
+    const Color bgLight = Color(0xFFF4FAF5);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -123,7 +123,7 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
+    const Color primaryPurple = Color(0xFF38804B);
 
     return GestureDetector(
       onTap: onTap,
@@ -235,7 +235,7 @@ class _HistoryBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF3B309E);
+    const Color primaryPurple = Color(0xFF38804B);
 
     return BottomNavigationBar(
       currentIndex: currentIndex,

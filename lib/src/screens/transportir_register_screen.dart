@@ -153,7 +153,7 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
                         obscureText: _obscurePassword,
                         suffixIcon: Icon(
                           _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF938DA8),
+                          color: const Color(0xFF6B8C73),
                         ),
                         onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
@@ -165,7 +165,7 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
                         obscureText: _obscureConfirmPassword,
                         suffixIcon: Icon(
                           _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF938DA8),
+                          color: const Color(0xFF6B8C73),
                         ),
                         onSuffixTap: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                       ),

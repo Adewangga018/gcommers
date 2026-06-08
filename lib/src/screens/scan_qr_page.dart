@@ -343,7 +343,7 @@ class _ManualInputSheet extends StatelessWidget {
   final TextEditingController controller;
   final void Function(String code) onConfirm;
 
-  static const Color _primary = Color(0xFF534AB7);
+  static const Color _primary = Color(0xFF38804B);
 
   @override
   Widget build(BuildContext context) {
@@ -351,7 +351,7 @@ class _ManualInputSheet extends StatelessWidget {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF1C1D38),
+          color: Color(0xFF1A2E1D),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
@@ -388,7 +388,7 @@ class _ManualInputSheet extends StatelessWidget {
                 hintText: 'Contoh: SJ-20231024-001',
                 hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
                 filled: true,
-                fillColor: const Color(0xFF2A2B48),
+                fillColor: const Color(0xFF243D27),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),

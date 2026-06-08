@@ -167,7 +167,7 @@ class _KioskRegisterStep1ScreenState extends State<KioskRegisterStep1Screen> {
                         obscureText: _obscurePassword,
                         suffixIcon: Icon(
                           _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF938DA8),
+                          color: const Color(0xFF6B8C73),
                         ),
                         onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
                         onChanged: (_) => setState(_validateForm),
@@ -180,7 +180,7 @@ class _KioskRegisterStep1ScreenState extends State<KioskRegisterStep1Screen> {
                         obscureText: _obscureConfirmPassword,
                         suffixIcon: Icon(
                           _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF938DA8),
+                          color: const Color(0xFF6B8C73),
                         ),
                         onSuffixTap: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                         onChanged: (_) => setState(_validateForm),

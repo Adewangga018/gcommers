@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.VisualBasic.FileIO;
 using System.Globalization;
 
@@ -62,6 +62,49 @@ static class CommerceDatabase
         IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Products_ProductCode' AND object_id = OBJECT_ID(N'dbo.Products'))
             EXEC(N'CREATE UNIQUE INDEX UX_Products_ProductCode ON dbo.Products(ProductCode) WHERE ProductCode IS NOT NULL;');
 
+        -- ───────────────────────────────────────────────────────────────
+        -- Transport / Shipments / Route checks (for tracking & dummy data)
+        -- ───────────────────────────────────────────────────────────────
+        IF OBJECT_ID(N'dbo.Shipments', N'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.Shipments
+            (
+                Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Shipments PRIMARY KEY,
+                ShipmentNumber NVARCHAR(50) NOT NULL,
+                OrderId INT NULL,
+                DriverName NVARCHAR(200) NULL,
+                Status NVARCHAR(50) NOT NULL CONSTRAINT DF_Shipments_Status DEFAULT N'siap_muat',
+                CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Shipments_CreatedAt DEFAULT SYSUTCDATETIME(),
+                MuatInCompletedAt DATETIMEOFFSET NULL,
+                MuatOutCompletedAt DATETIMEOFFSET NULL,
+                CompletedAt DATETIMEOFFSET NULL,
+                TotalDistanceMeters DECIMAL(18,2) NOT NULL CONSTRAINT DF_Shipments_TotalDistance DEFAULT 0,
+                UpdatedAt DATETIMEOFFSET NULL,
+
+                CONSTRAINT UX_Shipments_ShipmentNumber UNIQUE (ShipmentNumber),
+                CONSTRAINT FK_Shipments_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(Id)
+            );
+        END
+
+        IF OBJECT_ID(N'dbo.ShipmentRouteChecks', N'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.ShipmentRouteChecks
+            (
+                Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ShipmentRouteChecks PRIMARY KEY,
+                ShipmentId INT NOT NULL,
+                CheckType NVARCHAR(20) NOT NULL CONSTRAINT DF_ShipmentRouteChecks_CheckType DEFAULT N'load_out',
+                ExpectedDistanceMeters DECIMAL(18,2) NOT NULL CONSTRAINT DF_ShipmentRouteChecks_ExpectedDistance DEFAULT 0,
+                ActualDistanceMeters DECIMAL(18,2) NOT NULL CONSTRAINT DF_ShipmentRouteChecks_ActualDistance DEFAULT 0,
+                DistanceDiffMeters DECIMAL(18,2) NOT NULL CONSTRAINT DF_ShipmentRouteChecks_Diff DEFAULT 0,
+                Notes NVARCHAR(500) NULL,
+                CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_ShipmentRouteChecks_CreatedAt DEFAULT SYSUTCDATETIME(),
+
+                CONSTRAINT FK_ShipmentRouteChecks_Shipments FOREIGN KEY (ShipmentId) REFERENCES dbo.Shipments(Id)
+            );
+
+            CREATE INDEX IX_ShipmentRouteChecks_ShipmentId_CreatedAt
+                ON dbo.ShipmentRouteChecks(ShipmentId, CreatedAt DESC);
+        END
         IF OBJECT_ID(N'dbo.Orders', N'U') IS NULL
         BEGIN
             CREATE TABLE dbo.Orders

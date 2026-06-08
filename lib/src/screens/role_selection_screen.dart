@@ -19,8 +19,8 @@ class RoleSelectionScreen extends StatelessWidget {
               end: Alignment.bottomCenter,
               colors: [
                 AppTheme.navy,
-                Color(0xFF161330),
-                Color(0xFFF5F2FF),
+                Color(0xFF091A11),
+                Color(0xFFF4FAF5),
               ],
               stops: [0.0, 0.56, 1.0],
             ),
@@ -35,7 +35,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFF7F4FF),
+                    color: Color(0xFFF4FAF5),
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(32),
                       topRight: Radius.circular(32),
@@ -67,8 +67,8 @@ class RoleSelectionScreen extends StatelessWidget {
                               title: 'Kiosk',
                               description: 'Login untuk akun kiosk dan akses dashboard operasional.',
                               accent: AppTheme.primary,
-                              borderTint: const Color.fromARGB(36, 74, 58, 255),
-                              fillTint: const Color.fromARGB(31, 74, 58, 255),
+                              borderTint: const Color(0x2438804B),
+                              fillTint: const Color(0x1F38804B),
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
                               ),
@@ -78,9 +78,9 @@ class RoleSelectionScreen extends StatelessWidget {
                               icon: Icons.local_shipping_rounded,
                               title: 'Transportir',
                               description: 'Login untuk akun transportir yang terdaftar.',
-                              accent: const Color(0xFF1F9D8A),
-                              borderTint: const Color.fromARGB(36, 31, 157, 138),
-                              fillTint: const Color.fromARGB(31, 31, 157, 138),
+                              accent: AppTheme.gold,
+                              borderTint: const Color(0x24DAA628),
+                              fillTint: const Color(0x1FDAA628),
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute<void>(builder: (_) => const TransportirLoginScreen()),
                               ),
@@ -120,7 +120,7 @@ class _BrandHeader extends StatelessWidget {
         SizedBox(height: 6),
         Text(
           'Platform E-Commerce GCS',
-          style: TextStyle(color: Color(0xFFC9C4E7), fontSize: 15),
+          style: TextStyle(color: Color(0xFF8DB89A), fontSize: 15),
         ),
       ],
     );

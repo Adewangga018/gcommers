@@ -29,7 +29,7 @@ class SplashScreen extends StatelessWidget {
                   SizedBox(height: 6),
                   Text(
                     'Platform E-Commerce GCS',
-                    style: TextStyle(color: Color(0xFFB6B2D2), fontSize: 16),
+                    style: TextStyle(color: Color(0xFF8DB89A), fontSize: 16),
                   ),
                 ],
               ),
@@ -43,7 +43,7 @@ class SplashScreen extends StatelessWidget {
                 child: const LinearProgressIndicator(
                   value: 0.34,
                   minHeight: 6,
-                  backgroundColor: Color(0xFF5A5677),
+                  backgroundColor: Color(0xFF3A5E42),
                   valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
                 ),
               ),
