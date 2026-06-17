@@ -95,7 +95,7 @@ class _TransportirLoginScreenState extends State<TransportirLoginScreen> {
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 30,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w900,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -135,7 +135,7 @@ class _TransportirLoginScreenState extends State<TransportirLoginScreen> {
                 children: [
                   const Text(
                     'Masuk Transportir',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 4),
                   const Text(

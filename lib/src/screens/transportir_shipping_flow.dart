@@ -25,8 +25,8 @@ class TransportirShipmentsPage extends StatefulWidget {
     TransportirShipmentCardData(
       shipmentNumber: 'SJ-20231024-001',
       statusLabel: 'Siap Muat',
-      statusColor: Color(0xFF4D8FE8),
-      statusBackground: Color(0xFFDDEBFF),
+      statusColor: Color(0xFF2F6C3F),
+      statusBackground: Color(0xFFDCEDE1),
       scheduleLabel: 'Hari ini, 09.00 WIB',
       origin: 'Gudang GCS – Jl. KIG Raya Selatan Blok A5, Kebomas, Kab. Gresik, Jawa Timur 61123',
       destination: 'Kios Tani Makmur – Jl. Raya Driyorejo No. 12, Driyorejo, Kab. Gresik, Jawa Timur 61177',
@@ -125,13 +125,10 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF409557)),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.ink),
           onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: widget.session),
         ),
-        title: const Text(
-          'GCommers',
-          style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800),
-        ),
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
@@ -148,7 +145,7 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
                       style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF17203A)),
+                          color: Color(0xFF0F261F)),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -167,7 +164,7 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFD3CFE2)),
+              border: Border.all(color: const Color(0xFFB5D4BC)),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x08000000), 
@@ -181,14 +178,14 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
               textAlignVertical: TextAlignVertical.center,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF20202D),
+                color: Color(0xFF0F261F),
                 fontWeight: FontWeight.w500,
               ),
               decoration: InputDecoration(
                 border: InputBorder.none, // Menghilangkan border default TextField
                 hintText: 'Cari nomor surat jalan…',
                 hintStyle: const TextStyle(
-                  color: Color(0xFFB0AAC4), 
+                  color: Color(0xFF6B8C73), 
                   fontSize: 14,
                 ),
                 contentPadding: EdgeInsets.zero, // Wajib zero agar sejajar dengan icon
@@ -196,7 +193,7 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
                 // Ikon Kiri (Search)
                 prefixIcon: const Icon(
                   Icons.search_rounded, 
-                  color: Color(0xFF9A93AC), 
+                  color: Color(0xFF6B8C73), 
                   size: 22,
                 ),
                 
@@ -205,7 +202,7 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
                     ? IconButton(
                         icon: const Icon(
                           Icons.cancel, // Menggunakan icon cancel bawaan yang sudah membulat
-                          color: Color(0xFFD3CFE2),
+                          color: Color(0xFFB5D4BC),
                           size: 20,
                         ),
                         onPressed: _searchController.clear,
@@ -248,9 +245,9 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: Column(
                 children: const [
-                  Icon(Icons.search_off, color: Color(0xFF8D88A3), size: 42),
+                  Icon(Icons.search_off, color: Color(0xFF6B8C73), size: 42),
                   SizedBox(height: 12),
-                  Text('Tidak ada pengiriman yang cocok.', style: TextStyle(color: Color(0xFF8D88A3), fontSize: 15)),
+                  Text('Tidak ada pengiriman yang cocok.', style: TextStyle(color: Color(0xFF6B8C73), fontSize: 15)),
                 ],
               ),
             ),
@@ -269,7 +266,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
   final ShipmentProgress progress;
   final AuthSession? session;
 
-  static const Color _primary = Color(0xFF38804B);
+  static const Color _primary = Color(0xFF2F6C3F);
   static const Color _done = Color(0xFF16C38A);
 
   String get _currentStatusLabel {
@@ -297,7 +294,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
     final horizontalPad = screenWidth < 380 ? 12.0 : 16.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F3FA),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -312,7 +309,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 style: TextStyle(
                     color: _primary, fontWeight: FontWeight.w800, fontSize: 15)),
             Text(shipment.shipmentNumber,
-                style: const TextStyle(color: Color(0xFF9A93AC), fontSize: 11)),
+                style: const TextStyle(color: Color(0xFF6B8C73), fontSize: 11)),
           ],
         ),
       ),
@@ -331,11 +328,11 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEAF0FF),
+                        color: const Color(0xFFDCEDE1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.description_outlined,
-                          color: Color(0xFF2F77C4), size: 22),
+                          color: Color(0xFF2F6C3F), size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -343,13 +340,13 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('No. Surat Jalan',
-                              style: TextStyle(color: Color(0xFF6B6780), fontSize: 11)),
+                              style: TextStyle(color: Color(0xFF5E7D66), fontSize: 11)),
                           const SizedBox(height: 2),
                           Text(shipment.shipmentNumber,
                               style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF20202D))),
+                                  color: Color(0xFF0F261F))),
                         ],
                       ),
                     ),
@@ -361,7 +358,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
-                const Divider(height: 1, color: Color(0xFFECE9F3)),
+                const Divider(height: 1, color: Color(0xFFDEEBE2)),
                 const SizedBox(height: 14),
                 _infoRow(Icons.warehouse_outlined, 'Asal', shipment.origin),
                 const SizedBox(height: 10),
@@ -386,7 +383,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF17203A))),
+                            color: Color(0xFF0F261F))),
                   ],
                 ),
                 const SizedBox(height: 18),
@@ -444,7 +441,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF17203A))),
+                            color: Color(0xFF0F261F))),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -492,13 +489,13 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 if (progress.statusDetail.isNotEmpty &&
                     progress.statusDetail != 'Menunggu proses muat') ...[
                   const SizedBox(height: 14),
-                  const Divider(height: 1, color: Color(0xFFECE9F3)),
+                  const Divider(height: 1, color: Color(0xFFDEEBE2)),
                   const SizedBox(height: 12),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Icon(Icons.notes_rounded,
-                          size: 16, color: Color(0xFF9A93AC)),
+                          size: 16, color: Color(0xFF6B8C73)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -508,18 +505,18 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                                 style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF52506A))),
+                                    color: Color(0xFF5E7D66))),
                             const SizedBox(height: 4),
                             Text(progress.statusDetail,
                                 style: const TextStyle(
-                                    fontSize: 13, color: Color(0xFF5E5B70))),
+                                    fontSize: 13, color: Color(0xFF5E7D66))),
                             if (progress.deliveryNote.isNotEmpty &&
                                 progress.deliveryNote !=
                                     'Detail pengiriman akan muncul di sini.') ...[
                               const SizedBox(height: 4),
                               Text(progress.deliveryNote,
                                   style: const TextStyle(
-                                      fontSize: 12, color: Color(0xFF8D88A3))),
+                                      fontSize: 12, color: Color(0xFF6B8C73))),
                             ],
                           ],
                         ),
@@ -563,7 +560,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E0EF)),
+        border: Border.all(color: const Color(0xFFDEEBE2)),
         boxShadow: const [
           BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 3)),
         ],
@@ -576,7 +573,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF9A93AC)),
+        Icon(icon, size: 16, color: const Color(0xFF6B8C73)),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -584,13 +581,13 @@ class TransportirShipmentDetailPage extends StatelessWidget {
             children: [
               Text(label,
                   style:
-                      const TextStyle(fontSize: 11, color: Color(0xFF9A93AC))),
+                      const TextStyle(fontSize: 11, color: Color(0xFF6B8C73))),
               const SizedBox(height: 2),
               Text(value,
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF20202D))),
+                      color: Color(0xFF0F261F))),
             ],
           ),
         ),
@@ -617,9 +614,9 @@ class _TimelineItem extends StatelessWidget {
   final bool isLast;
 
   static const _done = Color(0xFF16C38A);
-  static const _pending = Color(0xFFD4D0E3);
+  static const _pending = Color(0xFFB5D4BC);
   static const _lineActive = Color(0xFF16C38A);
-  static const _lineIdle = Color(0xFFE4E0EF);
+  static const _lineIdle = Color(0xFFDEEBE2);
 
   @override
   Widget build(BuildContext context) {
@@ -635,7 +632,7 @@ class _TimelineItem extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: done ? _done : const Color(0xFFF4F1FD),
+                  color: done ? _done : const Color(0xFFEAF2EC),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: done ? _done : _pending,
@@ -650,7 +647,7 @@ class _TimelineItem extends StatelessWidget {
                 ),
                 child: Icon(icon,
                     size: 16,
-                    color: done ? Colors.white : const Color(0xFFB0AAC4)),
+                    color: done ? Colors.white : const Color(0xFF6B8C73)),
               ),
               if (!isLast)
                 Container(
@@ -683,8 +680,8 @@ class _TimelineItem extends StatelessWidget {
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           color: done
-                              ? const Color(0xFF17203A)
-                              : const Color(0xFF8D88A3),
+                              ? const Color(0xFF0F261F)
+                              : const Color(0xFF6B8C73),
                         ),
                       ),
                     ),
@@ -709,8 +706,8 @@ class _TimelineItem extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 12,
                         color: done
-                            ? const Color(0xFF6B6780)
-                            : const Color(0xFFB0AAC4))),
+                            ? const Color(0xFF5E7D66)
+                            : const Color(0xFF6B8C73))),
               ],
             ),
           ),
@@ -746,7 +743,7 @@ class _ProofPhotoSection extends StatelessWidget {
               done ? Icons.check_circle : Icons.radio_button_unchecked,
               size: 14,
               color:
-                  done ? const Color(0xFF16C38A) : const Color(0xFFB0AAC4),
+                  done ? const Color(0xFF16C38A) : const Color(0xFF6B8C73),
             ),
             const SizedBox(width: 6),
             Text(
@@ -755,8 +752,8 @@ class _ProofPhotoSection extends StatelessWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: done
-                    ? const Color(0xFF17203A)
-                    : const Color(0xFF9A93AC),
+                    ? const Color(0xFF0F261F)
+                    : const Color(0xFF6B8C73),
               ),
             ),
           ],
@@ -768,11 +765,11 @@ class _ProofPhotoSection extends StatelessWidget {
             width: double.infinity,
             height: 150,
             decoration: BoxDecoration(
-              color: const Color(0xFFF4F1FD),
+              color: const Color(0xFFEAF2EC),
               border: Border.all(
                 color: done
                     ? const Color(0xFFB8EDD7)
-                    : const Color(0xFFE4E0EF),
+                    : const Color(0xFFDEEBE2),
               ),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -807,13 +804,13 @@ class _ProofPhotoSection extends StatelessWidget {
           Icon(
             done ? Icons.broken_image_outlined : Icons.camera_alt_outlined,
             size: 32,
-            color: const Color(0xFFB0AAC4),
+            color: const Color(0xFF6B8C73),
           ),
           const SizedBox(height: 6),
           Text(
             done ? 'Foto tidak dapat dimuat' : 'Belum ada foto',
             style: const TextStyle(
-                fontSize: 11, color: Color(0xFFB0AAC4)),
+                fontSize: 11, color: Color(0xFF6B8C73)),
           ),
         ],
       ),
@@ -829,10 +826,10 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF38804B);
+    const Color primaryPurple = Color(0xFF2F6C3F);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F4FB),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -851,7 +848,7 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFD3CFE2)),
+              border: Border.all(color: const Color(0xFFB5D4BC)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -862,9 +859,9 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Pelacakan Pengiriman', style: TextStyle(color: Color(0xFF6B6780), fontSize: 12)),
+                          const Text('Pelacakan Pengiriman', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 12)),
                           const SizedBox(height: 4),
-                          Text(shipment.shipmentNumber, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
+                          Text(shipment.shipmentNumber, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                         ],
                       ),
                     ),
@@ -888,12 +885,12 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFD3CFE2)),
+              border: Border.all(color: const Color(0xFFB5D4BC)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Riwayat Status', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                const Text('Riwayat Status', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                 const SizedBox(height: 14),
                 _TimelineStep(active: true, title: 'Pemuatan Dimulai', subtitle: 'Gudang Alpha - Dermaga 4', icon: Icons.local_shipping_outlined),
                 _TimelineStep(active: true, title: 'Berangkat', subtitle: 'Koridor Jakarta - Bekasi', icon: Icons.route_rounded),
@@ -982,10 +979,10 @@ class TransportirShipmentProofPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF38804B);
+    const Color primaryPurple = Color(0xFF2F6C3F);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F4FB),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -1101,7 +1098,7 @@ class TransportirShipmentProofPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
               decoration: const BoxDecoration(
-                color: Color(0xFFF0EDF8),
+                color: Color(0xFFFFFFFF),
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(18), topRight: Radius.circular(18)),
               ),
               child: Row(
@@ -1115,10 +1112,10 @@ class TransportirShipmentProofPage extends StatelessWidget {
                   const Expanded(
                     child: CircleAvatar(
                       radius: 28,
-                      backgroundColor: Color(0xFFD8D3EA),
+                      backgroundColor: Color(0xFFB5D4BC),
                       child: CircleAvatar(
                         radius: 20,
-                        backgroundColor: Color(0xFFF6F3FD),
+                        backgroundColor: Color(0xFFFFFFFF),
                       ),
                     ),
                   ),
@@ -1318,9 +1315,9 @@ class _ShipmentSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final faded = completed;
-    final titleColor = faded ? Colors.grey.shade500 : const Color(0xFF20202D);
-    final bodyColor = faded ? Colors.grey.shade400 : const Color(0xFF9A93AC);
-    final subTitleColor = faded ? Colors.grey.shade500 : const Color(0xFF2A2740);
+    final titleColor = faded ? Colors.grey.shade500 : const Color(0xFF0F261F);
+    final bodyColor = faded ? Colors.grey.shade400 : const Color(0xFF6B8C73);
+    final subTitleColor = faded ? Colors.grey.shade500 : const Color(0xFF0F261F);
 
     return Material(
       color: Colors.white,
@@ -1332,7 +1329,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD4D0E3)),
+            border: Border.all(color: const Color(0xFFB5D4BC)),
             boxShadow: const [
               BoxShadow(color: Color(0x0C000000), blurRadius: 14, offset: Offset(0, 8)),
             ],
@@ -1349,10 +1346,10 @@ class _ShipmentSummaryCard extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEAF0FF),
+                        color: const Color(0xFFDCEDE1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.description_outlined, color: faded ? Colors.grey.shade500 : const Color(0xFF2F77C4), size: 20),
+                      child: Icon(Icons.description_outlined, color: faded ? Colors.grey.shade500 : const Color(0xFF2F6C3F), size: 20),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1366,7 +1363,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   shipment.scheduleLabel,
-                                  style: TextStyle(color: faded ? Colors.grey.shade500 : const Color(0xFF7D768B), fontSize: 13),
+                                  style: TextStyle(color: faded ? Colors.grey.shade500 : const Color(0xFF5E7D66), fontSize: 13),
                                 ),
                               ),
                             ],
@@ -1407,7 +1404,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF7F6FD),
+                      color: const Color(0xFFEAF2EC),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
@@ -1424,9 +1421,9 @@ class _ShipmentSummaryCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        Text(progress.statusDetail, style: const TextStyle(fontSize: 12, color: Color(0xFF5E5B70))),
+                        Text(progress.statusDetail, style: const TextStyle(fontSize: 12, color: Color(0xFF5E7D66))),
                         const SizedBox(height: 6),
-                        Text(progress.deliveryNote, style: const TextStyle(fontSize: 12, color: Color(0xFF5E5B70))),
+                        Text(progress.deliveryNote, style: const TextStyle(fontSize: 12, color: Color(0xFF5E7D66))),
                         if (progress.muatMasukPhotoBase64 != null || progress.muatKeluarPhotoBase64 != null) ...[
                           const SizedBox(height: 10),
                           Row(
@@ -1544,15 +1541,15 @@ class _DetailStatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: active ? const Color(0xFFDDEBFF) : const Color(0xFFF4F4F9),
+        color: active ? const Color(0xFFDCEDE1) : const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(active ? Icons.check_circle : Icons.info_outline, size: 14, color: active ? const Color(0xFF38804B) : const Color(0xFF6B8C73)),
+          Icon(active ? Icons.check_circle : Icons.info_outline, size: 14, color: active ? const Color(0xFF2F6C3F) : const Color(0xFF6B8C73)),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: active ? const Color(0xFF38804B) : const Color(0xFF6B8C73), fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(label, style: TextStyle(color: active ? const Color(0xFF2F6C3F) : const Color(0xFF6B8C73), fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -1580,7 +1577,7 @@ class _PhotoPreview extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF5E5B70))),
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF5E7D66))),
       ],
     );
   }
@@ -1596,8 +1593,8 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = primary ? const Color(0xFF4535A8) : Colors.white;
-    final foreground = primary ? Colors.white : const Color(0xFF4535A8);
+    final background = primary ? const Color(0xFF0F261F) : Colors.white;
+    final foreground = primary ? Colors.white : const Color(0xFF0F261F);
 
     return SizedBox(
       height: 40,
@@ -1607,7 +1604,7 @@ class _ActionButton extends StatelessWidget {
           backgroundColor: background,
           foregroundColor: foreground,
           elevation: 0,
-          side: primary ? BorderSide.none : const BorderSide(color: Color(0xFF4535A8)),
+          side: primary ? BorderSide.none : const BorderSide(color: Color(0xFF0F261F)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -1647,9 +1644,9 @@ class _KeyValue extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Color(0xFF6A6780), fontSize: 12)),
+        Text(label, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 12)),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF20202D))),
+        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
       ],
     );
   }
@@ -1665,7 +1662,7 @@ class _TimelineStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = active ? const Color(0xFF38804B) : const Color(0xFF8DB89A);
+    final fg = active ? const Color(0xFF2F6C3F) : const Color(0xFF8DB89A);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -1674,7 +1671,7 @@ class _TimelineStep extends StatelessWidget {
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: active ? const Color(0xFF38804B) : const Color(0xFFD0E8D4), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: active ? const Color(0xFF2F6C3F) : const Color(0xFFD0E8D4), shape: BoxShape.circle),
             child: Icon(icon, size: 18, color: active ? Colors.white : fg),
           ),
           const SizedBox(width: 12),
@@ -1733,8 +1730,8 @@ class _ActionMiniButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = filled ? Colors.white : const Color(0xFF443C53);
-    final bg = filled ? const Color(0xFF409557) : Colors.transparent;
+    final fg = filled ? Colors.white : const Color(0xFF5E7D66);
+    final bg = filled ? const Color(0xFF2F6C3F) : Colors.transparent;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1753,7 +1750,7 @@ class _ActionMiniButton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF4B465B))),
+        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF5E7D66))),
       ],
     );
   }
@@ -1765,7 +1762,7 @@ class _WarehousePainter extends CustomPainter {
     final basePaint = Paint()..color = const Color(0xFF2F3342);
     canvas.drawRect(Rect.fromLTWH(0, size.height * 0.55, size.width, size.height * 0.45), basePaint);
 
-    final lightPaint = Paint()..color = const Color(0xFF4B4F60);
+    final lightPaint = Paint()..color = const Color(0xFF5E7D66);
     canvas.drawRect(Rect.fromLTWH(size.width * 0.08, size.height * 0.18, size.width * 0.84, size.height * 0.46), lightPaint);
 
     final doorPaint = Paint()..color = const Color(0xFFB7B1A2);
@@ -1794,7 +1791,7 @@ class TransportirSuratJalanPage extends StatelessWidget {
   final TransportirShipmentCardData shipment;
   final AuthSession? session;
 
-  static const _primaryPurple = Color(0xFF38804B);
+  static const _primaryPurple = Color(0xFF2F6C3F);
 
   @override
   Widget build(BuildContext context) {
@@ -1804,7 +1801,7 @@ class TransportirSuratJalanPage extends StatelessWidget {
         '${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0EDF8),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -1856,7 +1853,7 @@ class _SuratJalanDocument extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD0C8E8)),
+        border: Border.all(color: const Color(0xFFB5D4BC)),
         boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 4))],
       ),
       child: Column(
@@ -1898,7 +1895,7 @@ class _SuratJalanDocument extends StatelessWidget {
                 child: Image.asset('gcs.png', width: 120, height: 120, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
                       width: 120, height: 120,
-                      decoration: BoxDecoration(color: const Color(0xFF38804B), borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: const Color(0xFF2F6C3F), borderRadius: BorderRadius.circular(10)),
                       child: const Icon(Icons.business, color: Colors.white, size: 56),
                     )),
               ),
@@ -1908,31 +1905,31 @@ class _SuratJalanDocument extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('PT. GRESIK CIPTA SEJAHTERA',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                     const SizedBox(height: 6),
                     const Text('Jl. KIG Raya Selatan Blok A5 - Gresik',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5A5670))),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5E7D66))),
                     const SizedBox(height: 3),
                     const Text('Telp. (031) 3985543, 3984822, 3973239',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5A5670))),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5E7D66))),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('No. Dokumen', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF5A5670))),
+                  const Text('No. Dokumen', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF5E7D66))),
                   Text(sjNumber.replaceFirst('SJ-', ''),
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 20),
-          const Divider(height: 1, thickness: 1.5, color: Color(0xFFE0DDF0)),
+          const Divider(height: 1, thickness: 1.5, color: Color(0xFFDEEBE2)),
           const SizedBox(height: 18),
           const Text('SURAT PENGANTAR',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.3, color: Color(0xFF17203A))),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.3, color: Color(0xFF0F261F))),
           const Text('Surat Jalan Pengiriman Barang',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B8C73))),
           const SizedBox(height: 18),
@@ -1958,12 +1955,12 @@ class _SuratJalanDocument extends StatelessWidget {
                   const Text('Pengiriman kepada Yth.',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B8C73))),
                   Text(shipment.destination.split(',').first,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                   const SizedBox(height: 4),
                   SizedBox(
                     width: 180,
                     child: Text(shipment.destination,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5A5670), height: 1.5)),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5E7D66), height: 1.5)),
                   ),
                 ],
               ),
@@ -1979,7 +1976,7 @@ class _SuratJalanDocument extends StatelessWidget {
       border: const TableBorder(
         top: BorderSide(width: 1.5),
         bottom: BorderSide(width: 1.5),
-        verticalInside: BorderSide(color: Color(0xFFD0C8E8)),
+        verticalInside: BorderSide(color: Color(0xFFB5D4BC)),
       ),
       columnWidths: const {
         0: FixedColumnWidth(28),
@@ -1996,10 +1993,10 @@ class _SuratJalanDocument extends StatelessWidget {
 
   TableRow _tableHeaderRow(List<String> cells) {
     return TableRow(
-      decoration: const BoxDecoration(color: Color(0xFFF4F0FF)),
+      decoration: const BoxDecoration(color: Color(0xFFFFFFFF)),
       children: cells.map((c) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        child: Text(c, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF38804B))),
+        child: Text(c, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF2F6C3F))),
       )).toList(),
     );
   }
@@ -2008,7 +2005,7 @@ class _SuratJalanDocument extends StatelessWidget {
     return TableRow(
       children: cells.map((c) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Text(c, style: const TextStyle(fontSize: 12, color: Color(0xFF17203A))),
+        child: Text(c, style: const TextStyle(fontSize: 12, color: Color(0xFF0F261F))),
       )).toList(),
     );
   }
@@ -2028,16 +2025,16 @@ class _SuratJalanDocument extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Dikirim ke alamat tersebut untuk memenuhi permintaan',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF5A5670))),
+                        style: TextStyle(fontSize: 11, color: Color(0xFF5E7D66))),
                     const SizedBox(height: 6),
                     Text('Pemilik : ${shipment.destination.split(',').first}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF17203A))),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F261F))),
                     const SizedBox(height: 2),
                     const Text('Telp   : 081334045678',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF17203A))),
+                        style: TextStyle(fontSize: 12, color: Color(0xFF0F261F))),
                     const SizedBox(height: 8),
                     const Text('GP : GPP PAKISAJI - PG',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF17203A))),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F261F))),
                   ],
                 ),
               ),
@@ -2048,7 +2045,7 @@ class _SuratJalanDocument extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      border: Border.all(color: const Color(0xFF38804B), width: 2),
+                      border: Border.all(color: const Color(0xFF2F6C3F), width: 2),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 8, offset: Offset(0, 3))],
                     ),
@@ -2059,7 +2056,7 @@ class _SuratJalanDocument extends StatelessWidget {
                       backgroundColor: Colors.white,
                       eyeStyle: const QrEyeStyle(
                         eyeShape: QrEyeShape.square,
-                        color: Color(0xFF38804B),
+                        color: Color(0xFF2F6C3F),
                       ),
                       dataModuleStyle: const QrDataModuleStyle(
                         dataModuleShape: QrDataModuleShape.square,
@@ -2071,16 +2068,16 @@ class _SuratJalanDocument extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0EDFF),
+                      color: const Color(0xFFEAF2EC),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       sjNumber,
-                      style: const TextStyle(fontSize: 9, color: Color(0xFF38804B), fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                      style: const TextStyle(fontSize: 9, color: Color(0xFF2F6C3F), fontWeight: FontWeight.w900, letterSpacing: 0.5),
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text('Scan untuk konfirmasi', style: TextStyle(fontSize: 8, color: Color(0xFF9A93AC))),
+                  const Text('Scan untuk konfirmasi', style: TextStyle(fontSize: 8, color: Color(0xFF6B8C73))),
                 ],
               ),
             ],
@@ -2091,22 +2088,22 @@ class _SuratJalanDocument extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFD0C8E8)),
+              border: Border.all(color: const Color(0xFFB5D4BC)),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                Text('Terbilang :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF17203A))),
+                Text('Terbilang :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
                 SizedBox(height: 2),
                 Text('# Satu Juta Enam Ratus Sembilan Puluh Lima Ribu Tujuh Ratus Enam Puluh Rupiah #',
-                    style: TextStyle(fontSize: 10, color: Color(0xFF5A5670))),
+                    style: TextStyle(fontSize: 10, color: Color(0xFF5E7D66))),
               ],
             ),
           ),
           const SizedBox(height: 12),
           // Catatan
-          const Text('Catatan :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF17203A))),
+          const Text('Catatan :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
           const SizedBox(height: 4),
           ...const [
             '1. Dilarang menjual di atas HET, sesuai SK mentan.',
@@ -2115,7 +2112,7 @@ class _SuratJalanDocument extends StatelessWidget {
             '4. Surat pengantar ini sebagai Nota Penjualan.',
           ].map((note) => Padding(
             padding: const EdgeInsets.only(bottom: 3),
-            child: Text(note, style: const TextStyle(fontSize: 10, color: Color(0xFF5A5670))),
+            child: Text(note, style: const TextStyle(fontSize: 10, color: Color(0xFF5E7D66))),
           )),
           const SizedBox(height: 16),
           // Tanda Tangan
@@ -2149,7 +2146,7 @@ class _MetaRow extends StatelessWidget {
           child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B8C73))),
         ),
         const Text(': ', style: TextStyle(fontSize: 12, color: Color(0xFF6B8C73))),
-        Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF17203A)))),
+        Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F261F)))),
       ],
     );
   }
@@ -2168,15 +2165,15 @@ class _TandaTangan extends StatelessWidget {
         children: [
           Text(label,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10, color: Color(0xFF5A5670))),
+              style: const TextStyle(fontSize: 10, color: Color(0xFF5E7D66))),
           const SizedBox(height: 44),
           if (name != null)
             Text(name!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900,
-                    decoration: TextDecoration.underline, color: Color(0xFF17203A))),
+                    decoration: TextDecoration.underline, color: Color(0xFF0F261F))),
           if (name == null)
-            Container(height: 1, color: const Color(0xFFD0C8E8)),
+            Container(height: 1, color: const Color(0xFFB5D4BC)),
         ],
       ),
     );
@@ -2214,7 +2211,7 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
 
   String get _title => widget.muatType == 'masuk' ? 'Load In' : 'Load Out';
   Color get _accentColor =>
-      widget.muatType == 'masuk' ? const Color(0xFF16C38A) : const Color(0xFF409557);
+      widget.muatType == 'masuk' ? const Color(0xFF16C38A) : const Color(0xFF2F6C3F);
 
   @override
   void initState() {
@@ -2422,7 +2419,7 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Color(0xFF38804B), strokeWidth: 3),
+              CircularProgressIndicator(color: Color(0xFF2F6C3F), strokeWidth: 3),
               SizedBox(height: 18),
               Text('Membuka kamera…',
                   style: TextStyle(color: Colors.white54, fontSize: 14)),
@@ -2454,7 +2451,7 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w800)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF38804B),
+                backgroundColor: const Color(0xFF2F6C3F),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -2657,7 +2654,7 @@ class TransportirMapTrackingPage extends StatefulWidget {
 }
 
 class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage> {
-  static const Color _primary = Color(0xFF38804B);
+  static const Color _primary = Color(0xFF2F6C3F);
 
   final MapController _mapCtrl = MapController();
 
@@ -2802,7 +2799,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Kembali',
-                style: TextStyle(color: Color(0xFF6A6780))),
+                style: TextStyle(color: Color(0xFF5E7D66))),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -2894,7 +2891,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                     icon: Icons.access_time_rounded,
                     label: 'ETA',
                     value: _atKios ? 'Tiba' : _etaLabel,
-                    color: const Color(0xFF7B6FFF),
+                    color: const Color(0xFF2F6C3F),
                   ),
                 ),
                 Container(width: 1, height: 30, color: Colors.white12),
@@ -2903,7 +2900,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                     icon: Icons.straighten_rounded,
                     label: 'Jarak',
                     value: _atKios ? '0 km' : _distLabel,
-                    color: const Color(0xFF4FC3F7),
+                    color: const Color(0xFF2F6C3F),
                   ),
                 ),
                 Container(width: 1, height: 30, color: Colors.white12),
@@ -2952,7 +2949,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                         polylines: [
                           Polyline(
                             points: [_originCoords, _destCoords],
-                            color: const Color(0xFF38804B),
+                            color: const Color(0xFF2F6C3F),
                             strokeWidth: 5,
                           ),
                         ],
@@ -2963,7 +2960,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                         polylines: [
                           Polyline(
                             points: [_originCoords, _destCoords],
-                            color: const Color(0x7738804B),
+                            color: const Color(0x772F6C3F),
                             strokeWidth: 4,
                           ),
                         ],
@@ -3024,7 +3021,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 3),
                               boxShadow: const [
-                                BoxShadow(color: Color(0x9938804B), blurRadius: 16),
+                                BoxShadow(color: Color(0x992F6C3F), blurRadius: 16),
                               ],
                             ),
                             child: Icon(
@@ -3049,7 +3046,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.93),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFD3CFE2)),
+                      border: Border.all(color: const Color(0xFFB5D4BC)),
                       boxShadow: const [
                         BoxShadow(color: Color(0x22000000), blurRadius: 6),
                       ],
@@ -3064,7 +3061,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                             color: _atKios
                                 ? const Color(0xFF16C38A)
                                 : _currentStop == 0
-                                    ? const Color(0xFF7B6FFF)
+                                    ? const Color(0xFF2F6C3F)
                                     : const Color(0xFFFFA000),
                             shape: BoxShape.circle,
                           ),
@@ -3077,7 +3074,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                                   ? 'Di Gudang – menunggu Load In'
                                   : 'Dalam Perjalanan ke Kios',
                           style: const TextStyle(
-                              color: Color(0xFF17203A),
+                              color: Color(0xFF0F261F),
                               fontSize: 11,
                               fontWeight: FontWeight.w700),
                         ),
@@ -3102,7 +3099,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDDD9EA),
+                    color: const Color(0xFFDEEBE2),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -3128,7 +3125,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                               width: 2,
                               height: 4,
                               margin: const EdgeInsets.symmetric(vertical: 2),
-                              color: const Color(0xFFCCC7E0),
+                              color: const Color(0xFFB5D4BC),
                             ),
                           ),
                         ),
@@ -3308,13 +3305,13 @@ class _RouteEndpoint extends StatelessWidget {
             children: [
               Text(label,
                   style:
-                      const TextStyle(fontSize: 10, color: Color(0xFF9A93AC))),
+                      const TextStyle(fontSize: 10, color: Color(0xFF6B8C73))),
               const SizedBox(height: 2),
               Text(value,
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF17203A)),
+                      color: Color(0xFF0F261F)),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
             ],

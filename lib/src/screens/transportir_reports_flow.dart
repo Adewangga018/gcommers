@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/auth_models.dart';
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/transportir_bottom_nav.dart';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -87,20 +88,19 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
     final recentClaims = ClaimStore.instance.claims.take(3).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF5),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF409557)),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.ink),
           onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session),
         ),
-        title: const Text('GCommers',
-            style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800)),
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF409557)),
+            icon: const Icon(Icons.refresh_rounded, color: AppTheme.ink),
             onPressed: _load,
           ),
         ],
@@ -119,12 +119,12 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
                         style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF17203A)),
+                            color: Color(0xFF0F261F)),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Data dari ${_orders.length} pesanan tersedia',
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF6A6780)),
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF5E7D66)),
                       ),
                       const SizedBox(height: 16),
 
@@ -184,13 +184,13 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
                         style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF17203A)),
+                            color: Color(0xFF0F261F)),
                       ),
                       const SizedBox(height: 12),
                       if (recentClaims.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.0),
-                          child: Text('Belum ada riwayat klaim diajukan.', style: TextStyle(color: Color(0xFF6A6780))),
+                          child: Text('Belum ada riwayat klaim diajukan.', style: TextStyle(color: Color(0xFF5E7D66))),
                         )
                       else
                         ...recentClaims.map((claim) => Padding(
@@ -215,8 +215,8 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
                           icon: const Icon(Icons.history),
                           label: const Text('Semua Riwayat Klaim'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF4438A7),
-                            side: const BorderSide(color: Color(0xFF4438A7)),
+                            foregroundColor: const Color(0xFF0F261F),
+                            side: const BorderSide(color: Color(0xFF0F261F)),
                             textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -231,7 +231,7 @@ class _TransportirReportsPageState extends State<TransportirReportsPage> {
                           icon: const Icon(Icons.add_circle_outline),
                           label: const Text('Ajukan Klaim Baru'),
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF4438A7),
+                            backgroundColor: const Color(0xFF0F261F),
                             foregroundColor: Colors.white,
                             textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -345,8 +345,8 @@ class _TransportirReportClaimPageState
               ),
               ListTile(
                 leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEDE9FF),
-                  child: Icon(Icons.camera_alt_outlined, color: Color(0xFF4438A7)),
+                  backgroundColor: Color(0xFFEAF2EC),
+                  child: Icon(Icons.camera_alt_outlined, color: Color(0xFF0F261F)),
                 ),
                 title: const Text('Ambil Foto',
                     style: TextStyle(fontWeight: FontWeight.w700)),
@@ -357,8 +357,8 @@ class _TransportirReportClaimPageState
               ),
               ListTile(
                 leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEDE9FF),
-                  child: Icon(Icons.photo_library_outlined, color: Color(0xFF4438A7)),
+                  backgroundColor: Color(0xFFEAF2EC),
+                  child: Icon(Icons.photo_library_outlined, color: Color(0xFF0F261F)),
                 ),
                 title: const Text('Pilih dari Galeri',
                     style: TextStyle(fontWeight: FontWeight.w700)),
@@ -434,12 +434,12 @@ class _TransportirReportClaimPageState
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF4438A7);
+    const purple = Color(0xFF0F261F);
     const labelStyle = TextStyle(
-        fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF54546A));
+        fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF5E7D66));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FF),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -464,7 +464,7 @@ class _TransportirReportClaimPageState
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFD3D6E7)),
+                border: Border.all(color: const Color(0xFFB5D4BC)),
               ),
               child: Row(
                 children: [
@@ -476,10 +476,10 @@ class _TransportirReportClaimPageState
                       style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF17203A)),
+                          color: Color(0xFF0F261F)),
                     ),
                   ),
-                  const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF9CA3AF)),
+                  const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF6B8C73)),
                 ],
               ),
             ),
@@ -516,15 +516,15 @@ class _TransportirReportClaimPageState
             maxLines: 3,
             decoration: InputDecoration(
               hintText: 'Tambahkan keterangan jika ada...',
-              hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+              hintStyle: const TextStyle(color: Color(0xFF6B8C73), fontSize: 13),
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFD3D6E7))),
+                  borderSide: const BorderSide(color: Color(0xFFB5D4BC))),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFD3D6E7))),
+                  borderSide: const BorderSide(color: Color(0xFFB5D4BC))),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: purple, width: 1.5)),
@@ -553,7 +553,7 @@ class _TransportirReportClaimPageState
                 fontSize: 12,
                 color: _photoError
                     ? const Color(0xFFEF5350)
-                    : const Color(0xFF9CA3AF)),
+                    : const Color(0xFF6B8C73)),
           ),
           const SizedBox(height: 8),
           // Photo grid
@@ -579,19 +579,19 @@ class _TransportirReportClaimPageState
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: const Color(0xFF4438A7), width: 1.5,
+                            color: const Color(0xFF0F261F), width: 1.5,
                             style: BorderStyle.solid),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
                           Icon(Icons.add_photo_alternate_outlined,
-                              color: Color(0xFF4438A7), size: 28),
+                              color: Color(0xFF0F261F), size: 28),
                           SizedBox(height: 4),
                           Text('Tambah',
                               style: TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFF4438A7),
+                                  color: Color(0xFF0F261F),
                                   fontWeight: FontWeight.w700)),
                         ],
                       ),
@@ -645,7 +645,7 @@ class _TransportirReportClaimPageState
                   border: Border.all(
                     color: _photoError
                         ? const Color(0xFFEF5350)
-                        : const Color(0xFFD3D6E7),
+                        : const Color(0xFFB5D4BC),
                     width: _photoError ? 1.5 : 1,
                   ),
                   borderRadius: BorderRadius.circular(12),
@@ -659,7 +659,7 @@ class _TransportirReportClaimPageState
                       decoration: BoxDecoration(
                         color: _photoError
                             ? const Color(0xFFFFEBEE)
-                            : const Color(0xFFE0E7FF),
+                            : const Color(0xFFDCEDE1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(Icons.add_photo_alternate_outlined,
@@ -676,12 +676,12 @@ class _TransportirReportClaimPageState
                           fontSize: 13,
                           color: _photoError
                               ? const Color(0xFFEF5350)
-                              : const Color(0xFF17203A)),
+                              : const Color(0xFF0F261F)),
                     ),
                     const SizedBox(height: 4),
                     const Text('Format JPG / PNG · Bisa lebih dari 1 foto',
                         style: TextStyle(
-                            color: Color(0xFF6C6D80), fontSize: 12)),
+                            color: Color(0xFF5E7D66), fontSize: 12)),
                   ],
                 ),
               ),
@@ -693,7 +693,7 @@ class _TransportirReportClaimPageState
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF4438A7), Color(0xFF6C5CE7)],
+                colors: [Color(0xFF0F261F), Color(0xFF2F6C3F)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -778,7 +778,7 @@ class TransportirReportSuccessPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FF),
+      backgroundColor: const Color(0xFFFFFFFF),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -792,7 +792,7 @@ class TransportirReportSuccessPage extends StatelessWidget {
                     Align(
                       alignment: Alignment.topRight,
                       child: IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFF4A4A61)),
+                        icon: const Icon(Icons.close, color: Color(0xFF0F261F)),
                         onPressed: () => Navigator.of(context).popUntil((route) => route.settings.name == '/transportir-reports'),
                       ),
                     ),
@@ -800,22 +800,22 @@ class TransportirReportSuccessPage extends StatelessWidget {
                     Container(
                       width: 92,
                       height: 92,
-                      decoration: BoxDecoration(color: const Color(0xFF6EF0A8), borderRadius: BorderRadius.circular(18)),
-                      child: const Icon(Icons.check, size: 54, color: Color(0xFF0D7A4A)),
+                      decoration: BoxDecoration(color: const Color(0xFF16C38A), borderRadius: BorderRadius.circular(18)),
+                      child: const Icon(Icons.check, size: 54, color: Color(0xFF2F6C3F)),
                     ),
                     const SizedBox(height: 22),
-                    const Text('Pengajuan Klaim Berhasil!', textAlign: TextAlign.center, style: TextStyle(fontSize: 24 / 2, fontWeight: FontWeight.w900, color: Color(0xFF4438A7))),
+                    const Text('Pengajuan Klaim Berhasil!', textAlign: TextAlign.center, style: TextStyle(fontSize: 24 / 2, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                     const SizedBox(height: 12),
                     const Text(
                       'Klaim biaya pengiriman Anda untuk periode November 2023 telah berhasil diajukan dan sedang dalam proses verifikasi oleh Kantor Pusat.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 15, color: Color(0xFF5D5E6F), height: 1.45),
+                      style: TextStyle(fontSize: 15, color: Color(0xFF5E7D66), height: 1.45),
                     ),
                     const SizedBox(height: 18),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFD2D5E8))),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFB5D4BC))),
                       child: Column(
                         children: [
                           _InfoLine(label: 'Nomor Referensi', value: claim?.id ?? 'CLM-202311-082'),
@@ -839,15 +839,15 @@ class TransportirReportSuccessPage extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(color: const Color(0xFFF2F4FF), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFC8CDEF))),
+                      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFB5D4BC))),
                       child: const Row(
                         children: [
-                          Icon(Icons.info_outline, color: Color(0xFF409557)),
+                          Icon(Icons.info_outline, color: Color(0xFF2F6C3F)),
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               'Estimasi waktu verifikasi adalah 3-5 hari kerja. Anda akan menerima notifikasi jika status klaim berubah.',
-                              style: TextStyle(color: Color(0xFF5A5C73), height: 1.35),
+                              style: TextStyle(color: Color(0xFF5E7D66), height: 1.35),
                             ),
                           ),
                         ],
@@ -859,7 +859,7 @@ class TransportirReportSuccessPage extends StatelessWidget {
                       height: 52,
                       child: FilledButton(
                         onPressed: () => Navigator.of(context).popUntil((route) => route.settings.name == '/transportir-reports'),
-                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4438A7), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), textStyle: const TextStyle(fontWeight: FontWeight.w800)),
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0F261F), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), textStyle: const TextStyle(fontWeight: FontWeight.w800)),
                         child: const Text('Kembali ke Laporan'),
                       ),
                     ),
@@ -869,7 +869,7 @@ class TransportirReportSuccessPage extends StatelessWidget {
                       height: 52,
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-report-history', arguments: session),
-                        style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF4438A7), side: const BorderSide(color: Color(0xFF4438A7)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), textStyle: const TextStyle(fontWeight: FontWeight.w800)),
+                        style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF0F261F), side: const BorderSide(color: Color(0xFF0F261F)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), textStyle: const TextStyle(fontWeight: FontWeight.w800)),
                         child: const Text('Lihat Riwayat Klaim'),
                       ),
                     ),
@@ -939,22 +939,22 @@ class _TransportirReportHistoryPageState
     final total = ClaimStore.instance.claims.length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FF),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: false,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4438A7)),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F261F)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Riwayat Klaim',
-                style: TextStyle(color: Color(0xFF4438A7), fontWeight: FontWeight.w800, fontSize: 16)),
-            Text('$total pengajuan', style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12, fontWeight: FontWeight.w500)),
+                style: TextStyle(color: Color(0xFF0F261F), fontWeight: FontWeight.w800, fontSize: 16)),
+            Text('$total pengajuan', style: const TextStyle(color: Color(0xFF6B8C73), fontSize: 12, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -967,23 +967,23 @@ class _TransportirReportHistoryPageState
               controller: _searchCtrl,
               decoration: InputDecoration(
                 hintText: 'Cari nomor klaim (CLM-...)...',
-                hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6D6E86)),
+                hintStyle: const TextStyle(color: Color(0xFF6B8C73)),
+                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF5E7D66)),
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFD3D6E7))),
+                    borderSide: const BorderSide(color: Color(0xFFB5D4BC))),
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFD3D6E7))),
+                    borderSide: const BorderSide(color: Color(0xFFB5D4BC))),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF4438A7), width: 1.5)),
+                    borderSide: const BorderSide(color: Color(0xFF0F261F), width: 1.5)),
                 suffixIcon: _searchCtrl.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close, size: 18, color: Color(0xFF9CA3AF)),
+                        icon: const Icon(Icons.close, size: 18, color: Color(0xFF6B8C73)),
                         onPressed: () => _searchCtrl.clear(),
                       )
                     : null,
@@ -1006,15 +1006,15 @@ class _TransportirReportHistoryPageState
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: active ? const Color(0xFF4438A7) : Colors.white,
+                      color: active ? const Color(0xFF0F261F) : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: active ? const Color(0xFF4438A7) : const Color(0xFFD3D6E7)),
+                          color: active ? const Color(0xFF0F261F) : const Color(0xFFB5D4BC)),
                     ),
                     child: Text(
                       _filters[i],
                       style: TextStyle(
-                        color: active ? Colors.white : const Color(0xFF4A5568),
+                        color: active ? Colors.white : const Color(0xFF5E7D66),
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
@@ -1075,17 +1075,17 @@ class TransportirReportDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FF),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: false,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4438A7)),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F261F)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Detail Riwayat', style: TextStyle(color: Color(0xFF4438A7), fontWeight: FontWeight.w800)),
+        title: const Text('Detail Riwayat', style: TextStyle(color: Color(0xFF0F261F), fontWeight: FontWeight.w800)),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
@@ -1095,7 +1095,7 @@ class TransportirReportDetailPage extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFD3D6E7)),
+              border: Border.all(color: const Color(0xFFB5D4BC)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1113,7 +1113,7 @@ class TransportirReportDetailPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(args.number, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                          Text(args.number, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                           const SizedBox(height: 2),
                           Text(args.statusLabel, style: TextStyle(color: args.badgeColor, fontWeight: FontWeight.w700)),
                         ],
@@ -1147,15 +1147,15 @@ class TransportirReportDetailPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF2F4FF),
+              color: const Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFC8CDEF)),
+              border: Border.all(color: const Color(0xFFB5D4BC)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: Color(0xFF409557)),
+                const Icon(Icons.info_outline, color: Color(0xFF2F6C3F)),
                 const SizedBox(width: 10),
-                Expanded(child: Text(args.note, style: const TextStyle(color: Color(0xFF5A5C73), height: 1.35))),
+                Expanded(child: Text(args.note, style: const TextStyle(color: Color(0xFF5E7D66), height: 1.35))),
               ],
             ),
           ),
@@ -1164,7 +1164,7 @@ class TransportirReportDetailPage extends StatelessWidget {
             height: 52,
             child: FilledButton(
               onPressed: () => Navigator.pop(context),
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4438A7), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), textStyle: const TextStyle(fontWeight: FontWeight.w800)),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0F261F), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), textStyle: const TextStyle(fontWeight: FontWeight.w800)),
               child: const Text('Kembali'),
             ),
           ),
@@ -1196,13 +1196,13 @@ class _MonthSelectorButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD3D6E7)),
+        border: Border.all(color: const Color(0xFFB5D4BC)),
         boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 6, offset: Offset(0, 2))],
       ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF409557)),
+            icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF2F6C3F)),
             onPressed: onPrev,
           ),
           Expanded(
@@ -1212,13 +1212,13 @@ class _MonthSelectorButton extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.calendar_month_rounded, size: 18, color: Color(0xFF4438A7)),
+                  const Icon(Icons.calendar_month_rounded, size: 18, color: Color(0xFF0F261F)),
                   const SizedBox(width: 8),
                   Text(
                     label,
                     style: const TextStyle(
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF4438A7),
+                        color: Color(0xFF0F261F),
                         fontSize: 15),
                   ),
                 ],
@@ -1227,7 +1227,7 @@ class _MonthSelectorButton extends StatelessWidget {
           ),
           IconButton(
             icon: Icon(Icons.chevron_right_rounded,
-                color: onNext != null ? const Color(0xFF409557) : Colors.grey[300]),
+                color: onNext != null ? const Color(0xFF2F6C3F) : Colors.grey[300]),
             onPressed: onNext,
           ),
         ],
@@ -1276,17 +1276,17 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF409557)),
+                  icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF2F6C3F)),
                   onPressed: () => setState(() => _year--),
                 ),
                 Text(
                   '$_year',
                   style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF17203A)),
+                      fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F261F)),
                 ),
                 IconButton(
                   icon: Icon(Icons.chevron_right_rounded,
-                      color: _year < _now.year ? const Color(0xFF409557) : Colors.grey[300]),
+                      color: _year < _now.year ? const Color(0xFF2F6C3F) : Colors.grey[300]),
                   onPressed: _year < _now.year ? () => setState(() => _year++) : null,
                 ),
               ],
@@ -1315,10 +1315,10 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
                     duration: const Duration(milliseconds: 150),
                     decoration: BoxDecoration(
                       color: selected
-                          ? const Color(0xFF4438A7)
+                          ? const Color(0xFF0F261F)
                           : disabled
-                              ? const Color(0xFFF0F0F0)
-                              : const Color(0xFFEEEBFF),
+                              ? const Color(0xFFF5F5F5)
+                              : const Color(0xFFEAF2EC),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     alignment: Alignment.center,
@@ -1331,7 +1331,7 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
                             ? Colors.white
                             : disabled
                                 ? Colors.grey[400]
-                                : const Color(0xFF4438A7),
+                                : const Color(0xFF0F261F),
                       ),
                     ),
                   ),
@@ -1344,7 +1344,7 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Batal',
-                    style: TextStyle(color: Color(0xFF6A6780), fontWeight: FontWeight.w700)),
+                    style: TextStyle(color: Color(0xFF5E7D66), fontWeight: FontWeight.w700)),
               ),
             ),
           ],
@@ -1371,7 +1371,7 @@ class _StatusBreakdownCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD3D6E7)),
+        border: Border.all(color: const Color(0xFFB5D4BC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1379,7 +1379,7 @@ class _StatusBreakdownCard extends StatelessWidget {
           const Text('STATUS PESANAN',
               style: TextStyle(
                   fontSize: 12, fontWeight: FontWeight.w900,
-                  color: Color(0xFF5A5D73), letterSpacing: 0.6)),
+                  color: Color(0xFF5E7D66), letterSpacing: 0.6)),
           const SizedBox(height: 12),
           ...groups.entries.map((e) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -1391,15 +1391,15 @@ class _StatusBreakdownCard extends StatelessWidget {
                         children: [
                           Text(e.key,
                               style: const TextStyle(
-                                  fontSize: 13, color: Color(0xFF17203A))),
+                                  fontSize: 13, color: Color(0xFF0F261F))),
                           const SizedBox(height: 4),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(999),
                             child: LinearProgressIndicator(
                               value: e.value / orders.length,
                               minHeight: 7,
-                              backgroundColor: const Color(0xFFEEEBFF),
-                              valueColor: const AlwaysStoppedAnimation(Color(0xFF4438A7)),
+                              backgroundColor: const Color(0xFFEAF2EC),
+                              valueColor: const AlwaysStoppedAnimation(Color(0xFF0F261F)),
                             ),
                           ),
                         ],
@@ -1410,7 +1410,7 @@ class _StatusBreakdownCard extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF4438A7))),
+                            color: Color(0xFF0F261F))),
                   ],
                 ),
               )),
@@ -1433,7 +1433,7 @@ class _EmptyMonthCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD3D6E7)),
+        border: Border.all(color: const Color(0xFFB5D4BC)),
       ),
       child: Column(
         children: [
@@ -1467,13 +1467,13 @@ class _ErrorView extends StatelessWidget {
             const SizedBox(height: 12),
             Text(error,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF5E6076))),
+                style: const TextStyle(color: Color(0xFF5E7D66))),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
               label: const Text('Coba Lagi'),
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4438A7)),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0F261F)),
             ),
           ],
         ),
@@ -1493,7 +1493,7 @@ class _TotalCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF4438A7), Color(0xFF6C5CE7)],
+          colors: [Color(0xFF0F261F), Color(0xFF2F6C3F)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1548,15 +1548,15 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFD3D6E7))),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFB5D4BC))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF409557)),
+          Icon(icon, size: 20, color: const Color(0xFF2F6C3F)),
           const SizedBox(height: 6),
-          Text(title, style: const TextStyle(fontSize: 13, color: Color(0xFF5E6076))),
+          Text(title, style: const TextStyle(fontSize: 13, color: Color(0xFF5E7D66))),
           const SizedBox(height: 10),
-          Text(value, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+          Text(value, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
         ],
       ),
     );
@@ -1583,20 +1583,20 @@ class _ClaimField extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD3D6E7)),
+        border: Border.all(color: const Color(0xFFB5D4BC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: const Color(0xFF4438A7)),
+              Icon(icon, size: 16, color: const Color(0xFF0F261F)),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF4438A7),
+                    color: Color(0xFF0F261F),
                     fontSize: 13),
               ),
             ],
@@ -1609,22 +1609,22 @@ class _ClaimField extends StatelessWidget {
             decoration: InputDecoration(
               prefixText: 'Rp  ',
               prefixStyle: const TextStyle(
-                  color: Color(0xFF17203A),
+                  color: Color(0xFF0F261F),
                   fontWeight: FontWeight.w700,
                   fontSize: 15),
               hintText: '0',
               hintStyle: const TextStyle(color: Color(0xFFCCCCCC)),
               filled: true,
-              fillColor: const Color(0xFFF8F8FB),
+              fillColor: const Color(0xFFFFFFFF),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFD3D6E7))),
+                  borderSide: const BorderSide(color: Color(0xFFB5D4BC))),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFD3D6E7))),
+                  borderSide: const BorderSide(color: Color(0xFFB5D4BC))),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF4438A7), width: 1.5)),
+                  borderSide: const BorderSide(color: Color(0xFF0F261F), width: 1.5)),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
@@ -1647,8 +1647,8 @@ class _InfoLine extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: const Color(0xFF5E6076), fontWeight: isEmphasized ? FontWeight.w700 : FontWeight.w600)),
-        Text(value, style: TextStyle(color: const Color(0xFF17203A), fontWeight: FontWeight.w900, fontSize: isEmphasized ? 18 : 14)),
+        Text(label, style: TextStyle(color: const Color(0xFF5E7D66), fontWeight: isEmphasized ? FontWeight.w700 : FontWeight.w600)),
+        Text(value, style: TextStyle(color: const Color(0xFF0F261F), fontWeight: FontWeight.w900, fontSize: isEmphasized ? 18 : 14)),
       ],
     );
   }
@@ -1701,9 +1701,9 @@ class TransportirReportDetailArgs {
         '${d.day.toString().padLeft(2, '0')} ${_monthNames[d.month - 1]} ${d.year}';
     final periodStr = '${_monthNames[d.month - 1]} ${d.year}';
     const statusColors = {
-      'delivered': Color(0xFF6AE8A1), 'completed': Color(0xFF6AE8A1),
-      'paid':      Color(0xFF4A7DFF), 'shipping':   Color(0xFF4A7DFF),
-      'cancelled': Color(0xFFF2A7A4),
+      'delivered': Color(0xFF16C38A), 'completed': Color(0xFF16C38A),
+      'paid':      Color(0xFF2F6C3F), 'shipping':   Color(0xFF2F6C3F),
+      'cancelled': Color(0xFFEF5350),
     };
     return TransportirReportDetailArgs(
       number: order.poNumber,
@@ -1712,7 +1712,7 @@ class TransportirReportDetailArgs {
       amount: _fmtRupiah(order.totalAmount),
       statusLabel: order.statusLabel,
       statusIcon: Icons.receipt_long_outlined,
-      badgeColor: statusColors[order.status] ?? const Color(0xFFF2C98E),
+      badgeColor: statusColors[order.status] ?? const Color(0xFFDAA628),
       shippingCost: '-',
       fuelCost: '-',
       otherCost: '-',
@@ -1745,8 +1745,8 @@ class _DetailRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: const Color(0xFF5E6076), fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600)),
-        Text(value, style: TextStyle(color: const Color(0xFF17203A), fontWeight: FontWeight.w900, fontSize: emphasize ? 18 : 14)),
+        Text(label, style: TextStyle(color: const Color(0xFF5E7D66), fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600)),
+        Text(value, style: TextStyle(color: const Color(0xFF0F261F), fontWeight: FontWeight.w900, fontSize: emphasize ? 18 : 14)),
       ],
     );
   }
@@ -1767,16 +1767,16 @@ extension ClaimStatusX on ClaimStatus {
       };
 
   Color get color => switch (this) {
-        ClaimStatus.menunggu     => const Color(0xFFFFB74D),
-        ClaimStatus.diverifikasi => const Color(0xFF42A5F5),
-        ClaimStatus.disetujui    => const Color(0xFF66BB6A),
+        ClaimStatus.menunggu     => const Color(0xFFDAA628),
+        ClaimStatus.diverifikasi => const Color(0xFF2F6C3F),
+        ClaimStatus.disetujui    => const Color(0xFF2F6C3F),
         ClaimStatus.ditolak      => const Color(0xFFEF5350),
       };
 
   Color get bg => switch (this) {
         ClaimStatus.menunggu     => const Color(0xFFFFF3E0),
-        ClaimStatus.diverifikasi => const Color(0xFFE3F2FD),
-        ClaimStatus.disetujui    => const Color(0xFFE8F5E9),
+        ClaimStatus.diverifikasi => const Color(0xFFDCEDE1),
+        ClaimStatus.disetujui    => const Color(0xFFDCEDE1),
         ClaimStatus.ditolak      => const Color(0xFFFFEBEE),
       };
 
@@ -1907,7 +1907,7 @@ class _ClaimHistoryCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE4E0F0)),
+          border: Border.all(color: const Color(0xFFDEEBE2)),
           boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 3))],
         ),
         // SOLUSI: Dibungkus dengan IntrinsicHeight agar CrossAxisAlignment.stretch tidak error
@@ -1942,11 +1942,11 @@ class _ClaimHistoryCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(claim.id, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF17203A))),
+                      Text(claim.id, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                       const SizedBox(height: 3),
                       Text('Periode: $periodStr', style: const TextStyle(fontSize: 11, color: Color(0xFF6B8C73))),
                       const SizedBox(height: 2),
-                      Text(dateStr, style: const TextStyle(fontSize: 11, color: Color(0xFFADA6C0))),
+                      Text(dateStr, style: const TextStyle(fontSize: 11, color: Color(0xFF6B8C73))),
                     ],
                   ),
                 ),
@@ -1960,7 +1960,7 @@ class _ClaimHistoryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(_fmtRupiah(claim.total.toDouble()),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF4438A7))),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                     const SizedBox(height: 6),
                     Container(
                       constraints: const BoxConstraints(maxWidth: 100), 
@@ -1991,7 +1991,7 @@ class TransportirClaimDetailPage extends StatelessWidget {
   const TransportirClaimDetailPage({super.key, required this.claim});
   final ClaimRecord claim;
 
-  static const _primary = Color(0xFF4438A7);
+  static const _primary = Color(0xFF0F261F);
 
   @override
   Widget build(BuildContext context) {
@@ -2001,7 +2001,7 @@ class TransportirClaimDetailPage extends StatelessWidget {
     final steps = _buildSteps(claim.status);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FF),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -2021,7 +2021,7 @@ class TransportirClaimDetailPage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [_primary, const Color(0xFF6C5CE7)],
+                colors: [_primary, const Color(0xFF2F6C3F)],
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
@@ -2175,10 +2175,10 @@ class _ClaimTimelineStep extends StatelessWidget {
     final Color dotColor = step.isRejected
         ? const Color(0xFFEF5350)
         : step.state == _StepState.done
-            ? const Color(0xFF66BB6A)
+            ? const Color(0xFF2F6C3F)
             : step.state == _StepState.active
-                ? const Color(0xFF42A5F5)
-                : const Color(0xFFD0C8E8);
+                ? const Color(0xFF2F6C3F)
+                : const Color(0xFFB5D4BC);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2199,7 +2199,7 @@ class _ClaimTimelineStep extends StatelessWidget {
               ),
             ),
             if (!isLast)
-              Container(width: 2, height: 36, color: const Color(0xFFE0D8F0)),
+              Container(width: 2, height: 36, color: const Color(0xFFDEEBE2)),
           ],
         ),
         const SizedBox(width: 12),
@@ -2209,9 +2209,9 @@ class _ClaimTimelineStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(step.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: step.state == _StepState.pending ? const Color(0xFFADA6C0) : const Color(0xFF17203A))),
+                Text(step.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: step.state == _StepState.pending ? const Color(0xFF6B8C73) : const Color(0xFF0F261F))),
                 const SizedBox(height: 2),
-                Text(step.subtitle, style: TextStyle(fontSize: 12, color: step.state == _StepState.pending ? const Color(0xFFCCC7DE) : const Color(0xFF6B8C73))),
+                Text(step.subtitle, style: TextStyle(fontSize: 12, color: step.state == _StepState.pending ? const Color(0xFFB5D4BC) : const Color(0xFF6B8C73))),
               ],
             ),
           ),
@@ -2233,13 +2233,13 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE4E0F0)),
+        border: Border.all(color: const Color(0xFFDEEBE2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title.toUpperCase(),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF9A93AC), letterSpacing: 0.7)),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF6B8C73), letterSpacing: 0.7)),
           const SizedBox(height: 14),
           child,
         ],
@@ -2259,10 +2259,10 @@ class _CostRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: emphasize ? const Color(0xFF17203A) : const Color(0xFF5E6076),
+        Text(label, style: TextStyle(color: emphasize ? const Color(0xFF0F261F) : const Color(0xFF5E7D66),
             fontWeight: emphasize ? FontWeight.w800 : FontWeight.w500, fontSize: emphasize ? 14 : 13)),
         Text(value == 0 ? '-' : _fmtRupiah(value.toDouble()),
-            style: TextStyle(color: emphasize ? const Color(0xFF4438A7) : const Color(0xFF17203A),
+            style: TextStyle(color: emphasize ? const Color(0xFF0F261F) : const Color(0xFF0F261F),
                 fontWeight: FontWeight.w800, fontSize: emphasize ? 15 : 13)),
       ],
     );

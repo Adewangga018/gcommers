@@ -68,13 +68,13 @@ class _LoginScreenState extends State<LoginScreen> {
               bottom: false,
               child: Stack(
                 clipBehavior: Clip.none,
-                children: const [
-                  Positioned(
+                children: [
+                  const Positioned(
                     top: -40,
                     left: -50,
                     child: _DecoDot(220, Color(0x2638804B)),
                   ),
-                  Positioned(
+                  const Positioned(
                     bottom: 10,
                     right: -60,
                     child: _DecoDot(180, Color(0x1A38804B)),
@@ -83,19 +83,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _LogoCircle(size: 96),
-                        SizedBox(height: 18),
-                        Text(
-                          'GCommers',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
+                        const _LogoCircle(size: 96),
+                        const SizedBox(height: 18),
+                        Text('GCommers', style: AppTheme.title(size: 28, color: Colors.white)),
+                        const SizedBox(height: 6),
+                        const Text(
                           'Platform Kios Digital Terpercaya',
                           style: TextStyle(
                             color: Color(0x8CFFFFFF),
@@ -128,14 +120,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Masuk Kiosk',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-                  ),
+                  Text('Masuk Kiosk', style: AppTheme.title(size: 22)),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Masuk ke akun GCommers untuk role kiosk',
-                    style: TextStyle(color: AppTheme.muted, fontSize: 14),
+                    style: AppTheme.body(size: 14, color: AppTheme.muted),
                   ),
                   const SizedBox(height: 20),
                   AuthTextField(

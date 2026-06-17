@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
+import '../services/session_manager.dart';
 import '../utils/formatters.dart';
 
 class ReceivedGoodsPage extends StatefulWidget {
@@ -16,6 +17,19 @@ class _ReceivedGoodsPageState extends State<ReceivedGoodsPage> {
   Future<OrderDetail>? _detailFuture;
   String? _poNumber;
   bool _confirming = false;
+  String _recipientName = '...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecipient();
+  }
+
+  Future<void> _loadRecipient() async {
+    final session = await sessionManager.getSession();
+    if (!mounted) return;
+    setState(() => _recipientName = session?.displayName ?? '-');
+  }
 
   @override
   void didChangeDependencies() {
@@ -49,9 +63,9 @@ class _ReceivedGoodsPageState extends State<ReceivedGoodsPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color bg = Color(0xFF1F203A);
+    const Color bg = Color(0xFF0F261F);
     const Color primaryGreen = Color(0xFF16C38A);
-    const Color cardBg = Color(0xFF2B2C49);
+    const Color cardBg = Color(0xFF0F261F);
 
     return Scaffold(
       backgroundColor: bg,
@@ -90,13 +104,13 @@ class _ReceivedGoodsPageState extends State<ReceivedGoodsPage> {
                   Container(
                     width: 84,
                     height: 84,
-                    decoration: BoxDecoration(color: primaryGreen.withOpacity(0.16), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: primaryGreen.withValues(alpha: 0.16), shape: BoxShape.circle),
                     child: const Icon(Icons.check, color: primaryGreen, size: 46),
                   ),
                   const SizedBox(height: 26),
                   const Text(
                     'Barang Diterima!',
-                    style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800),
+                    style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -131,11 +145,11 @@ class _ReceivedGoodsPageState extends State<ReceivedGoodsPage> {
                         ),
                         const Divider(height: 1, color: Colors.white12),
                         const SizedBox(height: 16),
-                        const Row(
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Penerima', style: TextStyle(color: Colors.white54, fontSize: 13)),
-                            Text('PT Kios Berkah', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+                            const Text('Penerima', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                            Text(_recipientName, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
                           ],
                         ),
                       ],
@@ -151,7 +165,7 @@ class _ReceivedGoodsPageState extends State<ReceivedGoodsPage> {
                         backgroundColor: primaryGreen,
                         foregroundColor: Colors.white,
                         elevation: 12,
-                        shadowColor: primaryGreen.withOpacity(0.35),
+                        shadowColor: primaryGreen.withValues(alpha: 0.35),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                       child: Text(

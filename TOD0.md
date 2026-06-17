@@ -1,0 +1,6 @@
+- [ ] 1) Update backend schema (backend-dotnet/CommerceDatabase.cs): add tables Shipments, ShipmentRouteChecks (tracking load in/out + distance diff).
+- [ ] 2) Seed dummy data for current month: Orders + OrderItems + OrderEvents with statuses pending/processing/shipping/confirmed, plus dummy Shipments and route check entries.
+- [ ] 3) Fix dashboard monthly sales computation in backend: filter orders by CreatedAt for current month.
+- [ ] 4) Add API endpoint for dashboard summary including shipment counts and route check stats (or expand existing /dashboard/summary).
+- [ ] 5) Update frontend (Flutter) if needed to consume new fields /dashboard/summary.
+- [ ] 6) Run backend build/test (dotnet) and verify /tables lists seeded data.

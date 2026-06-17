@@ -26,9 +26,9 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF2F77C4);
-    const Color primaryPurple = Color(0xFF38804B);
-    const Color bgLight = Color(0xFFF4FAF5);
+    const Color primaryBlue = Color(0xFF2F6C3F);
+    const Color primaryPurple = Color(0xFF2F6C3F);
+    const Color bgLight = Color(0xFFFFFFFF);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -39,7 +39,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Detail Pesanan', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20)),
+        title: const Text('Detail Pesanan', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 20)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -65,7 +65,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFD1CBE4)),
+                      border: Border.all(color: const Color(0xFFB5D4BC)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +88,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEAF1FF),
+                                color: const Color(0xFFDCEDE1),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
@@ -118,7 +118,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFD1CBE4)),
+                      border: Border.all(color: const Color(0xFFB5D4BC)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +136,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFD1CBE4)),
+                      border: Border.all(color: const Color(0xFFB5D4BC)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,7 +147,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                             const Text('Daftar Barang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(color: const Color(0xFFF0EEF7), borderRadius: BorderRadius.circular(999)),
+                              decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(999)),
                               child: Text('${order.items.length} Items', style: const TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w700)),
                             ),
                           ],
@@ -192,7 +192,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.of(context).pushNamed('/payment', arguments: order.poNumber),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF38804B),
+                          backgroundColor: const Color(0xFF2F6C3F),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
@@ -251,7 +251,7 @@ class _StatusStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.isActive ? const Color(0xFF38804B) : const Color(0xFFB5D4BC);
+    final color = item.isActive ? const Color(0xFF2F6C3F) : const Color(0xFFB5D4BC);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -293,8 +293,8 @@ class _ItemRow extends StatelessWidget {
         Container(
           width: 46,
           height: 46,
-          decoration: BoxDecoration(color: const Color(0xFFF0EEF7), borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF7B768E), size: 24),
+          decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(10)),
+          child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF5E7D66), size: 24),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -310,7 +310,7 @@ class _ItemRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           formatCurrency(item.totalPrice),
-          style: const TextStyle(color: Color(0xFF38804B), fontSize: 14, fontWeight: FontWeight.w800),
+          style: const TextStyle(color: Color(0xFF2F6C3F), fontSize: 14, fontWeight: FontWeight.w800),
         ),
       ],
     );

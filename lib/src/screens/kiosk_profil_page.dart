@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
+import '../services/commerce_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import 'settings_pages.dart';
@@ -15,8 +16,11 @@ class KiosProfilePage extends StatefulWidget {
 }
 
 class _KiosProfilePageState extends State<KiosProfilePage> {
+  final _commerceService = CommerceService();
   AuthSession? _session;
   Uint8List? _avatarBytes;
+  int? _totalOrders;
+  int? _completedOrders;
 
   @override
   void initState() {
@@ -32,6 +36,20 @@ class _KiosProfilePageState extends State<KiosProfilePage> {
       _session = session;
       _avatarBytes = avatar;
     });
+    _loadStats(session?.email);
+  }
+
+  Future<void> _loadStats(String? email) async {
+    try {
+      final orders = await _commerceService.getOrders(userEmail: email);
+      if (!mounted) return;
+      setState(() {
+        _totalOrders = orders.length;
+        _completedOrders = orders.where((o) => o.status == 'completed' || o.status == 'received').length;
+      });
+    } catch (_) {
+      // Stats stay null and the cards show a loading placeholder.
+    }
   }
 
   @override
@@ -39,7 +57,7 @@ class _KiosProfilePageState extends State<KiosProfilePage> {
     const Color primaryColor = AppTheme.primary;
     final session = _session;
     final displayName = session?.displayName ?? 'Nama Pengguna';
-    final email = session?.email ?? 'user@contoh.com';
+    final email = session?.email ?? '-';
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -52,7 +70,7 @@ class _KiosProfilePageState extends State<KiosProfilePage> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: primaryColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('GCommers', style: TextStyle(color: AppTheme.navy, fontWeight: FontWeight.bold, fontSize: 20)),
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
         centerTitle: true,
         actions: const [NotificationBadge()],
       ),
@@ -120,9 +138,21 @@ class _KiosProfilePageState extends State<KiosProfilePage> {
               // ── Statistik ─────────────────────────────────────────────────
               Row(
                 children: [
-                  Expanded(child: _StatCard(icon: Icons.assignment_outlined, value: '142', label: 'Total PO')),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.assignment_outlined,
+                      value: _totalOrders?.toString() ?? '…',
+                      label: 'Total PO',
+                    ),
+                  ),
                   const SizedBox(width: 14),
-                  Expanded(child: _StatCard(icon: Icons.account_balance_wallet_outlined, value: '1.2K', label: 'Transaksi')),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.account_balance_wallet_outlined,
+                      value: _completedOrders?.toString() ?? '…',
+                      label: 'Selesai',
+                    ),
+                  ),
                 ],
               ),
 
@@ -181,7 +211,7 @@ class _KiosProfilePageState extends State<KiosProfilePage> {
 
   Widget _divider() => const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
-        child: Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
+        child: Divider(height: 1, thickness: 0.5, color: Color(0xFFF5F5F5)),
       );
 }
 
@@ -251,8 +281,11 @@ Widget _buildBottomNavBar(BuildContext context, int currentIndex) {
   return BottomNavigationBar(
     currentIndex: currentIndex,
     type: BottomNavigationBarType.fixed,
-    selectedItemColor: AppTheme.primary,
-    unselectedItemColor: Colors.grey,
+    backgroundColor: AppTheme.paper,
+    selectedItemColor: AppTheme.ink,
+    unselectedItemColor: AppTheme.muted,
+    selectedLabelStyle: AppTheme.body(size: 12, weight: FontWeight.w700),
+    unselectedLabelStyle: AppTheme.body(size: 12),
     showUnselectedLabels: true,
     items: const [
       BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),

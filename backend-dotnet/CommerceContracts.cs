@@ -90,6 +90,27 @@ public sealed record DashboardSummaryDto(
     decimal MonthlySales,
     IReadOnlyList<OrderSummaryDto> RecentOrders);
 
+public sealed record ShipmentSummaryDto(
+    string ShipmentNumber,
+    string Status,
+    string StatusLabel,
+    string DriverName,
+    string? TruckLabel,
+    string? PoliceNumber,
+    string? DestinationLabel,
+    string? DestinationAddress,
+    double? OriginLat,
+    double? OriginLng,
+    double? DestinationLat,
+    double? DestinationLng,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? CompletedAt);
+
+public sealed record TransportirDashboardSummaryDto(
+    int TotalShipments,
+    int ActiveShipments,
+    ShipmentSummaryDto? ActiveShipment);
+
 public sealed record NotificationDto(
     int Id,
     string Title,

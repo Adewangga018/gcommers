@@ -73,7 +73,7 @@ class _ScanQrPageState extends State<ScanQrPage> with WidgetsBindingObserver {
       barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: const Color(0xFF1F203A),
+        backgroundColor: const Color(0xFF0F261F),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -193,7 +193,7 @@ class _ScanQrPageState extends State<ScanQrPage> with WidgetsBindingObserver {
             const SizedBox(height: 4),
             const Text(
               'Pindai QR Kode',
-              style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800),
+              style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
@@ -261,7 +261,7 @@ class _CameraErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF1A1B30),
+      color: const Color(0xFF0F261F),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -343,7 +343,7 @@ class _ManualInputSheet extends StatelessWidget {
   final TextEditingController controller;
   final void Function(String code) onConfirm;
 
-  static const Color _primary = Color(0xFF38804B);
+  static const Color _primary = Color(0xFF2F6C3F);
 
   @override
   Widget build(BuildContext context) {
@@ -351,7 +351,7 @@ class _ManualInputSheet extends StatelessWidget {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF1A2E1D),
+          color: Color(0xFF0F261F),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
@@ -388,7 +388,7 @@ class _ManualInputSheet extends StatelessWidget {
                 hintText: 'Contoh: SJ-20231024-001',
                 hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
                 filled: true,
-                fillColor: const Color(0xFF243D27),
+                fillColor: const Color(0xFF0F261F),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),

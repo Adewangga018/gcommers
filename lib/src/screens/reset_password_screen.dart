@@ -69,7 +69,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               const SizedBox(height: 8),
               const Text(
                 'Buat Password Baru',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -131,7 +131,7 @@ class _StrengthBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.blue)),
+        Text(label, style: const TextStyle(color: AppTheme.primary)),
         const SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(999),

@@ -43,7 +43,7 @@ class SplashScreen extends StatelessWidget {
                 child: const LinearProgressIndicator(
                   value: 0.34,
                   minHeight: 6,
-                  backgroundColor: Color(0xFF3A5E42),
+                  backgroundColor: Color(0xFF2F6C3F),
                   valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
                 ),
               ),

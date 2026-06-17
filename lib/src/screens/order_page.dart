@@ -71,8 +71,8 @@ class _OrderPageState extends State<OrderPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF38804B);
-    const Color bgLight = Color(0xFFF4FAF5);
+    const Color primaryPurple = Color(0xFF2F6C3F);
+    const Color bgLight = Color(0xFFFFFFFF);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -85,7 +85,7 @@ class _OrderPageState extends State<OrderPage> {
         ),
         title: const Text(
           'Buat Pesanan',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20),
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 20),
         ),
         centerTitle: true,
       ),
@@ -122,7 +122,7 @@ class _OrderPageState extends State<OrderPage> {
                     height: 40,
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE9E5F7),
+                      color: const Color(0xFFE2F0E6),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
@@ -158,11 +158,11 @@ class _OrderPageState extends State<OrderPage> {
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFCFC8E5)),
+                        borderSide: const BorderSide(color: Color(0xFFB5D4BC)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFCFC8E5)),
+                        borderSide: const BorderSide(color: Color(0xFFB5D4BC)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -268,7 +268,7 @@ class _TabChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF38804B);
+    const Color primaryPurple = Color(0xFF2F6C3F);
 
     return InkWell(
       onTap: onTap,
@@ -308,7 +308,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF38804B);
+    const Color primaryPurple = Color(0xFF2F6C3F);
 
     return Material(
       color: Colors.transparent,
@@ -320,7 +320,7 @@ class _ProductCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD3CCE8)),
+            border: Border.all(color: const Color(0xFFB5D4BC)),
           ),
           child: Row(
             children: [
@@ -361,7 +361,7 @@ class _ProductCard extends StatelessWidget {
               Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3EFFB),
+                  color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -391,8 +391,8 @@ class ProductDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF38804B);
-    const Color bgLight = Color(0xFFF4FAF5);
+    const Color primaryPurple = Color(0xFF2F6C3F);
+    const Color bgLight = Color(0xFFFFFFFF);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -403,7 +403,7 @@ class ProductDetailPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: primaryPurple),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Detail Produk', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20)),
+        title: const Text('Detail Produk', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 20)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -418,7 +418,7 @@ class ProductDetailPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFD3CCE8)),
+                  border: Border.all(color: const Color(0xFFB5D4BC)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -508,7 +508,7 @@ class _DetailSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFD3CCE8)),
+        border: Border.all(color: const Color(0xFFB5D4BC)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
@@ -557,10 +557,10 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(color: const Color(0xFFF3EFFB), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(999)),
       child: Text(
         text,
-        style: const TextStyle(color: Color(0xFF38804B), fontSize: 12, fontWeight: FontWeight.w700),
+        style: const TextStyle(color: Color(0xFF2F6C3F), fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -600,8 +600,8 @@ IconData _productIcon(String iconName) => switch (iconName) {
     };
 
 Color _iconBg(String iconName) => switch (iconName) {
-      'water_drop' => const Color(0xFFE5F0FF),
+      'water_drop' => const Color(0xFFDCEDE1),
       'eco' => const Color(0xFFF0E2CF),
       'spa' => const Color(0xFFDDF3EA),
-      _ => const Color(0xFFF0EEF7),
+      _ => const Color(0xFFFFFFFF),
     };

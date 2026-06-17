@@ -193,7 +193,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         shadowColor: Colors.black12,
         iconTheme: const IconThemeData(color: AppTheme.primary),
         title: const Text('Edit Profil',
-            style: TextStyle(color: AppTheme.navy, fontWeight: FontWeight.bold, fontSize: 18)),
+            style: TextStyle(color: AppTheme.navy, fontWeight: FontWeight.w900, fontSize: 18)),
         centerTitle: true,
         actions: const [NotificationBadge()],
       ),
@@ -374,7 +374,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Widget _divider() => const Padding(
         padding: EdgeInsets.symmetric(horizontal: 20),
-        child: Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
+        child: Divider(height: 1, thickness: 0.5, color: Color(0xFFF5F5F5)),
       );
 
   Widget _readOnlyField({required String label, required String value}) {
@@ -390,7 +390,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F0F0),
+              color: const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppTheme.border),
             ),
@@ -426,7 +426,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             style: const TextStyle(fontSize: 14, color: AppTheme.navy),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 14),
+              hintStyle: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
               filled: true,
               fillColor: AppTheme.background,
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -467,7 +467,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             style: const TextStyle(fontSize: 14, color: AppTheme.navy),
             decoration: InputDecoration(
               hintText: '••••••••',
-              hintStyle: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 14),
+              hintStyle: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
               filled: true,
               fillColor: AppTheme.background,
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),

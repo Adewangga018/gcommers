@@ -7,11 +7,11 @@ import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
-enum _NotifType { payment, received, problem, info }
+enum _NotifType { payment, received, problem, info, order, shipping }
 
 // Parses structured info from notification description text.
-Map<String, String> _parseDetails(AppNotification n) {
-  final type = _detectType(n);
+Map<String, String> _parseDetails(AppNotification n, {String role = ''}) {
+  final type = _detectType(n, role: role);
   final desc = n.description;
   final details = <String, String>{};
 
@@ -32,17 +32,42 @@ Map<String, String> _parseDetails(AppNotification n) {
         if (notes.isNotEmpty) details['Catatan'] = notes;
       }
     }
+  } else if (type == _NotifType.order) {
+    final poMatch = RegExp(r'(PO-[\w-]+)').firstMatch(desc);
+    if (poMatch != null) details['Nomor PO'] = poMatch.group(1)!;
+    final colonIdx = desc.indexOf(':');
+    if (colonIdx != -1) {
+      final notes = desc.substring(colonIdx + 1).trim();
+      if (notes.isNotEmpty) details['Keterangan'] = notes;
+    }
+  } else if (type == _NotifType.shipping) {
+    final sjMatch = RegExp(r'(SJ-[\w-]+)').firstMatch(desc);
+    final poMatch = RegExp(r'(PO-[\w-]+)').firstMatch(desc);
+    if (sjMatch != null) details['No. Surat Jalan'] = sjMatch.group(1)!;
+    if (poMatch != null) details['Nomor PO'] = poMatch.group(1)!;
   }
 
   return details;
 }
 
-_NotifType _detectType(AppNotification n) {
+_NotifType _detectType(AppNotification n, {String role = ''}) {
   final t = n.title.toLowerCase();
   final d = n.description.toLowerCase();
-  if (t.contains('bayar') || d.contains('bayar') || t.contains('payment')) return _NotifType.payment;
-  if (t.contains('bermasalah') || d.contains('bermasalah')) return _NotifType.problem;
-  if (t.contains('diterima') || d.contains('diterima')) return _NotifType.received;
+
+  if (role == 'transportir') {
+    if (t.contains('pesanan') || d.contains('pesanan') ||
+        t.contains('order') || d.contains('order') ||
+        t.contains('po-') || d.contains('po-')) { return _NotifType.order; }
+    if (t.contains('pengiriman') || d.contains('pengiriman') ||
+        t.contains('kirim') || d.contains('kirim') ||
+        t.contains('muat') || d.contains('muat') ||
+        t.contains('surat jalan') || d.contains('surat jalan')) { return _NotifType.shipping; }
+    return _NotifType.info;
+  }
+
+  if (t.contains('bayar') || d.contains('bayar') || t.contains('payment')) { return _NotifType.payment; }
+  if (t.contains('bermasalah') || d.contains('bermasalah')) { return _NotifType.problem; }
+  if (t.contains('diterima') || d.contains('diterima')) { return _NotifType.received; }
   return _NotifType.info;
 }
 
@@ -50,26 +75,32 @@ IconData _typeIcon(_NotifType type) => switch (type) {
       _NotifType.payment => Icons.credit_card_rounded,
       _NotifType.received => Icons.inventory_2_rounded,
       _NotifType.problem => Icons.warning_amber_rounded,
+      _NotifType.order => Icons.assignment_rounded,
+      _NotifType.shipping => Icons.local_shipping_rounded,
       _NotifType.info => Icons.notifications_rounded,
     };
 
 Color _typeColor(_NotifType type, {bool dimmed = false}) {
   if (dimmed) return Colors.grey[400]!;
   return switch (type) {
-    _NotifType.payment => const Color(0xFF2E7D32),
+    _NotifType.payment => const Color(0xFF2F6C3F),
     _NotifType.received => AppTheme.primary,
     _NotifType.problem => const Color(0xFFC62828),
-    _NotifType.info => const Color(0xFF1565C0),
+    _NotifType.order => const Color(0xFF0F261F),
+    _NotifType.shipping => const Color(0xFF2F6C3F),
+    _NotifType.info => const Color(0xFF2F6C3F),
   };
 }
 
 Color _typeBgColor(_NotifType type, {bool dimmed = false}) {
   if (dimmed) return Colors.grey[100]!;
   return switch (type) {
-    _NotifType.payment => const Color(0xFFE8F5E9),
-    _NotifType.received => const Color(0xFFEEECFB),
+    _NotifType.payment => const Color(0xFFDCEDE1),
+    _NotifType.received => const Color(0xFFEAF2EC),
     _NotifType.problem => const Color(0xFFFFEBEE),
-    _NotifType.info => const Color(0xFFE3F2FD),
+    _NotifType.order => const Color(0xFFDCEDE1),
+    _NotifType.shipping => const Color(0xFFEAF2EC),
+    _NotifType.info => const Color(0xFFDCEDE1),
   };
 }
 
@@ -77,6 +108,8 @@ String _typeLabel(_NotifType type) => switch (type) {
       _NotifType.payment => 'Pembayaran',
       _NotifType.received => 'Penerimaan',
       _NotifType.problem => 'Masalah',
+      _NotifType.order => 'Pesanan',
+      _NotifType.shipping => 'Pengiriman',
       _NotifType.info => 'Info',
     };
 
@@ -143,7 +176,20 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
-  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
+  List<AppNotification> get _visibleNotifications {
+    final role = _session?.role ?? '';
+    return _notifications.where((n) {
+      final type = _detectType(n, role: role);
+      if (role == 'transportir') {
+        return type == _NotifType.order || type == _NotifType.shipping || type == _NotifType.info;
+      }
+      // kiosk and others: payment, received, problem, info
+      return type == _NotifType.payment || type == _NotifType.received ||
+          type == _NotifType.problem || type == _NotifType.info;
+    }).toList();
+  }
+
+  int get _unreadCount => _visibleNotifications.where((n) => !n.isRead).length;
 
   Future<void> _markAllRead() async {
     setState(() {
@@ -170,7 +216,10 @@ class _NotificationPageState extends State<NotificationPage> {
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => NotificationDetailPage(notification: item.copyWith(isRead: true)),
+        builder: (_) => NotificationDetailPage(
+          notification: item.copyWith(isRead: true),
+          role: _session?.role ?? '',
+        ),
       ),
     );
     _loadNotifications();
@@ -178,7 +227,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
   Map<String, List<AppNotification>> get _grouped {
     final map = <String, List<AppNotification>>{};
-    for (final n in _notifications) {
+    for (final n in _visibleNotifications) {
       map.putIfAbsent(_groupLabel(n.createdAt), () => []).add(n);
     }
     return map;
@@ -200,7 +249,7 @@ class _NotificationPageState extends State<NotificationPage> {
         ),
         title: const Text(
           'Notifikasi',
-          style: TextStyle(color: AppTheme.navy, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: AppTheme.navy, fontWeight: FontWeight.w900, fontSize: 18),
         ),
         centerTitle: true,
         actions: [
@@ -227,7 +276,7 @@ class _NotificationPageState extends State<NotificationPage> {
               : RefreshIndicator(
                   onRefresh: _loadNotifications,
                   color: AppTheme.primary,
-                  child: _notifications.isEmpty ? const _EmptyState() : _buildList(),
+                  child: _visibleNotifications.isEmpty ? _EmptyState(role: _session?.role ?? '') : _buildList(),
                 ),
     );
   }
@@ -244,7 +293,7 @@ class _NotificationPageState extends State<NotificationPage> {
             child: Row(
               children: [
                 Text(
-                  '${_notifications.length} notifikasi',
+                  '${_visibleNotifications.length} notifikasi',
                   style: const TextStyle(fontSize: 13, color: AppTheme.muted, fontWeight: FontWeight.w500),
                 ),
                 if (_unreadCount > 0) ...[
@@ -286,7 +335,7 @@ class _NotificationPageState extends State<NotificationPage> {
                 final item = grouped[group]![i];
                 return Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: _NotificationCard(item: item, onTap: () => _openDetail(item)),
+                  child: _NotificationCard(item: item, onTap: () => _openDetail(item), role: _session?.role ?? ''),
                 );
               },
               childCount: grouped[group]!.length,
@@ -300,10 +349,16 @@ class _NotificationPageState extends State<NotificationPage> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({this.role = ''});
+
+  final String role;
 
   @override
   Widget build(BuildContext context) {
+    final subtitle = role == 'transportir'
+        ? 'Notifikasi pesanan masuk dan pengiriman\nakan muncul di sini.'
+        : 'Notifikasi pesanan dan pembayaran\nakan muncul di sini.';
+
     return ListView(
       children: [
         const SizedBox(height: 80),
@@ -328,10 +383,10 @@ class _EmptyState extends StatelessWidget {
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.navy),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Notifikasi pesanan dan pembayaran\nakan muncul di sini.',
+              Text(
+                subtitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppTheme.muted, height: 1.6),
+                style: const TextStyle(fontSize: 13, color: AppTheme.muted, height: 1.6),
               ),
             ],
           ),
@@ -387,14 +442,15 @@ class _ErrorState extends StatelessWidget {
 }
 
 class _NotificationCard extends StatelessWidget {
-  const _NotificationCard({required this.item, required this.onTap});
+  const _NotificationCard({required this.item, required this.onTap, this.role = ''});
 
   final AppNotification item;
   final VoidCallback onTap;
+  final String role;
 
   @override
   Widget build(BuildContext context) {
-    final type = _detectType(item);
+    final type = _detectType(item, role: role);
     final iconColor = _typeColor(type, dimmed: item.isRead);
     final bgColor = _typeBgColor(type, dimmed: item.isRead);
 
@@ -500,13 +556,14 @@ class _NotificationCard extends StatelessWidget {
 }
 
 class NotificationDetailPage extends StatelessWidget {
-  const NotificationDetailPage({required this.notification, super.key});
+  const NotificationDetailPage({required this.notification, this.role = '', super.key});
 
   final AppNotification notification;
+  final String role;
 
   @override
   Widget build(BuildContext context) {
-    final type = _detectType(notification);
+    final type = _detectType(notification, role: role);
     final iconColor = _typeColor(type);
     final bgColor = _typeBgColor(type);
 
@@ -523,7 +580,7 @@ class NotificationDetailPage extends StatelessWidget {
         ),
         title: const Text(
           'Notifikasi',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.navy),
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.navy),
         ),
         centerTitle: true,
       ),
@@ -597,7 +654,7 @@ class NotificationDetailPage extends StatelessWidget {
                 boxShadow: [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 10, offset: const Offset(0, 2))],
               ),
               child: Builder(builder: (context) {
-                final details = _parseDetails(notification);
+                final details = _parseDetails(notification, role: role);
                 final rows = <Widget>[
                   _DetailRow(
                     icon: Icons.access_time_filled_rounded,

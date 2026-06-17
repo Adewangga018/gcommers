@@ -72,7 +72,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               _InfoRow(
                 label: 'Status Verifikasi',
                 value: 'Terverifikasi',
-                valueColor: const Color(0xFF2E7D32),
+                valueColor: const Color(0xFF2F6C3F),
                 isLast: true,
               ),
             ]),
@@ -141,7 +141,7 @@ class _SecurityPageState extends State<SecurityPage> {
                             _twoFactorEnabled ? 'Aktif' : 'Nonaktif',
                             style: TextStyle(
                               fontSize: 12,
-                              color: _twoFactorEnabled ? const Color(0xFF2E7D32) : AppTheme.muted,
+                              color: _twoFactorEnabled ? const Color(0xFF2F6C3F) : AppTheme.muted,
                             ),
                           ),
                         ],
@@ -446,7 +446,7 @@ AppBar _buildAppBar(String title) {
     elevation: 0,
     shadowColor: Colors.black12,
     iconTheme: const IconThemeData(color: AppTheme.primary),
-    title: Text(title, style: const TextStyle(color: AppTheme.navy, fontWeight: FontWeight.bold, fontSize: 18)),
+    title: Text(title, style: const TextStyle(color: AppTheme.navy, fontWeight: FontWeight.w900, fontSize: 18)),
     centerTitle: true,
   );
 }
@@ -533,7 +533,7 @@ class _RowDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
+      child: Divider(height: 1, thickness: 0.5, color: Color(0xFFF5F5F5)),
     );
   }
 }

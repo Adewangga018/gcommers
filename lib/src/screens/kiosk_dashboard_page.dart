@@ -8,6 +8,7 @@ import '../services/commerce_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
+import '../widgets/infographic_widgets.dart';
 import 'settings_pages.dart';
 
 class KiosDashboardPage extends StatefulWidget {
@@ -42,17 +43,14 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryPurple = AppTheme.primary;
-    const Color bgLight = Color(0xFFF4FAF5);
-
     return Scaffold(
-      backgroundColor: bgLight,
+      backgroundColor: AppTheme.paper,
       body: SafeArea(
         child: FutureBuilder<DashboardSummary>(
           future: _summaryFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: AppTheme.ink));
             }
 
             if (snapshot.hasError) {
@@ -60,43 +58,42 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
             }
 
             final summary = snapshot.data!;
+            final totalOrders = summary.activeOrderCount + summary.completedOrderCount;
+            final completedFraction = totalOrders == 0 ? 0.0 : summary.completedOrderCount / totalOrders;
+
             return SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF38804B), Color(0xFF2F6C3F)],
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(20),
-                        bottomRight: Radius.circular(20),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.ink,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
                       ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Halo, ${_session?.displayName ?? 'PT Kios Berkah'}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Halo, ${_session?.displayName ?? '...'}',
+                                style: AppTheme.title(size: 21, color: Colors.white),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              shortDateTime(DateTime.now()),
-                              style: const TextStyle(color: Colors.white70, fontSize: 14),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                shortDateTime(DateTime.now()),
+                                style: AppTheme.body(size: 13, color: Colors.white70),
+                              ),
+                            ],
+                          ),
                         ),
                         Row(
                           children: [
@@ -135,26 +132,25 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                           context,
                           Icons.shopping_cart_outlined,
                           'Pesanan',
-                          primaryPurple,
+                          AppTheme.tertiaryGreen,
+                          AppTheme.tertiaryGreenSoft,
                           onTap: () => Navigator.of(context).pushNamed('/orders'),
                         ),
                         _buildQuickActionCard(
                           context,
                           Icons.history_outlined,
                           'Riwayat',
-                          primaryPurple,
+                          AppTheme.tertiaryGold,
+                          AppTheme.tertiaryGoldSoft,
                           onTap: () => Navigator.of(context).pushNamed('/history'),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 28),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      'Ringkasan Bulan Ini',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1E293B), letterSpacing: 0.1),
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SectionKicker(label: 'Ringkasan Bulan Ini'),
                   ),
                   const SizedBox(height: 12),
                   Padding(
@@ -162,53 +158,72 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: _buildSummaryCard(
+                          child: StatTile(
                             icon: Icons.shopping_bag_outlined,
-                            title: 'Pesanan Aktif',
+                            label: 'Pesanan Aktif',
                             value: '${summary.activeOrderCount}',
-                            subWidget: Text(
-                              '${summary.completedOrderCount} selesai',
-                              style: const TextStyle(color: Colors.grey, fontSize: 12),
-                            ),
+                            caption: '${summary.completedOrderCount} selesai bulan ini',
+                            accent: AppTheme.tertiaryGreen,
+                            accentSoft: AppTheme.tertiaryGreenSoft,
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: _buildSummaryCard(
+                          child: StatTile(
                             icon: Icons.payments_outlined,
-                            title: 'Total Tagihan',
+                            label: 'Total Tagihan',
                             value: formatCurrency(summary.monthlySales),
-                            subWidget: const Text('Bulan berjalan', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            caption: 'Bulan berjalan',
+                            accent: AppTheme.tertiaryGold,
+                            accentSoft: AppTheme.tertiaryGoldSoft,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  if (totalOrders > 0) ...[
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.paper,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: ProgressBarRow(
+                          label: 'Pesanan selesai',
+                          value: '${summary.completedOrderCount} dari $totalOrders',
+                          fraction: completedFraction,
+                          color: AppTheme.tertiaryGreen,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 28),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Pesanan Terbaru',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1E293B), letterSpacing: 0.1),
+                    child: SectionKicker(
+                      label: 'Pesanan Terbaru',
+                      action: TextButton(
+                        onPressed: () => Navigator.of(context).pushNamed('/history'),
+                        child: Text(
+                          'Lihat Semua',
+                          style: AppTheme.body(size: 13, color: AppTheme.tertiaryGreen, weight: FontWeight.w700),
                         ),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pushNamed('/history'),
-                          child: Text('Lihat Semua', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.w600, fontSize: 13)),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
                         if (summary.recentOrders.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: Text('Belum ada pesanan.'),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Text('Belum ada pesanan.', style: AppTheme.body(size: 13, color: AppTheme.muted)),
                           )
                         else
                           ...summary.recentOrders.map(
@@ -230,7 +245,7 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
           },
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(context, 0, primaryPurple),
+      bottomNavigationBar: _buildBottomNavBar(context, 0),
     );
   }
 
@@ -238,7 +253,8 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
     BuildContext context,
     IconData icon,
     String label,
-    Color color, {
+    Color accent,
+    Color accentSoft, {
     VoidCallback? onTap,
   }) {
     return Expanded(
@@ -248,12 +264,9 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.paper,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD0E8D4)),
-            boxShadow: const [
-              BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
-            ],
+            border: Border.all(color: AppTheme.border),
           ),
           child: Column(
             children: [
@@ -261,56 +274,16 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: accentSoft,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: Icon(icon, color: accent, size: 22),
               ),
               const SizedBox(height: 10),
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1E293B))),
+              Text(label, style: AppTheme.subtitle(size: 14)),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard({required IconData icon, required String title, required String value, required Widget subWidget}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD0E8D4)),
-        boxShadow: const [
-          BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: const Color(0xFF6B7280), size: 18),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13, fontWeight: FontWeight.w500),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
-          ),
-          const SizedBox(height: 6),
-          subWidget,
-        ],
       ),
     );
   }
@@ -326,12 +299,9 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.paper,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFD0E8D4)),
-          boxShadow: const [
-            BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
-          ],
+          border: Border.all(color: AppTheme.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,34 +313,27 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.poNumber, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF1E293B))),
+                      Text(order.poNumber, style: AppTheme.subtitle(size: 15)),
                       const SizedBox(height: 4),
-                      Text(formatDateTime(order.createdAt), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                      Text(formatDateTime(order.createdAt), style: AppTheme.body(size: 12, color: AppTheme.muted)),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
-                  child: Text(
-                    order.statusLabel,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11),
-                  ),
-                ),
+                StatusChip(label: order.statusLabel, color: statusColor),
               ],
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Divider(height: 1, color: Color(0xFFF1EEF9)),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, color: AppTheme.border.withValues(alpha: 0.5)),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   formatCurrency(order.totalAmount),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF38804B)),
+                  style: AppTheme.title(size: 15, color: AppTheme.tertiaryGreen),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBC8D8), size: 20),
+                const Icon(Icons.chevron_right_rounded, color: AppTheme.border, size: 20),
               ],
             ),
           ],
@@ -398,20 +361,22 @@ class _ErrorState extends StatelessWidget {
 
 Color _statusColor(String status) {
   return switch (status) {
-    'pending_payment' => const Color(0xFFD97706),
-    'paid' => const Color(0xFF2563EB),
-    'shipping' => const Color(0xFF7C3AED),
+    'pending_payment' => AppTheme.tertiaryGold,
+    'paid' || 'shipping' => AppTheme.tertiaryGreen,
     'received' || 'completed' => const Color(0xFF059669),
-    _ => Colors.grey,
+    _ => AppTheme.muted,
   };
 }
 
-Widget _buildBottomNavBar(BuildContext context, int currentIndex, Color primaryColor) {
+Widget _buildBottomNavBar(BuildContext context, int currentIndex) {
   return BottomNavigationBar(
     currentIndex: currentIndex,
     type: BottomNavigationBarType.fixed,
-    selectedItemColor: primaryColor,
-    unselectedItemColor: Colors.grey,
+    backgroundColor: AppTheme.paper,
+    selectedItemColor: AppTheme.ink,
+    unselectedItemColor: AppTheme.muted,
+    selectedLabelStyle: AppTheme.body(size: 12, weight: FontWeight.w700),
+    unselectedLabelStyle: AppTheme.body(size: 12),
     showUnselectedLabels: true,
     items: const [
       BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),

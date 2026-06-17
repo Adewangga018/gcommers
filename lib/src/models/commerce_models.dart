@@ -243,6 +243,81 @@ class PaymentResult {
   final List<String> instructions;
 }
 
+class ShipmentSummary {
+  const ShipmentSummary({
+    required this.shipmentNumber,
+    required this.status,
+    required this.statusLabel,
+    required this.driverName,
+    required this.truckLabel,
+    required this.policeNumber,
+    required this.destinationLabel,
+    required this.destinationAddress,
+    required this.originLat,
+    required this.originLng,
+    required this.destinationLat,
+    required this.destinationLng,
+    required this.createdAt,
+    required this.completedAt,
+  });
+
+  factory ShipmentSummary.fromJson(Map<String, dynamic> json) {
+    return ShipmentSummary(
+      shipmentNumber: json['shipmentNumber'] as String,
+      status: json['status'] as String,
+      statusLabel: json['statusLabel'] as String,
+      driverName: json['driverName'] as String,
+      truckLabel: json['truckLabel'] as String?,
+      policeNumber: json['policeNumber'] as String?,
+      destinationLabel: json['destinationLabel'] as String?,
+      destinationAddress: json['destinationAddress'] as String?,
+      originLat: (json['originLat'] as num?)?.toDouble(),
+      originLng: (json['originLng'] as num?)?.toDouble(),
+      destinationLat: (json['destinationLat'] as num?)?.toDouble(),
+      destinationLng: (json['destinationLng'] as num?)?.toDouble(),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      completedAt: json['completedAt'] == null ? null : DateTime.parse(json['completedAt'] as String),
+    );
+  }
+
+  final String shipmentNumber;
+  final String status;
+  final String statusLabel;
+  final String driverName;
+  final String? truckLabel;
+  final String? policeNumber;
+  final String? destinationLabel;
+  final String? destinationAddress;
+  final double? originLat;
+  final double? originLng;
+  final double? destinationLat;
+  final double? destinationLng;
+  final DateTime createdAt;
+  final DateTime? completedAt;
+}
+
+class TransportirDashboardSummary {
+  const TransportirDashboardSummary({
+    required this.totalShipments,
+    required this.activeShipments,
+    required this.activeShipment,
+  });
+
+  factory TransportirDashboardSummary.fromJson(Map<String, dynamic> json) {
+    return TransportirDashboardSummary(
+      totalShipments: json['totalShipments'] as int,
+      activeShipments: json['activeShipments'] as int,
+      activeShipment: json['activeShipment'] == null
+          ? null
+          : ShipmentSummary.fromJson(json['activeShipment'] as Map<String, dynamic>),
+    );
+  }
+
+  final int totalShipments;
+  final int activeShipments;
+  final ShipmentSummary? activeShipment;
+}
+
 class AppNotification {
   const AppNotification({
     required this.id,
