@@ -149,7 +149,9 @@ class _SecurityPageState extends State<SecurityPage> {
                     ),
                     Switch(
                       value: _twoFactorEnabled,
-                      activeThumbColor: AppTheme.primary,
+                      thumbColor: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.selected) ? AppTheme.primary : null,
+                      ),
                       onChanged: (v) => setState(() => _twoFactorEnabled = v),
                     ),
                   ],
@@ -576,7 +578,9 @@ class _ToggleRowState extends State<_ToggleRow> {
               ),
               Switch(
                 value: _enabled,
-                activeThumbColor: AppTheme.primary,
+                thumbColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected) ? AppTheme.primary : null,
+                ),
                 onChanged: (v) => setState(() => _enabled = v),
               ),
             ],

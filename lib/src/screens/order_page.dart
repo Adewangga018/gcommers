@@ -2,6 +2,7 @@
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
+import '../services/session_manager.dart';
 import '../utils/formatters.dart';
 
 class OrderPage extends StatefulWidget {
@@ -19,11 +20,23 @@ class _OrderPageState extends State<OrderPage> {
   List<Product> _products = const [];
   String _selectedCategory = 'Subsidi';
   bool _submitting = false;
+  String? _userRegion;
+  String? _userEmail;
 
   @override
   void initState() {
     super.initState();
-    _productsFuture = _commerceService.getProducts(category: _selectedCategory);
+    _productsFuture = _loadProductsForSession();
+  }
+
+  Future<List<Product>> _loadProductsForSession() async {
+    final session = await sessionManager.getSession();
+    _userRegion = session?.region;
+    _userEmail = session?.email;
+    return _commerceService.getProducts(
+      category: _selectedCategory,
+      region: _userRegion,
+    );
   }
 
   @override
@@ -35,7 +48,10 @@ class _OrderPageState extends State<OrderPage> {
   void _loadCategory(String category) {
     setState(() {
       _selectedCategory = category;
-      _productsFuture = _commerceService.getProducts(category: category);
+      _productsFuture = _commerceService.getProducts(
+        category: category,
+        region: _userRegion,
+      );
     });
   }
 
@@ -56,7 +72,11 @@ class _OrderPageState extends State<OrderPage> {
 
     setState(() => _submitting = true);
     try {
-      final order = await _commerceService.createOrder(quantities: selected);
+      final order = await _commerceService.createOrder(
+        userEmail: _userEmail,
+        region: _userRegion,
+        quantities: selected,
+      );
       if (!mounted) return;
       Navigator.of(context).pushNamed('/payment', arguments: order.poNumber);
     } catch (error) {
@@ -225,19 +245,23 @@ class _OrderPageState extends State<OrderPage> {
                   ],
                 ),
               ),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _submitting ? null : _confirmOrder,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: Text(
-                    _submitting ? 'MEMPROSES...' : 'KONFIRMASI PESANAN',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+              Flexible(
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _submitting ? null : _confirmOrder,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text(
+                      _submitting ? 'MEMPROSES...' : 'KONFIRMASI PESANAN',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                 ),
               ),

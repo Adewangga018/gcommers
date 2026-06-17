@@ -95,6 +95,24 @@ class AuthService {
     }
   }
 
+  Future<String> uploadKtp({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    final request = http.MultipartRequest('POST', _uri('/auth/upload-ktp'))
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['fileName'] as String;
+    }
+
+    throw _toException(response);
+  }
+
   Future<AuthSession> registerKiosk(KioskRegistrationDraft draft) async {
     final response = await http.post(
       _uri('/auth/register-kiosk'),

@@ -1,11 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../models/auth_models.dart';
 import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
+import '../utils/ktp_picker_helper.dart';
 import '../widgets/auth_widgets.dart';
 
 class KioskRegisterStep2Screen extends StatefulWidget {
@@ -31,13 +30,23 @@ class KioskRegisterStep2Screen extends StatefulWidget {
 class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
   final _addressController = TextEditingController();
   final _authService = AuthService();
+
   bool _accepted = false;
   bool _loading = false;
+  bool _uploading = false;
   String? _selectedRegion;
-  bool _canSubmit = false;
-  XFile? _ktpImage;
-  Uint8List? _ktpImageBytes;
-  final _regions = ['Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'DKI Jakarta', 'Banten'];
+
+  KtpPickResult? _ktpFile;
+  String? _uploadedFileName;
+
+  static const _regions = [
+    'Jawa Timur',
+    'Jawa Tengah Selatan',
+    'Jawa Tengah Utara',
+    'Makassar',
+    'Medan',
+    'Lampung',
+  ];
 
   @override
   void dispose() {
@@ -45,60 +54,74 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
     super.dispose();
   }
 
-  void _updateSubmitState() {
-    _canSubmit = _addressController.text.trim().isNotEmpty && _selectedRegion != null && _ktpImage != null && _accepted;
-  }
+  bool get _canSubmit =>
+      _addressController.text.trim().isNotEmpty &&
+      _selectedRegion != null &&
+      _uploadedFileName != null &&
+      _accepted &&
+      !_loading &&
+      !_uploading;
 
-  Future<void> _pickKtpImage() async {
+  void _onKtpPicked(KtpPickResult result) async {
+    setState(() {
+      _ktpFile = result;
+      _uploadedFileName = null;
+      _uploading = true;
+    });
+
     try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 80,
-        maxWidth: 1920,
-        maxHeight: 1920,
+      final fileName = await _authService.uploadKtp(
+        fileName: result.name,
+        bytes: result.bytes,
       );
-      if (image != null) {
-        final bytes = await image.readAsBytes();
-        setState(() {
-          _ktpImage = image;
-          _ktpImageBytes = bytes;
-          _updateSubmitState();
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _uploadedFileName = fileName;
+        _uploading = false;
+      });
     } catch (e) {
       if (!mounted) return;
+      setState(() {
+        _ktpFile = null;
+        _uploadedFileName = null;
+        _uploading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memilih foto: ${e.toString()}')),
+        SnackBar(content: Text('Gagal upload KTP: ${e.toString()}')),
       );
     }
+  }
+
+  void _onKtpError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _pickKtp() {
+    pickKtpFile(_onKtpPicked, _onKtpError);
   }
 
   Future<void> _submit() async {
-    if (_ktpImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan pilih foto KTP terlebih dahulu')),
-      );
-      return;
-    }
+    if (_uploadedFileName == null) return;
 
     setState(() => _loading = true);
     try {
-      final draft = KioskRegistrationDraft(
-        kioskName: widget.kioskName,
-        picName: widget.picName,
-        phone: widget.phone,
-        email: widget.email,
-        password: widget.password,
-        address: _addressController.text,
-        region: _selectedRegion ?? '',
-        termsAccepted: _accepted,
-        licenseImageName: _ktpImage!.name,
+      final session = await _authService.registerKiosk(
+        KioskRegistrationDraft(
+          kioskName: widget.kioskName,
+          picName: widget.picName,
+          phone: widget.phone,
+          email: widget.email,
+          password: widget.password,
+          address: _addressController.text.trim(),
+          region: _selectedRegion ?? '',
+          termsAccepted: _accepted,
+          licenseImageName: _uploadedFileName,
+        ),
       );
-      
-      // Register kiosk - this includes the KTP filename
-      final session = await _authService.registerKiosk(draft);
-      
+
       await sessionManager.saveSession(session);
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
@@ -138,124 +161,47 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                         hintText: 'Masukkan alamat lengkap kios (Jalan, RT/RW, Patokan)',
                         labelText: 'Alamat Lengkap',
                         maxLines: 3,
-                        onChanged: (_) => setState(_updateSubmitState),
+                        onChanged: (_) => setState(() {}),
                       ),
                       const SizedBox(height: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Kode Wilayah', style: TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            value: _selectedRegion,
-                            items: _regions
-                                .map(
-                                  (item) => DropdownMenuItem<String>(
-                                    value: item,
-                                    child: Text(item),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) => setState(() {
-                            _selectedRegion = value;
-                            _updateSubmitState();
-                          }),
-                            decoration: const InputDecoration(
-                              hintText: 'Pilih Provinsi / Kota',
-                            ),
-                          ),
-                        ],
+                      const Text('Region Kios', style: TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedRegion,
+                        items: _regions
+                            .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _selectedRegion = v),
+                        decoration: const InputDecoration(hintText: 'Pilih region kios'),
                       ),
                       const SizedBox(height: 16),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Upload Foto KTP Pemilik',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
+                      const Text(
+                        'Upload KTP Pemilik',
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 8),
                       GestureDetector(
-                        onTap: _pickKtpImage,
+                        onTap: _uploading ? null : _pickKtp,
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 26),
+                          padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppTheme.border,
-                              style: BorderStyle.solid,
+                              color: _uploadedFileName != null
+                                  ? AppTheme.primary
+                                  : AppTheme.border,
                               width: 1.4,
                             ),
-                            color: Colors.transparent,
                           ),
-                          child: _ktpImage != null
-                              ? Column(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: _ktpImageBytes != null
-                                          ? Image.memory(
-                                              _ktpImageBytes!,
-                                              height: 120,
-                                              width: 120,
-                                              fit: BoxFit.cover,
-                                            )
-                                          : Container(
-                                              height: 120,
-                                              width: 120,
-                                              color: Colors.grey[300],
-                                              child: const Center(
-                                                child: CircularProgressIndicator(),
-                                              ),
-                                            ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      _ktpImage!.name,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppTheme.primary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Text(
-                                      'Ketuk untuk ganti foto',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.muted,
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : const Column(
-                                  children: [
-                                    Icon(Icons.camera_alt, color: AppTheme.primary, size: 32),
-                                    SizedBox(height: 10),
-                                    Text(
-                                      'Ketuk untuk upload',
-                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Format .JPG atau .PNG maks 5MB',
-                                      style: TextStyle(color: AppTheme.muted, fontSize: 13),
-                                    ),
-                                  ],
-                                ),
+                          child: _buildKtpPreview(),
                         ),
                       ),
                       const SizedBox(height: 14),
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         value: _accepted,
-                        onChanged: (value) => setState(() {
-                          _accepted = value ?? false;
-                          _updateSubmitState();
-                        }),
+                        onChanged: (v) => setState(() => _accepted = v ?? false),
                         controlAffinity: ListTileControlAffinity.leading,
                         title: RichText(
                           text: const TextSpan(
@@ -264,12 +210,14 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                               TextSpan(text: 'Saya menyetujui '),
                               TextSpan(
                                 text: 'Syarat & Ketentuan',
-                                style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700),
+                                style: TextStyle(
+                                    color: AppTheme.primary, fontWeight: FontWeight.w700),
                               ),
                               TextSpan(text: ' serta '),
                               TextSpan(
                                 text: 'Kebijakan Privasi',
-                                style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700),
+                                style: TextStyle(
+                                    color: AppTheme.primary, fontWeight: FontWeight.w700),
                               ),
                               TextSpan(text: ' yang berlaku di GCommers.'),
                             ],
@@ -284,12 +232,122 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
               PrimaryButton(
                 label: 'Daftar',
                 isLoading: _loading,
-                onPressed: _canSubmit && !_loading ? _submit : null,
+                onPressed: _canSubmit ? _submit : null,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildKtpPreview() {
+    if (_uploading) {
+      return const Column(
+        children: [
+          SizedBox(
+            height: 36,
+            width: 36,
+            child: CircularProgressIndicator(strokeWidth: 3),
+          ),
+          SizedBox(height: 12),
+          Text('Mengupload KTP...', style: TextStyle(fontWeight: FontWeight.w600)),
+        ],
+      );
+    }
+
+    if (_ktpFile == null) {
+      return const Column(
+        children: [
+          Icon(Icons.upload_file_outlined, color: AppTheme.primary, size: 36),
+          SizedBox(height: 10),
+          Text(
+            'Ketuk untuk upload KTP',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Format .JPG, .PNG, atau .PDF · maks 5 MB',
+            style: TextStyle(color: AppTheme.muted, fontSize: 13),
+          ),
+        ],
+      );
+    }
+
+    if (_ktpFile!.isPdf) {
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.picture_as_pdf_outlined,
+                color: AppTheme.primary, size: 44),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _ktpFile!.name,
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          _uploadedFileName != null
+              ? const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 14),
+                    SizedBox(width: 4),
+                    Text('Berhasil diupload',
+                        style: TextStyle(color: Colors.green, fontSize: 12)),
+                  ],
+                )
+              : const SizedBox.shrink(),
+          const SizedBox(height: 4),
+          const Text('Ketuk untuk ganti file',
+              style: TextStyle(fontSize: 12, color: AppTheme.muted)),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(
+            _ktpFile!.bytes,
+            height: 130,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          _ktpFile!.name,
+          style: const TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.primary),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        if (_uploadedFileName != null)
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 14),
+              SizedBox(width: 4),
+              Text('Berhasil diupload',
+                  style: TextStyle(color: Colors.green, fontSize: 12)),
+            ],
+          ),
+        const SizedBox(height: 4),
+        const Text('Ketuk untuk ganti foto',
+            style: TextStyle(fontSize: 12, color: AppTheme.muted)),
+      ],
     );
   }
 }

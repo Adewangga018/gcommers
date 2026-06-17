@@ -37,6 +37,7 @@ dependencies:
   http: ^1.2.2
   shared_preferences: ^2.0.15
   image_picker: ^0.8.7+4
+  file_picker: ^8.1.7
   pdf: ^3.11.3
   printing: ^5.14.2
   qr_flutter: ^4.1.0

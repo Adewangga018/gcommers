@@ -11,11 +11,24 @@ public sealed record ProductDto(
     string IconName,
     string Status,
     decimal Rating,
-    string? Specification);
+    string? Specification,
+    decimal BiayaPengirimanPerKg = 50m,
+    decimal PajakPphPersen = 0.25m);
+
+public sealed record UpsertProductRegionPriceRequest(
+    int ProductId,
+    string ProductName,
+    string ProductCode,
+    string Region,
+    decimal HargaSatuan,
+    decimal BiayaPengirimanPerKg,
+    decimal PajakPphPersen,
+    decimal QtyAvailable,
+    string? SetBy);
 
 public sealed record CreateOrderItemRequest(int ProductId, int Quantity);
 
-public sealed record CreateOrderRequest(string? UserEmail, IReadOnlyList<CreateOrderItemRequest> Items)
+public sealed record CreateOrderRequest(string? UserEmail, string? Region, IReadOnlyList<CreateOrderItemRequest> Items)
 {
     public string? Validate()
     {

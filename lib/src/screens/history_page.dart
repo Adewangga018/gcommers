@@ -202,9 +202,15 @@ class _HistoryCard extends StatelessWidget {
           const Divider(height: 1),
           const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${order.itemCount} item - ${order.paymentMethod}', style: const TextStyle(color: Colors.black54)),
+              Expanded(
+                child: Text(
+                  '${order.itemCount} item - ${order.paymentMethod}',
+                  style: const TextStyle(color: Colors.black54),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
               SizedBox(
                 height: 38,
                 child: OutlinedButton(

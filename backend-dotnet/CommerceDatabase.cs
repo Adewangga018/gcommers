@@ -62,6 +62,36 @@ static class CommerceDatabase
         IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Products_ProductCode' AND object_id = OBJECT_ID(N'dbo.Products'))
             EXEC(N'CREATE UNIQUE INDEX UX_Products_ProductCode ON dbo.Products(ProductCode) WHERE ProductCode IS NOT NULL;');
 
+        IF OBJECT_ID(N'dbo.ProductRegionPrices', N'U') IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ProductRegionPrices') AND name = 'QtyAvailable')
+        BEGIN
+            -- Old schema (flat BiayaPengiriman + PajakPpnPersen, keyed by ProductId) predates the
+            -- product_master/qty_available redesign on the Laravel side; safe to rebuild since this
+            -- table is just a mirror of product_region_prices, repopulated on each stock approval.
+            DROP TABLE dbo.ProductRegionPrices;
+        END
+
+        IF OBJECT_ID(N'dbo.ProductRegionPrices', N'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.ProductRegionPrices
+            (
+                Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ProductRegionPrices PRIMARY KEY,
+                ProductCode NVARCHAR(50) NOT NULL,
+                ProductName NVARCHAR(200) NOT NULL,
+                SourceProductId INT NULL,
+                Region NVARCHAR(100) NOT NULL,
+                QtyAvailable DECIMAL(12,2) NOT NULL CONSTRAINT DF_PRP_QtyAvailable DEFAULT 0,
+                HargaSatuan DECIMAL(15,2) NOT NULL CONSTRAINT DF_PRP_HargaSatuan DEFAULT 0,
+                BiayaPengirimanPerKg DECIMAL(10,2) NOT NULL CONSTRAINT DF_PRP_BiayaPengirimanPerKg DEFAULT 0,
+                PajakPphPersen DECIMAL(5,2) NOT NULL CONSTRAINT DF_PRP_PajakPph DEFAULT 0.25,
+                EffectiveFrom DATETIMEOFFSET NULL,
+                SetBy NVARCHAR(256) NULL,
+                CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_PRP_CreatedAt DEFAULT SYSUTCDATETIME(),
+                UpdatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_PRP_UpdatedAt DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT UX_ProductRegionPrices UNIQUE (ProductCode, Region)
+            );
+        END
+
         -- ───────────────────────────────────────────────────────────────
         -- Transport / Shipments / Route checks (for tracking & dummy data)
         -- ───────────────────────────────────────────────────────────────
@@ -224,6 +254,7 @@ static class CommerceDatabase
     public static async Task<IReadOnlyList<ProductDto>> GetProductsAsync(
         IConfiguration configuration,
         string? category,
+        string? region,
         CancellationToken cancellationToken)
     {
         var products = new List<ProductDto>();
@@ -232,14 +263,42 @@ static class CommerceDatabase
         await connection.OpenAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT Id, COALESCE(ProductCode, ''), Name, Description, Category, Price, Stock,
-                   MinimumOrder, Unit, IconName, Status, Rating, Specification
-            FROM dbo.Products
-            WHERE (@Category IS NULL OR Category = @Category)
-              AND Status = N'Aktif'
-            ORDER BY Id;
-            """;
+        var hasRegion = !string.IsNullOrWhiteSpace(region);
+
+        if (hasRegion)
+        {
+            // Only return products that have an approved regional price + stock for this region.
+            // ProductCode is the join key since product_master (Laravel/MySQL) and dbo.Products
+            // (SQL Server) use independent auto-increment ids; ProductCode is the only identifier
+            // both sides agree on.
+            command.CommandText = """
+                SELECT p.Id, COALESCE(p.ProductCode, ''), p.Name, p.Description, p.Category,
+                       rp.HargaSatuan, CAST(rp.QtyAvailable AS INT), p.MinimumOrder, p.Unit, p.IconName,
+                       p.Status, p.Rating, p.Specification,
+                       rp.BiayaPengirimanPerKg, rp.PajakPphPersen
+                FROM dbo.Products p
+                INNER JOIN dbo.ProductRegionPrices rp
+                    ON rp.ProductCode = p.ProductCode AND rp.Region = @Region
+                WHERE (@Category IS NULL OR p.Category = @Category)
+                  AND p.Status = N'Aktif'
+                  AND rp.QtyAvailable > 0
+                ORDER BY p.Id;
+                """;
+            command.Parameters.AddWithValue("@Region", region);
+        }
+        else
+        {
+            command.CommandText = """
+                SELECT Id, COALESCE(ProductCode, ''), Name, Description, Category, Price, Stock,
+                       MinimumOrder, Unit, IconName, Status, Rating, Specification,
+                       50.0, 0.25
+                FROM dbo.Products
+                WHERE (@Category IS NULL OR Category = @Category)
+                  AND Status = N'Aktif'
+                ORDER BY Id;
+                """;
+        }
+
         command.Parameters.AddWithValue("@Category", string.IsNullOrWhiteSpace(category) ? DBNull.Value : category);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -258,10 +317,55 @@ static class CommerceDatabase
                 reader.GetString(9),
                 reader.GetString(10),
                 reader.GetDecimal(11),
-                reader.IsDBNull(12) ? null : reader.GetString(12)));
+                reader.IsDBNull(12) ? null : reader.GetString(12),
+                reader.GetDecimal(13),
+                reader.GetDecimal(14)));
         }
 
         return products;
+    }
+
+    public static async Task UpsertProductRegionPriceAsync(
+        IConfiguration configuration,
+        UpsertProductRegionPriceRequest req,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = ConnectionStringFactory.Build(configuration);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            MERGE dbo.ProductRegionPrices AS target
+            USING (SELECT @ProductCode AS ProductCode, @Region AS Region) AS source
+            ON target.ProductCode = source.ProductCode AND target.Region = source.Region
+            WHEN MATCHED THEN
+                UPDATE SET
+                    ProductName          = @ProductName,
+                    SourceProductId      = @SourceProductId,
+                    HargaSatuan          = @HargaSatuan,
+                    BiayaPengirimanPerKg = @BiayaPengirimanPerKg,
+                    PajakPphPersen       = @PajakPphPersen,
+                    QtyAvailable         = @QtyAvailable,
+                    EffectiveFrom        = SYSUTCDATETIME(),
+                    SetBy                = @SetBy,
+                    UpdatedAt            = SYSUTCDATETIME()
+            WHEN NOT MATCHED THEN
+                INSERT (ProductCode, ProductName, SourceProductId, Region, QtyAvailable, HargaSatuan,
+                        BiayaPengirimanPerKg, PajakPphPersen, EffectiveFrom, SetBy)
+                VALUES (@ProductCode, @ProductName, @SourceProductId, @Region, @QtyAvailable, @HargaSatuan,
+                        @BiayaPengirimanPerKg, @PajakPphPersen, SYSUTCDATETIME(), @SetBy);
+            """;
+        command.Parameters.AddWithValue("@ProductCode", req.ProductCode);
+        command.Parameters.AddWithValue("@ProductName", req.ProductName);
+        command.Parameters.AddWithValue("@SourceProductId", req.ProductId);
+        command.Parameters.AddWithValue("@Region", req.Region);
+        command.Parameters.AddWithValue("@QtyAvailable", req.QtyAvailable);
+        command.Parameters.AddWithValue("@HargaSatuan", req.HargaSatuan);
+        command.Parameters.AddWithValue("@BiayaPengirimanPerKg", req.BiayaPengirimanPerKg);
+        command.Parameters.AddWithValue("@PajakPphPersen", req.PajakPphPersen);
+        command.Parameters.AddWithValue("@SetBy", (object?)req.SetBy ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public static async Task<OrderDetailDto> CreateOrderAsync(
@@ -276,37 +380,77 @@ static class CommerceDatabase
 
         try
         {
-            var orderItems = new List<(int ProductId, string Name, string Unit, int Quantity, decimal UnitPrice, decimal TotalPrice)>();
+            var hasRegion = !string.IsNullOrWhiteSpace(request.Region);
+            var orderItems = new List<(int ProductId, string ProductCode, string Name, string Unit, int Quantity, decimal UnitPrice, decimal TotalPrice)>();
+            var totalShipping = 0m;
+            var pphPersen = 0.25m;
+            var firstRegionPriceRead = false;
+
             foreach (var item in request.Items)
             {
                 await using var productCommand = connection.CreateCommand();
                 productCommand.Transaction = (SqlTransaction)transaction;
-                productCommand.CommandText = "SELECT Name, Unit, Price, Stock FROM dbo.Products WHERE Id = @Id;";
+
+                if (hasRegion)
+                {
+                    // ProductCode is the join key: product_master (Laravel/MySQL) and dbo.Products
+                    // (SQL Server) have independent id sequences.
+                    productCommand.CommandText = """
+                        SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), rp.HargaSatuan,
+                               rp.QtyAvailable, rp.BiayaPengirimanPerKg, rp.PajakPphPersen
+                        FROM dbo.Products p
+                        INNER JOIN dbo.ProductRegionPrices rp
+                            ON rp.ProductCode = p.ProductCode AND rp.Region = @Region
+                        WHERE p.Id = @Id;
+                        """;
+                    productCommand.Parameters.AddWithValue("@Region", request.Region!);
+                }
+                else
+                {
+                    productCommand.CommandText = "SELECT Name, Unit, COALESCE(ProductCode, ''), Price, Stock, 50.0, 0.25 FROM dbo.Products WHERE Id = @Id;";
+                }
                 productCommand.Parameters.AddWithValue("@Id", item.ProductId);
 
-                await using var reader = await productCommand.ExecuteReaderAsync(cancellationToken);
-                if (!await reader.ReadAsync(cancellationToken))
+                string name, unit, productCode;
+                decimal price, qtyAvailable, biayaPengirimanPerKg;
+
+                await using (var reader = await productCommand.ExecuteReaderAsync(cancellationToken))
                 {
-                    throw new InvalidOperationException($"Produk {item.ProductId} tidak ditemukan.");
+                    if (!await reader.ReadAsync(cancellationToken))
+                    {
+                        throw new InvalidOperationException(hasRegion
+                            ? $"Produk {item.ProductId} tidak tersedia di region {request.Region}."
+                            : $"Produk {item.ProductId} tidak ditemukan.");
+                    }
+
+                    name = reader.GetString(0);
+                    unit = reader.GetString(1);
+                    productCode = reader.GetString(2);
+                    price = reader.GetDecimal(3);
+                    qtyAvailable = reader.GetDecimal(4);
+                    biayaPengirimanPerKg = reader.GetDecimal(5);
+
+                    if (!firstRegionPriceRead)
+                    {
+                        pphPersen = reader.GetDecimal(6);
+                        firstRegionPriceRead = true;
+                    }
                 }
 
-                var name = reader.GetString(0);
-                var unit = reader.GetString(1);
-                var price = reader.GetDecimal(2);
-                var stock = reader.GetInt32(3);
-                await reader.CloseAsync();
-
-                if (stock < item.Quantity)
+                if (qtyAvailable < item.Quantity)
                 {
                     throw new InvalidOperationException($"Stok {name} tidak cukup.");
                 }
 
-                orderItems.Add((item.ProductId, name, unit, item.Quantity, price, price * item.Quantity));
+                // qty dipesan dalam satuan TON; tarif ongkir region dalam Rp/kg.
+                var beratKg = item.Quantity * 1000m;
+                totalShipping += biayaPengirimanPerKg * beratKg;
+                orderItems.Add((item.ProductId, productCode, name, unit, item.Quantity, price, price * item.Quantity));
             }
 
             var subtotal = orderItems.Sum(item => item.TotalPrice);
-            var tax = Math.Round(subtotal * 0.11m, 2);
-            var shipping = 250000m;
+            var tax = Math.Round(subtotal * pphPersen / 100m, 2);
+            var shipping = Math.Round(totalShipping, 2);
             var total = subtotal + tax + shipping;
             var poNumber = $"PO-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}";
 
@@ -331,16 +475,27 @@ static class CommerceDatabase
             {
                 await using var itemCommand = connection.CreateCommand();
                 itemCommand.Transaction = (SqlTransaction)transaction;
-                itemCommand.CommandText = """
-                    INSERT INTO dbo.OrderItems
-                    (OrderId, ProductId, ProductName, Unit, Quantity, UnitPrice, TotalPrice)
-                    VALUES
-                    (@OrderId, @ProductId, @ProductName, @Unit, @Quantity, @UnitPrice, @TotalPrice);
+                itemCommand.CommandText = hasRegion
+                    ? """
+                        INSERT INTO dbo.OrderItems
+                        (OrderId, ProductId, ProductName, Unit, Quantity, UnitPrice, TotalPrice)
+                        VALUES
+                        (@OrderId, @ProductId, @ProductName, @Unit, @Quantity, @UnitPrice, @TotalPrice);
 
-                    UPDATE dbo.Products
-                    SET Stock = Stock - @Quantity
-                    WHERE Id = @ProductId;
-                    """;
+                        UPDATE dbo.ProductRegionPrices
+                        SET QtyAvailable = QtyAvailable - @Quantity
+                        WHERE ProductCode = @ProductCode AND Region = @Region;
+                        """
+                    : """
+                        INSERT INTO dbo.OrderItems
+                        (OrderId, ProductId, ProductName, Unit, Quantity, UnitPrice, TotalPrice)
+                        VALUES
+                        (@OrderId, @ProductId, @ProductName, @Unit, @Quantity, @UnitPrice, @TotalPrice);
+
+                        UPDATE dbo.Products
+                        SET Stock = Stock - @Quantity
+                        WHERE Id = @ProductId;
+                        """;
                 itemCommand.Parameters.AddWithValue("@OrderId", orderId);
                 itemCommand.Parameters.AddWithValue("@ProductId", item.ProductId);
                 itemCommand.Parameters.AddWithValue("@ProductName", item.Name);
@@ -348,6 +503,11 @@ static class CommerceDatabase
                 itemCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
                 itemCommand.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
                 itemCommand.Parameters.AddWithValue("@TotalPrice", item.TotalPrice);
+                if (hasRegion)
+                {
+                    itemCommand.Parameters.AddWithValue("@ProductCode", item.ProductCode);
+                    itemCommand.Parameters.AddWithValue("@Region", request.Region!);
+                }
                 await itemCommand.ExecuteNonQueryAsync(cancellationToken);
             }
 
