@@ -332,9 +332,9 @@ auth.MapPost("/upload-ktp", async (HttpRequest request, IWebHostEnvironment envi
     }
 
     var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-    if (extension is not ".jpg" and not ".jpeg" and not ".png")
+    if (extension is not ".jpg" and not ".jpeg" and not ".png" and not ".pdf")
     {
-        return Results.BadRequest(new { message = "Format file harus JPG atau PNG." });
+        return Results.BadRequest(new { message = "Format file harus JPG, PNG, atau PDF." });
     }
 
     const long maxFileSize = 5 * 1024 * 1024;
@@ -361,10 +361,22 @@ app.MapGet("/dashboard/summary", async (IConfiguration configuration, Cancellati
     return Results.Ok(summary);
 });
 
-app.MapGet("/products", async (string? category, IConfiguration configuration, CancellationToken cancellationToken) =>
+app.MapGet("/products", async (string? category, string? region, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
-    var products = await CommerceDatabase.GetProductsAsync(configuration, category, cancellationToken);
+    var products = await CommerceDatabase.GetProductsAsync(configuration, category, region, cancellationToken);
     return Results.Ok(products);
+});
+
+app.MapPost("/admin/product-region-prices", async (UpsertProductRegionPriceRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    if (request.ProductId <= 0 || string.IsNullOrWhiteSpace(request.Region) || string.IsNullOrWhiteSpace(request.ProductName)
+        || string.IsNullOrWhiteSpace(request.ProductCode))
+    {
+        return Results.BadRequest(new { message = "ProductId, ProductCode, Region, dan ProductName wajib diisi." });
+    }
+
+    await CommerceDatabase.UpsertProductRegionPriceAsync(configuration, request, cancellationToken);
+    return Results.Ok(new { message = "Harga region berhasil diperbarui." });
 });
 
 var orders = app.MapGroup("/orders");

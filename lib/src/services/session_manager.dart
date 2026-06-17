@@ -22,9 +22,14 @@ class SessionManager {
 
   late final SharedPreferences _prefs;
   bool _initialized = false;
+  Future<void>? _initializing;
 
-  Future<void> init() async {
-    if (_initialized) return;
+  Future<void> init() {
+    if (_initialized) return Future.value();
+    return _initializing ??= _doInit();
+  }
+
+  Future<void> _doInit() async {
     _prefs = await SharedPreferences.getInstance();
     _initialized = true;
   }

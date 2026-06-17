@@ -13,6 +13,8 @@ class Product {
     required this.status,
     required this.rating,
     required this.specification,
+    this.biayaPengirimanPerKg = 50,
+    this.pajakPphPersen = 0.25,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -30,6 +32,8 @@ class Product {
       status: json['status'] as String? ?? 'Aktif',
       rating: (json['rating'] as num?)?.toDouble() ?? 0,
       specification: json['specification'] as String?,
+      biayaPengirimanPerKg: (json['biayaPengirimanPerKg'] as num?)?.toDouble() ?? 50,
+      pajakPphPersen: (json['pajakPphPersen'] as num?)?.toDouble() ?? 0.25,
     );
   }
 
@@ -46,6 +50,8 @@ class Product {
   final String status;
   final double rating;
   final String? specification;
+  final double biayaPengirimanPerKg;
+  final double pajakPphPersen;
 }
 
 class OrderSummary {
