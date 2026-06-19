@@ -25,6 +25,7 @@ app.UseCors("AllowAll");
 try
 {
     await AuthDatabase.EnsureSchemaAsync(app.Configuration);
+    await RegionDatabase.EnsureSchemaAsync(app.Configuration);
     await CommerceDatabase.EnsureSchemaAsync(app.Configuration);
 }
 catch (Exception ex)
