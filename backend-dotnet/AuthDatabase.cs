@@ -139,6 +139,28 @@ static class AuthDatabase
         BEGIN
             ALTER TABLE dbo.Users ADD AvatarImage VARBINARY(MAX) NULL;
         END
+
+        -- Add ProvinsiId / KabupatenId / KecamatanId columns if missing (administrative location, FK to propinsi/kabupaten/kecamatan)
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'ProvinsiId'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD ProvinsiId BIGINT NULL;
+        END
+
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'KabupatenId'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD KabupatenId BIGINT NULL;
+        END
+
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'KecamatanId'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD KecamatanId BIGINT NULL;
+        END
         """;
 
         await using var command = connection.CreateCommand();
@@ -218,30 +240,39 @@ static class AuthDatabase
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT TOP 1
-                Id,
-                Email,
-                PasswordHash,
-                PasswordSalt,
-                Role,
-                DisplayName,
-                Phone,
-                PicName,
-                Address,
-                Region,
-                TransportirName,
-                CompanyName,
-                PoliceNumber,
-                [Type],
-                ResetOtpHash,
-                ResetOtpSalt,
-                ResetOtpExpiresAt,
-                ResetOtpVerifiedAt,
-                FailedLoginCount,
-                LastFailedLoginAt,
-                LockoutUntil,
-                AvatarImage
-            FROM dbo.Users
-            WHERE Email = @Email;
+                u.Id,
+                u.Email,
+                u.PasswordHash,
+                u.PasswordSalt,
+                u.Role,
+                u.DisplayName,
+                u.Phone,
+                u.PicName,
+                u.Address,
+                u.Region,
+                u.TransportirName,
+                u.CompanyName,
+                u.PoliceNumber,
+                u.[Type],
+                u.ResetOtpHash,
+                u.ResetOtpSalt,
+                u.ResetOtpExpiresAt,
+                u.ResetOtpVerifiedAt,
+                u.FailedLoginCount,
+                u.LastFailedLoginAt,
+                u.LockoutUntil,
+                u.AvatarImage,
+                u.ProvinsiId,
+                u.KabupatenId,
+                u.KecamatanId,
+                p.nama_pro,
+                k.nama_kab,
+                c.nama_kec
+            FROM dbo.Users u
+            LEFT JOIN dbo.propinsi p ON p.id = u.ProvinsiId
+            LEFT JOIN dbo.kabupaten k ON k.id = u.KabupatenId
+            LEFT JOIN dbo.kecamatan c ON c.id = u.KecamatanId
+            WHERE u.Email = @Email;
             """;
         command.Parameters.AddWithValue("@Email", email);
 
@@ -273,7 +304,13 @@ static class AuthDatabase
             reader.GetInt32(18),                                // FailedLoginCount
             reader.IsDBNull(19) ? null : reader.GetFieldValue<DateTimeOffset>(19), // LastFailedLoginAt
             reader.IsDBNull(20) ? null : reader.GetFieldValue<DateTimeOffset>(20), // LockoutUntil
-            reader.IsDBNull(21) ? null : (byte[])reader[21]);   // AvatarImage
+            reader.IsDBNull(21) ? null : (byte[])reader[21],   // AvatarImage
+            reader.IsDBNull(22) ? null : reader.GetInt64(22),  // ProvinsiId
+            reader.IsDBNull(23) ? null : reader.GetInt64(23),  // KabupatenId
+            reader.IsDBNull(24) ? null : reader.GetInt64(24),  // KecamatanId
+            reader.IsDBNull(25) ? null : reader.GetString(25), // ProvinsiNama
+            reader.IsDBNull(26) ? null : reader.GetString(26), // KabupatenNama
+            reader.IsDBNull(27) ? null : reader.GetString(27)); // KecamatanNama
     }
 
     public static async Task ResetLoginAttemptsAsync(SqlConnection connection, int userId, CancellationToken cancellationToken)
@@ -352,6 +389,9 @@ static class AuthDatabase
                 [Type],
                 Address,
                 Region,
+                ProvinsiId,
+                KabupatenId,
+                KecamatanId,
                 LicenseImageName,
                 CreatedAt,
                 UpdatedAt
@@ -373,6 +413,9 @@ static class AuthDatabase
                 @Type,
                 @Address,
                 @Region,
+                @ProvinsiId,
+                @KabupatenId,
+                @KecamatanId,
                 @LicenseImageName,
                 SYSUTCDATETIME(),
                 SYSUTCDATETIME()
@@ -391,6 +434,9 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@Type", DBNull.Value);
         command.Parameters.AddWithValue("@Address", request.Address.Trim());
         command.Parameters.AddWithValue("@Region", request.Region.Trim());
+        command.Parameters.AddWithValue("@ProvinsiId", request.ProvinsiId);
+        command.Parameters.AddWithValue("@KabupatenId", request.KabupatenId);
+        command.Parameters.AddWithValue("@KecamatanId", request.KecamatanId);
         command.Parameters.AddWithValue("@LicenseImageName", (object?)request.LicenseImageName ?? DBNull.Value);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);

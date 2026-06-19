@@ -125,6 +125,9 @@ class AuthService {
         'password': draft.password,
         'address': draft.address,
         'region': draft.region,
+        'provinsiId': draft.provinsiId,
+        'kabupatenId': draft.kabupatenId,
+        'kecamatanId': draft.kecamatanId,
         'termsAccepted': draft.termsAccepted,
         'licenseImageName': draft.licenseImageName,
       }),
@@ -213,6 +216,9 @@ class AuthService {
         address: data['address'] as String?,
         region: data['region'] as String?,
         avatarImageBase64: data['avatarImageBase64'] as String?,
+        provinsiNama: data['provinsiNama'] as String?,
+        kabupatenNama: data['kabupatenNama'] as String?,
+        kecamatanNama: data['kecamatanNama'] as String?,
       );
     }
 

@@ -8,6 +8,9 @@ public sealed record RegisterKioskRequest(
     string Password,
     string Address,
     string Region,
+    long ProvinsiId,
+    long KabupatenId,
+    long KecamatanId,
     bool TermsAccepted,
     string? LicenseImageName)
 {
@@ -22,6 +25,11 @@ public sealed record RegisterKioskRequest(
             string.IsNullOrWhiteSpace(Region))
         {
             return "Semua field wajib diisi.";
+        }
+
+        if (ProvinsiId <= 0 || KabupatenId <= 0 || KecamatanId <= 0)
+        {
+            return "Provinsi, kabupaten, dan kecamatan wajib dipilih.";
         }
 
         if (Password.Length < 8)
@@ -107,7 +115,13 @@ public sealed record AuthSession(
     string? CompanyName = null,
     string? PoliceNumber = null,
     string? VehicleType = null,
-    string? AvatarImageBase64 = null)
+    string? AvatarImageBase64 = null,
+    long? ProvinsiId = null,
+    long? KabupatenId = null,
+    long? KecamatanId = null,
+    string? ProvinsiNama = null,
+    string? KabupatenNama = null,
+    string? KecamatanNama = null)
 {
     public static AuthSession FromUser(AuthUserRecord user)
         => new(
@@ -123,7 +137,13 @@ public sealed record AuthSession(
             user.CompanyName,
             user.PoliceNumber,
             user.VehicleType,
-            user.AvatarImage is { Length: > 0 } bytes ? Convert.ToBase64String(bytes) : null);
+            user.AvatarImage is { Length: > 0 } bytes ? Convert.ToBase64String(bytes) : null,
+            user.ProvinsiId,
+            user.KabupatenId,
+            user.KecamatanId,
+            user.ProvinsiNama,
+            user.KabupatenNama,
+            user.KecamatanNama);
 }
 
 public sealed record AuthUserRecord(
@@ -148,4 +168,10 @@ public sealed record AuthUserRecord(
     int FailedLoginCount,
     DateTimeOffset? LastFailedLoginAt,
     DateTimeOffset? LockoutUntil,
-    byte[]? AvatarImage = null);
+    byte[]? AvatarImage = null,
+    long? ProvinsiId = null,
+    long? KabupatenId = null,
+    long? KecamatanId = null,
+    string? ProvinsiNama = null,
+    string? KabupatenNama = null,
+    string? KecamatanNama = null);

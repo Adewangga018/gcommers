@@ -361,6 +361,36 @@ app.MapGet("/dashboard/summary", async (IConfiguration configuration, Cancellati
     return Results.Ok(summary);
 });
 
+var wilayah = app.MapGroup("/wilayah");
+
+wilayah.MapGet("/provinsi", async (IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var data = await WilayahDatabase.GetProvinsiListAsync(configuration, cancellationToken);
+    return Results.Ok(data);
+});
+
+wilayah.MapGet("/kabupaten", async (long? provinsiId, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    if (provinsiId is null || provinsiId <= 0)
+    {
+        return Results.BadRequest(new { message = "provinsiId wajib diisi." });
+    }
+
+    var data = await WilayahDatabase.GetKabupatenListAsync(configuration, provinsiId.Value, cancellationToken);
+    return Results.Ok(data);
+});
+
+wilayah.MapGet("/kecamatan", async (long? kabupatenId, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    if (kabupatenId is null || kabupatenId <= 0)
+    {
+        return Results.BadRequest(new { message = "kabupatenId wajib diisi." });
+    }
+
+    var data = await WilayahDatabase.GetKecamatanListAsync(configuration, kabupatenId.Value, cancellationToken);
+    return Results.Ok(data);
+});
+
 app.MapGet("/products", async (string? category, string? region, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
     var products = await CommerceDatabase.GetProductsAsync(configuration, category, region, cancellationToken);
