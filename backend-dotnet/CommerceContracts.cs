@@ -28,7 +28,7 @@ public sealed record UpsertProductRegionPriceRequest(
 
 public sealed record CreateOrderItemRequest(int ProductId, int Quantity);
 
-public sealed record CreateOrderRequest(string? UserEmail, string? Region, IReadOnlyList<CreateOrderItemRequest> Items)
+public sealed record CreateOrderRequest(string? UserEmail, string? Region, string? Kecamatan, IReadOnlyList<CreateOrderItemRequest> Items)
 {
     public string? Validate()
     {

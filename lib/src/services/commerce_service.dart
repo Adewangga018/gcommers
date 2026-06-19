@@ -30,8 +30,10 @@ class CommerceService {
     return DashboardSummary.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Future<List<Product>> getProducts({String? category, String? region}) async {
-    final response = await http.get(_uri('/products', {'category': category, 'region': region}));
+  Future<List<Product>> getProducts({String? category, String? region, String? kecamatan}) async {
+    final response = await http.get(
+      _uri('/products', {'category': category, 'region': region, 'kecamatan': kecamatan}),
+    );
     _ensureOk(response);
     return (jsonDecode(response.body) as List<dynamic>)
         .map((item) => Product.fromJson(item as Map<String, dynamic>))
@@ -41,6 +43,7 @@ class CommerceService {
   Future<OrderDetail> createOrder({
     String? userEmail,
     String? region,
+    String? kecamatan,
     required Map<int, int> quantities,
   }) async {
     final items = quantities.entries
@@ -57,6 +60,7 @@ class CommerceService {
       body: jsonEncode({
         'userEmail': userEmail,
         'region': region,
+        'kecamatan': kecamatan,
         'items': items,
       }),
     );

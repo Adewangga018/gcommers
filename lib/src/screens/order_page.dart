@@ -21,6 +21,7 @@ class _OrderPageState extends State<OrderPage> {
   String _selectedCategory = 'Subsidi';
   bool _submitting = false;
   String? _userRegion;
+  String? _userKecamatan;
   String? _userEmail;
 
   @override
@@ -32,10 +33,12 @@ class _OrderPageState extends State<OrderPage> {
   Future<List<Product>> _loadProductsForSession() async {
     final session = await sessionManager.getSession();
     _userRegion = session?.region;
+    _userKecamatan = session?.kecamatanNama;
     _userEmail = session?.email;
     return _commerceService.getProducts(
       category: _selectedCategory,
-      region: _userRegion,
+      region: _hasKecamatan ? null : _userRegion,
+      kecamatan: _userKecamatan,
     );
   }
 
@@ -45,12 +48,15 @@ class _OrderPageState extends State<OrderPage> {
     super.dispose();
   }
 
+  bool get _hasKecamatan => _userKecamatan != null && _userKecamatan!.isNotEmpty;
+
   void _loadCategory(String category) {
     setState(() {
       _selectedCategory = category;
       _productsFuture = _commerceService.getProducts(
         category: category,
-        region: _userRegion,
+        region: _hasKecamatan ? null : _userRegion,
+        kecamatan: _userKecamatan,
       );
     });
   }
@@ -58,7 +64,8 @@ class _OrderPageState extends State<OrderPage> {
   Future<void> _refreshProducts() {
     final future = _commerceService.getProducts(
       category: _selectedCategory,
-      region: _userRegion,
+      region: _hasKecamatan ? null : _userRegion,
+      kecamatan: _userKecamatan,
     );
     setState(() => _productsFuture = future);
     return future;
@@ -83,7 +90,8 @@ class _OrderPageState extends State<OrderPage> {
     try {
       final order = await _commerceService.createOrder(
         userEmail: _userEmail,
-        region: _userRegion,
+        region: _hasKecamatan ? null : _userRegion,
+        kecamatan: _userKecamatan,
         quantities: selected,
       );
       if (!mounted) return;
@@ -145,7 +153,7 @@ class _OrderPageState extends State<OrderPage> {
             return Column(
               children: [
                 const SizedBox(height: 18),
-                if (_userRegion != null && _userRegion!.isNotEmpty)
+                if (_hasKecamatan || (_userRegion != null && _userRegion!.isNotEmpty))
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                     child: Row(
@@ -154,7 +162,9 @@ class _OrderPageState extends State<OrderPage> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Harga, stok, dan ongkir mengikuti wilayah $_userRegion',
+                            _hasKecamatan
+                                ? 'Harga, stok, dan ongkir mengikuti kecamatan $_userKecamatan'
+                                : 'Harga, stok, dan ongkir mengikuti wilayah $_userRegion',
                             style: const TextStyle(color: Colors.black54, fontSize: 12),
                           ),
                         ),

@@ -225,6 +225,7 @@ static class CommerceDatabase
         IConfiguration configuration,
         string? category,
         string? region,
+        string? kecamatan,
         CancellationToken cancellationToken)
     {
         var products = new List<ProductDto>();
@@ -233,9 +234,33 @@ static class CommerceDatabase
         await connection.OpenAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
-        var hasRegion = !string.IsNullOrWhiteSpace(region);
+        var hasKecamatan = !string.IsNullOrWhiteSpace(kecamatan);
+        var hasRegion = !hasKecamatan && !string.IsNullOrWhiteSpace(region);
 
-        if (hasRegion)
+        if (hasKecamatan)
+        {
+            // dbo.kecamatan_product_prices / dbo.kecamatan_product_stocks are managed by the admin
+            // console (subsidy quota per kecamatan) and are the source of truth for kiosk pricing now
+            // that kiosks are registered against a specific kecamatan. Stock is allocated monthly.
+            command.CommandText = """
+                SELECT p.Id, COALESCE(p.ProductCode, ''), p.Name, p.Description, p.Category,
+                       kpp.harga_satuan, CAST(kps.quota_ton AS INT), p.MinimumOrder, p.Unit, p.IconName,
+                       p.Status, p.Rating, p.Specification,
+                       kpp.biaya_pengiriman, kpp.pph_persen
+                FROM dbo.Products p
+                INNER JOIN dbo.kecamatan_product_prices kpp
+                    ON kpp.product_code = p.ProductCode AND kpp.kecamatan = @Kecamatan
+                INNER JOIN dbo.kecamatan_product_stocks kps
+                    ON kps.product_code = p.ProductCode AND kps.kecamatan = @Kecamatan AND kps.period = @Period
+                WHERE (@Category IS NULL OR p.Category = @Category)
+                  AND p.Status = N'Aktif'
+                  AND kps.quota_ton > 0
+                ORDER BY p.Id;
+                """;
+            command.Parameters.AddWithValue("@Kecamatan", kecamatan);
+            command.Parameters.AddWithValue("@Period", CurrentPeriod());
+        }
+        else if (hasRegion)
         {
             // Only return products that have an approved regional price + stock for this region.
             // dbo.product_region_prices is the externally-managed source of truth for region
@@ -350,7 +375,9 @@ static class CommerceDatabase
 
         try
         {
-            var hasRegion = !string.IsNullOrWhiteSpace(request.Region);
+            var hasKecamatan = !string.IsNullOrWhiteSpace(request.Kecamatan);
+            var hasRegion = !hasKecamatan && !string.IsNullOrWhiteSpace(request.Region);
+            var period = CurrentPeriod();
             var orderItems = new List<(int ProductId, string ProductCode, string Name, string Unit, int Quantity, decimal UnitPrice, decimal TotalPrice)>();
             var totalShipping = 0m;
             var pphPersen = 0.25m;
@@ -361,7 +388,24 @@ static class CommerceDatabase
                 await using var productCommand = connection.CreateCommand();
                 productCommand.Transaction = (SqlTransaction)transaction;
 
-                if (hasRegion)
+                if (hasKecamatan)
+                {
+                    // dbo.kecamatan_product_prices / dbo.kecamatan_product_stocks are managed by the
+                    // admin console (subsidy quota per kecamatan); ProductCode is the join key.
+                    productCommand.CommandText = """
+                        SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), kpp.harga_satuan,
+                               kps.quota_ton, kpp.biaya_pengiriman, kpp.pph_persen
+                        FROM dbo.Products p
+                        INNER JOIN dbo.kecamatan_product_prices kpp
+                            ON kpp.product_code = p.ProductCode AND kpp.kecamatan = @Kecamatan
+                        INNER JOIN dbo.kecamatan_product_stocks kps
+                            ON kps.product_code = p.ProductCode AND kps.kecamatan = @Kecamatan AND kps.period = @Period
+                        WHERE p.Id = @Id;
+                        """;
+                    productCommand.Parameters.AddWithValue("@Kecamatan", request.Kecamatan!);
+                    productCommand.Parameters.AddWithValue("@Period", period);
+                }
+                else if (hasRegion)
                 {
                     // ProductCode is the join key: dbo.product_region_prices and dbo.Products
                     // have independent id sequences.
@@ -388,9 +432,11 @@ static class CommerceDatabase
                 {
                     if (!await reader.ReadAsync(cancellationToken))
                     {
-                        throw new InvalidOperationException(hasRegion
-                            ? $"Produk {item.ProductId} tidak tersedia di region {request.Region}."
-                            : $"Produk {item.ProductId} tidak ditemukan.");
+                        throw new InvalidOperationException(hasKecamatan
+                            ? $"Produk {item.ProductId} tidak tersedia di kecamatan {request.Kecamatan}."
+                            : hasRegion
+                                ? $"Produk {item.ProductId} tidak tersedia di region {request.Region}."
+                                : $"Produk {item.ProductId} tidak ditemukan.");
                     }
 
                     name = reader.GetString(0);
@@ -445,27 +491,38 @@ static class CommerceDatabase
             {
                 await using var itemCommand = connection.CreateCommand();
                 itemCommand.Transaction = (SqlTransaction)transaction;
-                itemCommand.CommandText = hasRegion
+                itemCommand.CommandText = hasKecamatan
                     ? """
                         INSERT INTO dbo.OrderItems
                         (OrderId, ProductId, ProductName, Unit, Quantity, UnitPrice, TotalPrice)
                         VALUES
                         (@OrderId, @ProductId, @ProductName, @Unit, @Quantity, @UnitPrice, @TotalPrice);
 
-                        UPDATE dbo.product_region_prices
-                        SET qty_available = qty_available - @Quantity
-                        WHERE product_code = @ProductCode AND region = @Region;
+                        UPDATE dbo.kecamatan_product_stocks
+                        SET quota_ton = quota_ton - @Quantity
+                        WHERE product_code = @ProductCode AND kecamatan = @Kecamatan AND period = @Period;
                         """
-                    : """
-                        INSERT INTO dbo.OrderItems
-                        (OrderId, ProductId, ProductName, Unit, Quantity, UnitPrice, TotalPrice)
-                        VALUES
-                        (@OrderId, @ProductId, @ProductName, @Unit, @Quantity, @UnitPrice, @TotalPrice);
+                    : hasRegion
+                        ? """
+                            INSERT INTO dbo.OrderItems
+                            (OrderId, ProductId, ProductName, Unit, Quantity, UnitPrice, TotalPrice)
+                            VALUES
+                            (@OrderId, @ProductId, @ProductName, @Unit, @Quantity, @UnitPrice, @TotalPrice);
 
-                        UPDATE dbo.Products
-                        SET Stock = Stock - @Quantity
-                        WHERE Id = @ProductId;
-                        """;
+                            UPDATE dbo.product_region_prices
+                            SET qty_available = qty_available - @Quantity
+                            WHERE product_code = @ProductCode AND region = @Region;
+                            """
+                        : """
+                            INSERT INTO dbo.OrderItems
+                            (OrderId, ProductId, ProductName, Unit, Quantity, UnitPrice, TotalPrice)
+                            VALUES
+                            (@OrderId, @ProductId, @ProductName, @Unit, @Quantity, @UnitPrice, @TotalPrice);
+
+                            UPDATE dbo.Products
+                            SET Stock = Stock - @Quantity
+                            WHERE Id = @ProductId;
+                            """;
                 itemCommand.Parameters.AddWithValue("@OrderId", orderId);
                 itemCommand.Parameters.AddWithValue("@ProductId", item.ProductId);
                 itemCommand.Parameters.AddWithValue("@ProductName", item.Name);
@@ -473,7 +530,13 @@ static class CommerceDatabase
                 itemCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
                 itemCommand.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
                 itemCommand.Parameters.AddWithValue("@TotalPrice", item.TotalPrice);
-                if (hasRegion)
+                if (hasKecamatan)
+                {
+                    itemCommand.Parameters.AddWithValue("@ProductCode", item.ProductCode);
+                    itemCommand.Parameters.AddWithValue("@Kecamatan", request.Kecamatan!);
+                    itemCommand.Parameters.AddWithValue("@Period", period);
+                }
+                else if (hasRegion)
                 {
                     itemCommand.Parameters.AddWithValue("@ProductCode", item.ProductCode);
                     itemCommand.Parameters.AddWithValue("@Region", request.Region!);
@@ -1012,6 +1075,8 @@ static class CommerceDatabase
         command.Parameters.AddWithValue("@UserEmail", (object?)userEmail ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
+
+    private static string CurrentPeriod() => DateTimeOffset.UtcNow.ToString("yyyy-MM");
 
     private static string ToStatusLabel(string status) => status switch
     {

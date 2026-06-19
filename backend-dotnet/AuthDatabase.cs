@@ -161,6 +161,14 @@ static class AuthDatabase
         BEGIN
             ALTER TABLE dbo.Users ADD KecamatanId BIGINT NULL;
         END
+
+        -- Add Kecamatan (plain text name) column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'Kecamatan'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD Kecamatan NVARCHAR(150) NULL;
+        END
         """;
 
         await using var command = connection.CreateCommand();
@@ -370,6 +378,7 @@ static class AuthDatabase
     {
         var displayName = request.KioskName.Trim();
         var (passwordSalt, passwordHash) = PasswordHasher.Hash(request.Password);
+        var kecamatanNama = await GetKecamatanNamaAsync(connection, request.KecamatanId, cancellationToken);
 
         await using var command = connection.CreateCommand();
         command.CommandText = """
@@ -392,6 +401,7 @@ static class AuthDatabase
                 ProvinsiId,
                 KabupatenId,
                 KecamatanId,
+                Kecamatan,
                 LicenseImageName,
                 CreatedAt,
                 UpdatedAt
@@ -416,6 +426,7 @@ static class AuthDatabase
                 @ProvinsiId,
                 @KabupatenId,
                 @KecamatanId,
+                @Kecamatan,
                 @LicenseImageName,
                 SYSUTCDATETIME(),
                 SYSUTCDATETIME()
@@ -434,6 +445,7 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@Type", DBNull.Value);
         command.Parameters.AddWithValue("@Address", request.Address.Trim());
         command.Parameters.AddWithValue("@Region", request.Region.Trim());
+        command.Parameters.AddWithValue("@Kecamatan", (object?)kecamatanNama ?? DBNull.Value);
         command.Parameters.AddWithValue("@ProvinsiId", request.ProvinsiId);
         command.Parameters.AddWithValue("@KabupatenId", request.KabupatenId);
         command.Parameters.AddWithValue("@KecamatanId", request.KecamatanId);
@@ -446,6 +458,15 @@ static class AuthDatabase
         }
 
         return new AuthSession(normalizedEmail, reader.GetString(2), reader.GetString(3), Guid.NewGuid().ToString("N"));
+    }
+
+    private static async Task<string?> GetKecamatanNamaAsync(SqlConnection connection, long kecamatanId, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT nama_kec FROM dbo.kecamatan WHERE id = @Id;";
+        command.Parameters.AddWithValue("@Id", kecamatanId);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result as string;
     }
 
     public static Task<AuthSession> CreateKioskUserAsync(

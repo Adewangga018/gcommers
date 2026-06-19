@@ -391,9 +391,9 @@ wilayah.MapGet("/kecamatan", async (long? kabupatenId, IConfiguration configurat
     return Results.Ok(data);
 });
 
-app.MapGet("/products", async (string? category, string? region, IConfiguration configuration, CancellationToken cancellationToken) =>
+app.MapGet("/products", async (string? category, string? region, string? kecamatan, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
-    var products = await CommerceDatabase.GetProductsAsync(configuration, category, region, cancellationToken);
+    var products = await CommerceDatabase.GetProductsAsync(configuration, category, region, kecamatan, cancellationToken);
     return Results.Ok(products);
 });
 
