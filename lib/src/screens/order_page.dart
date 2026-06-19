@@ -55,6 +55,15 @@ class _OrderPageState extends State<OrderPage> {
     });
   }
 
+  Future<void> _refreshProducts() {
+    final future = _commerceService.getProducts(
+      category: _selectedCategory,
+      region: _userRegion,
+    );
+    setState(() => _productsFuture = future);
+    return future;
+  }
+
   void _changeQuantity(Product product, int delta) {
     final current = _quantities[product.id] ?? 0;
     final next = (current + delta).clamp(0, product.stock);
@@ -136,6 +145,22 @@ class _OrderPageState extends State<OrderPage> {
             return Column(
               children: [
                 const SizedBox(height: 18),
+                if (_userRegion != null && _userRegion!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 16, color: primaryPurple),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Harga, stok, dan ongkir mengikuti wilayah $_userRegion',
+                            style: const TextStyle(color: Colors.black54, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Container(
@@ -193,24 +218,29 @@ class _OrderPageState extends State<OrderPage> {
                 ),
                 const SizedBox(height: 16),
                 Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
-                    itemCount: visibleProducts.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
-                    itemBuilder: (context, index) {
-                      final product = visibleProducts[index];
-                      return _ProductCard(
-                        product: product,
-                        quantity: _quantities[product.id] ?? 0,
-                        onAdd: () => _changeQuantity(product, 1),
-                        onRemove: () => _changeQuantity(product, -1),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => ProductDetailPage(product: product),
+                  child: RefreshIndicator(
+                    color: primaryPurple,
+                    onRefresh: _refreshProducts,
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
+                      itemCount: visibleProducts.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final product = visibleProducts[index];
+                        return _ProductCard(
+                          product: product,
+                          quantity: _quantities[product.id] ?? 0,
+                          onAdd: () => _changeQuantity(product, 1),
+                          onRemove: () => _changeQuantity(product, -1),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => ProductDetailPage(product: product),
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -237,6 +267,13 @@ class _OrderPageState extends State<OrderPage> {
                       '${_selectedCount()} item dipilih',
                       style: const TextStyle(color: Colors.black54, fontSize: 12),
                     ),
+                    if (_selectedCount() > 0) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Subtotal ${formatCurrency(_estimatedSubtotal())} + Ongkir & Pajak ${formatCurrency(_estimatedShipping() + _estimatedTax())}',
+                        style: const TextStyle(color: Colors.black45, fontSize: 11),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       formatCurrency(_estimatedTotal()),
@@ -274,13 +311,36 @@ class _OrderPageState extends State<OrderPage> {
 
   int _selectedCount() => _quantities.values.where((quantity) => quantity > 0).length;
 
-  num _estimatedTotal() {
+  double _estimatedSubtotal() {
     var total = 0.0;
     for (final product in _products) {
       total += product.price * (_quantities[product.id] ?? 0);
     }
     return total;
   }
+
+  double _estimatedShipping() {
+    // qty dipesan dalam satuan TON; tarif ongkir region dalam Rp/kg (lihat CommerceDatabase.CreateOrderAsync).
+    var total = 0.0;
+    for (final product in _products) {
+      final quantity = _quantities[product.id] ?? 0;
+      if (quantity <= 0) continue;
+      total += product.biayaPengirimanPerKg * quantity * 1000;
+    }
+    return total;
+  }
+
+  double _estimatedTax() {
+    final subtotal = _estimatedSubtotal();
+    for (final product in _products) {
+      if ((_quantities[product.id] ?? 0) > 0) {
+        return subtotal * product.pajakPphPersen / 100;
+      }
+    }
+    return 0;
+  }
+
+  num _estimatedTotal() => _estimatedSubtotal() + _estimatedShipping() + _estimatedTax();
 }
 
 class _TabChip extends StatelessWidget {
@@ -372,6 +432,11 @@ class _ProductCard extends StatelessWidget {
                     Text(
                       '${product.unit} - Stok: ${product.stock}',
                       style: const TextStyle(color: Colors.black54, fontSize: 12),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Ongkir ${formatCurrency(product.biayaPengirimanPerKg)}/kg',
+                      style: const TextStyle(color: Colors.black45, fontSize: 11),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -492,6 +557,8 @@ class ProductDetailPage extends StatelessWidget {
                     _DetailRow(label: 'Kategori', value: product.category),
                     if (product.code.isNotEmpty) _DetailRow(label: 'Kode', value: product.code),
                     _DetailRow(label: 'Harga', value: formatCurrency(product.price)),
+                    _DetailRow(label: 'Biaya Pengiriman', value: '${formatCurrency(product.biayaPengirimanPerKg)}/kg'),
+                    _DetailRow(label: 'Pajak (PPh)', value: '${product.pajakPphPersen.toStringAsFixed(2)}%'),
                     _DetailRow(label: 'Stok', value: '${product.stock}'),
                     _DetailRow(label: 'Minimal Pembelian', value: '${product.minimumOrder}'),
                     _DetailRow(label: 'Satuan', value: product.unit),

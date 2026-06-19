@@ -18,6 +18,9 @@ class SessionManager {
   static const _keyAddress = 'session_address';
   static const _keyPicName = 'session_pic_name';
   static const _keyRegion = 'session_region';
+  static const _keyProvinsiNama = 'session_provinsi_nama';
+  static const _keyKabupatenNama = 'session_kabupaten_nama';
+  static const _keyKecamatanNama = 'session_kecamatan_nama';
   static const _keyAvatarB64 = 'session_avatar_b64';
 
   late final SharedPreferences _prefs;
@@ -50,6 +53,9 @@ class SessionManager {
       _prefs.setString(_keyAddress, session.address ?? ''),
       _prefs.setString(_keyPicName, session.picName ?? ''),
       _prefs.setString(_keyRegion, session.region ?? ''),
+      _prefs.setString(_keyProvinsiNama, session.provinsiNama ?? ''),
+      _prefs.setString(_keyKabupatenNama, session.kabupatenNama ?? ''),
+      _prefs.setString(_keyKecamatanNama, session.kecamatanNama ?? ''),
     ];
     if (session.avatarImageBase64 != null && session.avatarImageBase64!.isNotEmpty) {
       try {
@@ -80,6 +86,9 @@ class SessionManager {
     final address = _prefs.getString(_keyAddress);
     final picName = _prefs.getString(_keyPicName);
     final region = _prefs.getString(_keyRegion);
+    final provinsiNama = _prefs.getString(_keyProvinsiNama);
+    final kabupatenNama = _prefs.getString(_keyKabupatenNama);
+    final kecamatanNama = _prefs.getString(_keyKecamatanNama);
 
     if (email == null || role == null || displayName == null) {
       return null;
@@ -98,6 +107,9 @@ class SessionManager {
       address: address?.isEmpty == true ? null : address,
       picName: picName?.isEmpty == true ? null : picName,
       region: region?.isEmpty == true ? null : region,
+      provinsiNama: provinsiNama?.isEmpty == true ? null : provinsiNama,
+      kabupatenNama: kabupatenNama?.isEmpty == true ? null : kabupatenNama,
+      kecamatanNama: kecamatanNama?.isEmpty == true ? null : kecamatanNama,
       avatarImageBase64: _loadAvatarBase64ForEmail(email),
     );
   }
@@ -136,6 +148,9 @@ class SessionManager {
       _prefs.remove(_keyAddress),
       _prefs.remove(_keyPicName),
       _prefs.remove(_keyRegion),
+      _prefs.remove(_keyProvinsiNama),
+      _prefs.remove(_keyKabupatenNama),
+      _prefs.remove(_keyKecamatanNama),
       _prefs.remove(_keyAvatarB64),
     ]);
   }

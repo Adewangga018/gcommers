@@ -268,20 +268,20 @@ static class CommerceDatabase
         if (hasRegion)
         {
             // Only return products that have an approved regional price + stock for this region.
-            // ProductCode is the join key since product_master (Laravel/MySQL) and dbo.Products
-            // (SQL Server) use independent auto-increment ids; ProductCode is the only identifier
-            // both sides agree on.
+            // dbo.product_region_prices is the externally-managed source of truth for region
+            // pricing/stock (separate from dbo.Products' own auto-increment ids), so ProductCode
+            // is the join key both sides agree on.
             command.CommandText = """
                 SELECT p.Id, COALESCE(p.ProductCode, ''), p.Name, p.Description, p.Category,
-                       rp.HargaSatuan, CAST(rp.QtyAvailable AS INT), p.MinimumOrder, p.Unit, p.IconName,
+                       rp.harga_satuan, CAST(rp.qty_available AS INT), p.MinimumOrder, p.Unit, p.IconName,
                        p.Status, p.Rating, p.Specification,
-                       rp.BiayaPengirimanPerKg, rp.PajakPphPersen
+                       rp.biaya_pengiriman_per_kg, rp.pajak_pph_persen
                 FROM dbo.Products p
-                INNER JOIN dbo.ProductRegionPrices rp
-                    ON rp.ProductCode = p.ProductCode AND rp.Region = @Region
+                INNER JOIN dbo.product_region_prices rp
+                    ON rp.product_code = p.ProductCode AND rp.region = @Region
                 WHERE (@Category IS NULL OR p.Category = @Category)
                   AND p.Status = N'Aktif'
-                  AND rp.QtyAvailable > 0
+                  AND rp.qty_available > 0
                 ORDER BY p.Id;
                 """;
             command.Parameters.AddWithValue("@Region", region);
@@ -393,14 +393,14 @@ static class CommerceDatabase
 
                 if (hasRegion)
                 {
-                    // ProductCode is the join key: product_master (Laravel/MySQL) and dbo.Products
-                    // (SQL Server) have independent id sequences.
+                    // ProductCode is the join key: dbo.product_region_prices and dbo.Products
+                    // have independent id sequences.
                     productCommand.CommandText = """
-                        SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), rp.HargaSatuan,
-                               rp.QtyAvailable, rp.BiayaPengirimanPerKg, rp.PajakPphPersen
+                        SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), rp.harga_satuan,
+                               rp.qty_available, rp.biaya_pengiriman_per_kg, rp.pajak_pph_persen
                         FROM dbo.Products p
-                        INNER JOIN dbo.ProductRegionPrices rp
-                            ON rp.ProductCode = p.ProductCode AND rp.Region = @Region
+                        INNER JOIN dbo.product_region_prices rp
+                            ON rp.product_code = p.ProductCode AND rp.region = @Region
                         WHERE p.Id = @Id;
                         """;
                     productCommand.Parameters.AddWithValue("@Region", request.Region!);
@@ -482,9 +482,9 @@ static class CommerceDatabase
                         VALUES
                         (@OrderId, @ProductId, @ProductName, @Unit, @Quantity, @UnitPrice, @TotalPrice);
 
-                        UPDATE dbo.ProductRegionPrices
-                        SET QtyAvailable = QtyAvailable - @Quantity
-                        WHERE ProductCode = @ProductCode AND Region = @Region;
+                        UPDATE dbo.product_region_prices
+                        SET qty_available = qty_available - @Quantity
+                        WHERE product_code = @ProductCode AND region = @Region;
                         """
                     : """
                         INSERT INTO dbo.OrderItems

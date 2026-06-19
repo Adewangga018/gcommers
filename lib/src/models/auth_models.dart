@@ -13,6 +13,9 @@ class AuthSession {
     this.region,
     this.token,
     this.avatarImageBase64,
+    this.provinsiNama,
+    this.kabupatenNama,
+    this.kecamatanNama,
   });
 
   final String email;
@@ -28,6 +31,9 @@ class AuthSession {
   final String? region;
   final String? token;
   final String? avatarImageBase64;
+  final String? provinsiNama;
+  final String? kabupatenNama;
+  final String? kecamatanNama;
 }
 
 class KioskRegistrationDraft {
@@ -39,6 +45,9 @@ class KioskRegistrationDraft {
     required this.password,
     required this.address,
     required this.region,
+    required this.provinsiId,
+    required this.kabupatenId,
+    required this.kecamatanId,
     required this.termsAccepted,
     required this.licenseImageName,
   });
@@ -50,6 +59,9 @@ class KioskRegistrationDraft {
   final String password;
   final String address;
   final String region;
+  final int provinsiId;
+  final int kabupatenId;
+  final int kecamatanId;
   final bool termsAccepted;
   final String? licenseImageName;
 }
