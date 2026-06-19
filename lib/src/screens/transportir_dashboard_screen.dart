@@ -5,7 +5,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/auth_models.dart';
+import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
+import '../theme/app_theme.dart';
+import '../utils/formatters.dart';
+import '../widgets/infographic_widgets.dart';
 import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 import 'transportir_shipping_flow.dart';
@@ -22,17 +26,14 @@ class _TransportirDashboardScreenState extends State<TransportirDashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0EEF6),
+      backgroundColor: AppTheme.paper,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF0EEF6),
+        backgroundColor: AppTheme.paper,
         centerTitle: true,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'GCommers',
-          style: TextStyle(color: Color(0xFF3F3AA0), fontWeight: FontWeight.w800),
-        ),
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
         actions: [
-          const NotificationBadge(iconColor: Color(0xFF3F3AA0)),
+          const NotificationBadge(iconColor: AppTheme.ink),
         ],
       ),
       body: ListView(
@@ -93,34 +94,26 @@ class _TransportirStatsCardState extends State<_TransportirStatsCard> {
 
   Future<void> _loadStats() async {
     try {
-      final orders =
-          await _service.getOrders(userEmail: widget.session?.email);
+      final summary = await _service.getTransportirDashboardSummary(
+        transportirEmail: widget.session?.email,
+      );
+      final orders = await _service.getOrders(userEmail: widget.session?.email);
       if (!mounted) return;
 
       final now = DateTime.now();
-      final activeStatuses = {'pending', 'processing', 'shipping', 'confirmed'};
-
-      final thisMonth = orders.where((o) =>
-          o.createdAt.year == now.year && o.createdAt.month == now.month);
+      final thisMonth = orders.where(
+        (o) => o.createdAt.year == now.year && o.createdAt.month == now.month,
+      );
 
       setState(() {
-        _totalPengiriman = orders.length;
-        _pemesananAktif = orders
-            .where((o) => activeStatuses.contains(o.status.toLowerCase()))
-            .length;
-        _tagihanBulanIni =
-            thisMonth.fold(0.0, (s, o) => s + o.totalAmount);
+        _totalPengiriman = summary.totalShipments;
+        _pemesananAktif = summary.activeShipments;
+        _tagihanBulanIni = thisMonth.fold(0.0, (s, o) => s + o.totalAmount);
         _loading = false;
       });
     } catch (_) {
-      // Fallback: use static dummy data matching the hardcoded order records
       if (!mounted) return;
-      setState(() {
-        _totalPengiriman = 3;   // SJ-001, SJ-002, SJ-003
-        _pemesananAktif = 1;    // SJ-002 still In Transit
-        _tagihanBulanIni = 78500000; // Rp 45jt + Rp 33.5jt
-        _loading = false;
-      });
+      setState(() => _loading = false);
     }
   }
 
@@ -145,16 +138,9 @@ class _TransportirStatsCardState extends State<_TransportirStatsCard> {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF38804B), Color(0xFF409557)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Color(0x3338804B), blurRadius: 18, offset: Offset(0, 8)),
-        ],
+      decoration: const BoxDecoration(
+        color: AppTheme.ink,
+        borderRadius: BorderRadius.all(Radius.circular(16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,18 +154,13 @@ class _TransportirStatsCardState extends State<_TransportirStatsCard> {
                   children: [
                     Text(
                       companyName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
+                      style: AppTheme.title(size: 16, color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       vehicleLabel,
-                      style: const TextStyle(
-                          color: Color(0xFFCDC8F5), fontSize: 13),
+                      style: AppTheme.body(size: 13, color: Colors.white70),
                     ),
                   ],
                 ),
@@ -188,17 +169,12 @@ class _TransportirStatsCardState extends State<_TransportirStatsCard> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: AppTheme.tertiaryGold,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   policeNumber,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    letterSpacing: 1,
-                  ),
+                  style: AppTheme.subtitle(size: 13, color: AppTheme.ink).copyWith(letterSpacing: 1),
                 ),
               ),
             ],
@@ -236,20 +212,17 @@ class _TransportirStatsCardState extends State<_TransportirStatsCard> {
             child: Row(
               children: [
                 const Icon(Icons.account_balance_wallet_outlined,
-                    color: Color(0xFFCDC8F5), size: 18),
+                    color: AppTheme.tertiaryGold, size: 18),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Total Tagihan Bulan Ini',
-                    style: TextStyle(color: Color(0xFFCDC8F5), fontSize: 13),
+                    style: AppTheme.body(size: 13, color: Colors.white70),
                   ),
                 ),
                 Text(
                   tagihanVal,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900),
+                  style: AppTheme.title(size: 17, color: AppTheme.tertiaryGold),
                 ),
               ],
             ),
@@ -277,17 +250,15 @@ class _StatBox extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFFCDC8F5), size: 20),
+          Icon(icon, color: AppTheme.tertiaryGreen, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(color: Color(0xFFCDC8F5), fontSize: 11)),
+                Text(label, style: AppTheme.body(size: 11, color: Colors.white70)),
                 const SizedBox(height: 3),
-                Text(value,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                Text(value, style: AppTheme.title(size: 18, color: Colors.white)),
               ],
             ),
           ),
@@ -308,6 +279,7 @@ class _RouteCard extends StatefulWidget {
 }
 
 class _RouteCardState extends State<_RouteCard> {
+  final _service = CommerceService();
   TransportirShipmentCardData? _activeShipment;
   bool _loaded = false;
 
@@ -317,28 +289,44 @@ class _RouteCardState extends State<_RouteCard> {
     _loadActiveShipment();
   }
 
-  /// Finds the first shipment that is currently in-progress (muat masuk done,
-  /// muat keluar not yet done).  Falls back to the first unstarted shipment,
-  /// then to the very first entry in the list.
   Future<void> _loadActiveShipment() async {
-    final shipments = TransportirShipmentsPage.shipments;
-    TransportirShipmentCardData? inProgress;
-    TransportirShipmentCardData? pending;
-
-    for (final s in shipments) {
-      final p = await loadShipmentProgress(s.shipmentNumber);
-      if (p.muatMasukCompleted && !p.muatKeluarCompleted) {
-        inProgress = s;
-        break;
-      }
-      if (!p.muatMasukCompleted && pending == null) pending = s;
+    try {
+      final summary = await _service.getTransportirDashboardSummary(
+        transportirEmail: widget.session?.email,
+      );
+      if (!mounted) return;
+      setState(() {
+        _activeShipment = summary.activeShipment == null ? null : _toCardData(summary.activeShipment!);
+        _loaded = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loaded = true);
     }
+  }
 
-    if (!mounted) return;
-    setState(() {
-      _activeShipment = inProgress ?? pending ?? (shipments.isNotEmpty ? shipments.first : null);
-      _loaded = true;
-    });
+  TransportirShipmentCardData _toCardData(ShipmentSummary shipment) {
+    final isActive = shipment.status == 'dalam_perjalanan';
+    return TransportirShipmentCardData(
+      shipmentNumber: shipment.shipmentNumber,
+      statusLabel: shipment.statusLabel,
+      statusColor: isActive ? AppTheme.tertiaryGreen : AppTheme.tertiaryGold,
+      statusBackground: isActive ? AppTheme.tertiaryGreenSoft : AppTheme.tertiaryGoldSoft,
+      scheduleLabel: shortDateTime(shipment.createdAt),
+      origin: 'Gudang Pusat',
+      destination: shipment.destinationLabel ?? 'Tujuan',
+      destinationSubtitle: shipment.destinationAddress ?? '',
+      actionPrimaryLabel: 'Lihat Detail',
+      actionSecondaryLabel: '',
+      actionSecondaryKind: TransportirShipmentActionKind.none,
+      originLatLng: shipment.originLat != null && shipment.originLng != null
+          ? LatLng(shipment.originLat!, shipment.originLng!)
+          : null,
+      destinationLatLng: shipment.destinationLat != null && shipment.destinationLng != null
+          ? LatLng(shipment.destinationLat!, shipment.destinationLng!)
+          : null,
+      completed: shipment.status == 'selesai',
+    );
   }
 
   void _navigate(BuildContext context) {
@@ -399,7 +387,7 @@ class _RouteCardState extends State<_RouteCard> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD3CFE2)),
+            border: Border.all(color: const Color(0xFFB5D4BC)),
             boxShadow: const [
               BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4)),
             ],
@@ -416,28 +404,23 @@ class _RouteCardState extends State<_RouteCard> {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE4EFFF),
+                        color: AppTheme.tertiaryGreenSoft,
                         borderRadius: BorderRadius.circular(9),
                       ),
                       child: const Icon(Icons.route_rounded,
-                          color: Color(0xFF1C5AAA), size: 18),
+                          color: AppTheme.tertiaryGreen, size: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Rute Terkini',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF252335))),
+                          Text('Rute Terkini', style: AppTheme.subtitle(size: 15)),
                           Text(
                             shipment != null
                                 ? '${shipment.shipmentNumber} · 3 checkpoint'
                                 : 'Tidak ada pengiriman aktif',
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF6B8C73)),
+                            style: AppTheme.body(size: 12, color: AppTheme.muted),
                           ),
                         ],
                       ),
@@ -448,7 +431,7 @@ class _RouteCardState extends State<_RouteCard> {
                       decoration: BoxDecoration(
                         color: shipment != null
                             ? const Color(0xFFDFF6EC)
-                            : const Color(0xFFF4F1FD),
+                            : const Color(0xFFEAF2EC),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Row(
@@ -460,7 +443,7 @@ class _RouteCardState extends State<_RouteCard> {
                             decoration: BoxDecoration(
                               color: shipment != null
                                   ? const Color(0xFF16C38A)
-                                  : const Color(0xFF9A93AC),
+                                  : const Color(0xFF6B8C73),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -470,7 +453,7 @@ class _RouteCardState extends State<_RouteCard> {
                             style: TextStyle(
                                 color: shipment != null
                                     ? const Color(0xFF0E8F61)
-                                    : const Color(0xFF9A93AC),
+                                    : const Color(0xFF6B8C73),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800),
                           ),
@@ -481,7 +464,7 @@ class _RouteCardState extends State<_RouteCard> {
                     const Padding(
                       padding: EdgeInsets.only(left: 6),
                       child: Icon(Icons.chevron_right_rounded,
-                          color: Color(0xFF9A93AC), size: 20),
+                          color: Color(0xFF6B8C73), size: 20),
                     ),
                   ],
                 ),
@@ -498,6 +481,7 @@ class _RouteCardState extends State<_RouteCard> {
                   child: Stack(
                     children: [
                       FlutterMap(
+                        key: ValueKey(shipment?.shipmentNumber ?? 'none'),
                         options: MapOptions(
                           initialCenter: midPoint,
                           initialZoom: 10.0,
@@ -517,7 +501,7 @@ class _RouteCardState extends State<_RouteCard> {
                             polylines: [
                               Polyline(
                                 points: allRoutePoints,
-                                color: const Color(0xFF4438A7),
+                                color: const Color(0xFF0F261F),
                                 strokeWidth: 4,
                               ),
                             ],
@@ -613,12 +597,12 @@ class _RouteCardState extends State<_RouteCard> {
                                 width: 36,
                                 height: 36,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE4EFFF),
+                                  color: const Color(0xFFDCEDE1),
                                   borderRadius: BorderRadius.circular(9),
                                 ),
                                 child: const Icon(
                                     Icons.store_mall_directory_outlined,
-                                    color: Color(0xFF154E96),
+                                    color: Color(0xFF2F6C3F),
                                     size: 18),
                               ),
                               const SizedBox(width: 10),
@@ -635,7 +619,7 @@ class _RouteCardState extends State<_RouteCard> {
                                       style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w900,
-                                          color: Color(0xFF20202E)),
+                                          color: Color(0xFF0F261F)),
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 1,
                                     ),
@@ -649,7 +633,7 @@ class _RouteCardState extends State<_RouteCard> {
                                     '${distKm.toStringAsFixed(1)} km',
                                     style: const TextStyle(
                                         fontSize: 14,
-                                        color: Color(0xFF4441AA),
+                                        color: Color(0xFF0F261F),
                                         fontWeight: FontWeight.w900),
                                   ),
                                   const Text('Jarak total',
@@ -676,7 +660,7 @@ class _RouteCardState extends State<_RouteCard> {
 
 // ── New Orders Card ─────────────────────────────────────────────────────────
 
-class _NewOrdersCard extends StatelessWidget {
+class _NewOrdersCard extends StatefulWidget {
   const _NewOrdersCard({
     required this.onTapAll,
     required this.onTapOrder,
@@ -686,35 +670,40 @@ class _NewOrdersCard extends StatelessWidget {
   final VoidCallback onTapOrder;
   final AuthSession? session;
 
-  // Latest orders sourced from the static transport order data
-  static const _orders = [
-    (
-      invoice: 'INV-2023-1102',
-      client: 'PT. Pembangunan Jaya Perkasa',
-      items: '35 TON · 3 Jenis Pupuk',
-      date: '24 Okt 2023',
-      statusLabel: 'Proses Bank',
-      statusColor: Color(0xFF8A5A12),
-      statusBg: Color(0xFFF7E9D2),
-    ),
-    (
-      invoice: 'INV-2023-1184',
-      client: 'PT. Cahaya Agro Mandiri',
-      items: '21 TON · 2 Jenis Pupuk',
-      date: '19 Okt 2023',
-      statusLabel: 'Terkirim',
-      statusColor: Color(0xFF1F6CBF),
-      statusBg: Color(0xFFE2EEFF),
-    ),
-  ];
+  @override
+  State<_NewOrdersCard> createState() => _NewOrdersCardState();
+}
+
+class _NewOrdersCardState extends State<_NewOrdersCard> {
+  final _service = CommerceService();
+  List<OrderSummary>? _orders;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final orders = await _service.getOrders(userEmail: widget.session?.email);
+      orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (!mounted) return;
+      setState(() => _orders = orders.take(5).toList());
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _failed = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.paper,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD3CFE2)),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Column(
         children: [
@@ -727,52 +716,50 @@ class _NewOrdersCard extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0EDFF),
+                    color: AppTheme.tertiaryGreenSoft,
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: const Icon(Icons.receipt_long_outlined,
-                      color: Color(0xFF4535A8), size: 18),
+                      color: AppTheme.ink, size: 18),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Pemesanan Terbaru',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF252335)),
-                  ),
+                Expanded(
+                  child: Text('Pemesanan Terbaru', style: AppTheme.subtitle(size: 15)),
                 ),
                 TextButton(
-                  onPressed: onTapAll,
+                  onPressed: widget.onTapAll,
                   style: TextButton.styleFrom(
                       padding:
                           const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-                  child: const Text(
+                  child: Text(
                     'LIHAT SEMUA',
-                    style: TextStyle(
-                        color: Color(0xFF1C5DA7),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12),
+                    style: AppTheme.body(size: 12, color: AppTheme.tertiaryGreen, weight: FontWeight.w800),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFECE9F3)),
+          const Divider(height: 1, color: AppTheme.border),
           // Order rows
-          ..._orders.map(
-            (o) => _OrderRow(
-              invoice: o.invoice,
-              client: o.client,
-              items: o.items,
-              date: o.date,
-              statusLabel: o.statusLabel,
-              statusColor: o.statusColor,
-              statusBg: o.statusBg,
-              onTap: onTapOrder,
+          if (_orders == null && !_failed)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (_failed)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Gagal memuat pesanan.', style: AppTheme.body(size: 13, color: AppTheme.muted)),
+            )
+          else if (_orders!.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Belum ada pesanan.', style: AppTheme.body(size: 13, color: AppTheme.muted)),
+            )
+          else
+            ..._orders!.map(
+              (o) => _OrderRow(order: o, onTap: widget.onTapOrder),
             ),
-          ),
           // Footer button
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
@@ -780,13 +767,12 @@ class _NewOrdersCard extends StatelessWidget {
               width: double.infinity,
               height: 44,
               child: OutlinedButton.icon(
-                onPressed: onTapAll,
+                onPressed: widget.onTapAll,
                 icon: const Icon(Icons.list_alt_rounded, size: 18),
-                label: const Text('Lihat Semua Pemesanan',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
+                label: Text('Lihat Semua Pemesanan', style: AppTheme.body(size: 14, weight: FontWeight.w800)),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF4535A8),
-                  side: const BorderSide(color: Color(0xFFB9B5E4)),
+                  foregroundColor: AppTheme.ink,
+                  side: const BorderSide(color: AppTheme.border),
                   shape:
                       RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -800,28 +786,14 @@ class _NewOrdersCard extends StatelessWidget {
 }
 
 class _OrderRow extends StatelessWidget {
-  const _OrderRow({
-    required this.invoice,
-    required this.client,
-    required this.items,
-    required this.date,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.statusBg,
-    required this.onTap,
-  });
+  const _OrderRow({required this.order, required this.onTap});
 
-  final String invoice;
-  final String client;
-  final String items;
-  final String date;
-  final String statusLabel;
-  final Color statusColor;
-  final Color statusBg;
+  final OrderSummary order;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _statusColor(order.status);
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -833,11 +805,11 @@ class _OrderRow extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFEAE8FF),
+                color: AppTheme.tertiaryGreenSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.receipt_long_rounded,
-                  color: Color(0xFF409557), size: 20),
+                  color: AppTheme.tertiaryGreen, size: 20),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -847,47 +819,25 @@ class _OrderRow extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          invoice,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF20202D)),
-                        ),
+                        child: Text(order.poNumber, style: AppTheme.subtitle(size: 13)),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: statusBg,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          statusLabel,
-                          style: TextStyle(
-                              color: statusColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800),
-                        ),
-                      ),
+                      StatusChip(label: order.statusLabel, color: statusColor),
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(client,
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF6A6780))),
+                  Text(formatCurrency(order.totalAmount),
+                      style: AppTheme.body(size: 12, color: AppTheme.muted)),
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       const Icon(Icons.inventory_2_outlined,
-                          size: 12, color: Color(0xFF9A93AC)),
+                          size: 12, color: AppTheme.muted),
                       const SizedBox(width: 4),
-                      Text(items,
-                          style: const TextStyle(
-                              fontSize: 11, color: Color(0xFF9A93AC))),
+                      Text('${order.itemCount} item',
+                          style: AppTheme.body(size: 11, color: AppTheme.muted)),
                       const Spacer(),
-                      Text(date,
-                          style: const TextStyle(
-                              fontSize: 11, color: Color(0xFFB0AAC4))),
+                      Text(formatDateTime(order.createdAt),
+                          style: AppTheme.body(size: 11, color: AppTheme.muted)),
                     ],
                   ),
                 ],
@@ -898,4 +848,13 @@ class _OrderRow extends StatelessWidget {
       ),
     );
   }
+}
+
+Color _statusColor(String status) {
+  return switch (status) {
+    'pending_payment' => AppTheme.tertiaryGold,
+    'paid' || 'shipping' => AppTheme.tertiaryGreen,
+    'received' || 'completed' => const Color(0xFF059669),
+    _ => AppTheme.muted,
+  };
 }

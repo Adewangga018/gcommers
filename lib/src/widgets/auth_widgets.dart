@@ -56,7 +56,7 @@ class PrimaryButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primary,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: AppTheme.primary.withOpacity(0.6),
+          disabledBackgroundColor: AppTheme.primary.withValues(alpha: 0.6),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 0,
         ),
@@ -195,7 +195,7 @@ class SectionTitle extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 4),
         Text(

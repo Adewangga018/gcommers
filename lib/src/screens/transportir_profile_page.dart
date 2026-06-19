@@ -43,7 +43,7 @@ class _TransportirProfilePageState extends State<TransportirProfilePage> {
   Widget build(BuildContext context) {
     final session = _session ?? widget.session;
     final companyName = _companyName(session);
-    final email = session?.email ?? 'user@contoh.com';
+    final email = session?.email ?? '-';
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -53,13 +53,10 @@ class _TransportirProfilePageState extends State<TransportirProfilePage> {
         elevation: 0,
         shadowColor: Colors.black12,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppTheme.primary),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppTheme.ink),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'GCommers',
-          style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800),
-        ),
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
         centerTitle: true,
         actions: const [NotificationBadge()],
       ),
@@ -183,13 +180,13 @@ class _TransportirProfilePageState extends State<TransportirProfilePage> {
           ),
         ),
       ),
-      bottomNavigationBar: TransportirBottomNav(currentIndex: 4, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 3, session: session),
     );
   }
 
   Widget _divider() => const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
-        child: Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
+        child: Divider(height: 1, thickness: 0.5, color: Color(0xFFF5F5F5)),
       );
 
   String _companyName(AuthSession? session) {

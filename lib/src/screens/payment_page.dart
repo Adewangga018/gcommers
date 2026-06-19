@@ -17,8 +17,8 @@ class _PaymentPageState extends State<PaymentPage> {
   String? _poNumber;
   bool _submitting = false;
 
-  static const _primaryPurple = Color(0xFF38804B);
-  static const _bgLight = Color(0xFFF4FAF5);
+  static const _primaryPurple = Color(0xFF2F6C3F);
+  static const _bgLight = Color(0xFFFFFFFF);
 
   @override
   void didChangeDependencies() {
@@ -61,7 +61,7 @@ class _PaymentPageState extends State<PaymentPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('Pembayaran',
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20)),
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 20)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -108,7 +108,7 @@ class _PaymentPageState extends State<PaymentPage> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                        color: const Color(0xFFEAF1FF),
+                                        color: const Color(0xFFDCEDE1),
                                         borderRadius: BorderRadius.circular(8)),
                                     child: const Text('GCommers',
                                         style: TextStyle(
@@ -152,7 +152,7 @@ class _PaymentPageState extends State<PaymentPage> {
                                 width: 56,
                                 height: 56,
                                 decoration: BoxDecoration(
-                                    color: const Color(0xFF003D7C),
+                                    color: const Color(0xFF0F261F),
                                     borderRadius: BorderRadius.circular(10)),
                                 alignment: Alignment.center,
                                 child: const Text('mandiri',
@@ -247,7 +247,7 @@ class _PaymentPageState extends State<PaymentPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFD7D1EA)),
+          border: Border.all(color: const Color(0xFFB5D4BC)),
         ),
         child: child,
       );

@@ -35,7 +35,7 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     final Color primaryPurple = AppTheme.primary;
-    const Color bgLight = Color(0xFFF4FAF5);
+    const Color bgLight = Color(0xFFFFFFFF);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -46,10 +46,7 @@ class _HistoryPageState extends State<HistoryPage> {
           icon: Icon(Icons.arrow_back, color: primaryPurple),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Status Pesanan',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 20),
-        ),
+        title: Text('Status Pesanan', style: AppTheme.title(size: 18)),
         centerTitle: true,
         actions: [],
       ),
@@ -123,7 +120,7 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF38804B);
+    const Color primaryPurple = Color(0xFF2F6C3F);
 
     return GestureDetector(
       onTap: onTap,
@@ -199,7 +196,7 @@ class _HistoryCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             formatCurrency(order.totalAmount),
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF3F35A6)),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF0F261F)),
           ),
           const SizedBox(height: 12),
           const Divider(height: 1),
@@ -241,13 +238,14 @@ class _HistoryBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryPurple = Color(0xFF38804B);
-
     return BottomNavigationBar(
       currentIndex: currentIndex,
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: primaryPurple,
-      unselectedItemColor: Colors.grey,
+      backgroundColor: AppTheme.paper,
+      selectedItemColor: AppTheme.ink,
+      unselectedItemColor: AppTheme.muted,
+      selectedLabelStyle: AppTheme.body(size: 12, weight: FontWeight.w700),
+      unselectedLabelStyle: AppTheme.body(size: 12),
       showUnselectedLabels: true,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
@@ -271,8 +269,8 @@ class _HistoryBottomBar extends StatelessWidget {
 Color _statusColor(String status) {
   return switch (status) {
     'pending_payment' => const Color(0xFFD97706),
-    'paid' => const Color(0xFF2563EB),
-    'shipping' => const Color(0xFF7C3AED),
+    'paid' => const Color(0xFF2F6C3F),
+    'shipping' => const Color(0xFF2F6C3F),
     'received' || 'completed' => const Color(0xFF059669),
     _ => Colors.grey,
   };

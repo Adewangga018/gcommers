@@ -104,6 +104,20 @@ class CommerceService {
     _ensureOk(response);
   }
 
+  Future<List<ShipmentSummary>> getShipments({String? transportirEmail}) async {
+    final response = await http.get(_uri('/shipments', {'transportirEmail': transportirEmail}));
+    _ensureOk(response);
+    return (jsonDecode(response.body) as List<dynamic>)
+        .map((item) => ShipmentSummary.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<TransportirDashboardSummary> getTransportirDashboardSummary({String? transportirEmail}) async {
+    final response = await http.get(_uri('/transportir/dashboard-summary', {'transportirEmail': transportirEmail}));
+    _ensureOk(response);
+    return TransportirDashboardSummary.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
   Future<List<AppNotification>> getNotifications({String? userEmail}) async {
     final response = await http.get(_uri('/notifications', {'userEmail': userEmail}));
     _ensureOk(response);

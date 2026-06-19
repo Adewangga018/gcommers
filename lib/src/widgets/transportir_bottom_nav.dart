@@ -18,8 +18,11 @@ class TransportirBottomNav extends StatelessWidget {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: AppTheme.primary,
-      unselectedItemColor: Colors.grey,
+      backgroundColor: AppTheme.paper,
+      selectedItemColor: AppTheme.ink,
+      unselectedItemColor: AppTheme.muted,
+      selectedLabelStyle: AppTheme.body(size: 12, weight: FontWeight.w700),
+      unselectedLabelStyle: AppTheme.body(size: 12),
       showUnselectedLabels: true,
       items: const [
         BottomNavigationBarItem(
@@ -38,11 +41,6 @@ class TransportirBottomNav extends StatelessWidget {
           label: 'Pengiriman',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.bar_chart_outlined),
-          activeIcon: Icon(Icons.bar_chart),
-          label: 'Laporan',
-        ),
-        BottomNavigationBarItem(
           icon: Icon(Icons.person_outline),
           activeIcon: Icon(Icons.person),
           label: 'Profil',
@@ -54,8 +52,7 @@ class TransportirBottomNav extends StatelessWidget {
           0 => '/transportir-home',
           1 => '/transportir-orders',
           2 => '/transportir-shipments',
-          3 => '/transportir-reports',
-          4 => '/transportir-profile',
+          3 => '/transportir-profile',
           _ => null,
         };
         if (route == null) return;

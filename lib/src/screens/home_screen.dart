@@ -35,7 +35,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               'Selamat datang, ${session.displayName}',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              style: AppTheme.title(size: 22),
             ),
             const SizedBox(height: 6),
             Text(
@@ -110,7 +110,7 @@ class _RoleBadge extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(26, 74, 58, 255),
+          color: const Color.fromARGB(26, 47, 108, 63),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
@@ -146,9 +146,9 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          Text(title, style: AppTheme.subtitle(size: 16)),
           const SizedBox(height: 8),
-          Text(subtitle, style: const TextStyle(color: AppTheme.muted, height: 1.5)),
+          Text(subtitle, style: AppTheme.body(size: 13, color: AppTheme.muted, height: 1.5)),
         ],
       ),
     );

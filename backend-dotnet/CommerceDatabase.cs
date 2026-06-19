@@ -110,10 +110,40 @@ static class CommerceDatabase
                 CompletedAt DATETIMEOFFSET NULL,
                 TotalDistanceMeters DECIMAL(18,2) NOT NULL CONSTRAINT DF_Shipments_TotalDistance DEFAULT 0,
                 UpdatedAt DATETIMEOFFSET NULL,
+                TransportirEmail NVARCHAR(256) NULL,
+                TruckLabel NVARCHAR(200) NULL,
+                PoliceNumber NVARCHAR(50) NULL,
+                DestinationLabel NVARCHAR(200) NULL,
+                DestinationAddress NVARCHAR(500) NULL,
+                OriginLat DECIMAL(9,6) NULL,
+                OriginLng DECIMAL(9,6) NULL,
+                DestinationLat DECIMAL(9,6) NULL,
+                DestinationLng DECIMAL(9,6) NULL,
 
                 CONSTRAINT UX_Shipments_ShipmentNumber UNIQUE (ShipmentNumber),
                 CONSTRAINT FK_Shipments_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(Id)
             );
+        END
+        ELSE
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'TransportirEmail')
+                ALTER TABLE dbo.Shipments ADD TransportirEmail NVARCHAR(256) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'TruckLabel')
+                ALTER TABLE dbo.Shipments ADD TruckLabel NVARCHAR(200) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'PoliceNumber')
+                ALTER TABLE dbo.Shipments ADD PoliceNumber NVARCHAR(50) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'DestinationLabel')
+                ALTER TABLE dbo.Shipments ADD DestinationLabel NVARCHAR(200) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'DestinationAddress')
+                ALTER TABLE dbo.Shipments ADD DestinationAddress NVARCHAR(500) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'OriginLat')
+                ALTER TABLE dbo.Shipments ADD OriginLat DECIMAL(9,6) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'OriginLng')
+                ALTER TABLE dbo.Shipments ADD OriginLng DECIMAL(9,6) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'DestinationLat')
+                ALTER TABLE dbo.Shipments ADD DestinationLat DECIMAL(9,6) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'DestinationLng')
+                ALTER TABLE dbo.Shipments ADD DestinationLng DECIMAL(9,6) NULL;
         END
 
         IF OBJECT_ID(N'dbo.ShipmentRouteChecks', N'U') IS NULL
@@ -777,9 +807,76 @@ static class CommerceDatabase
         var orders = await GetOrdersAsync(configuration, null, cancellationToken);
         var active = orders.Count(order => order.Status is "pending_payment" or "paid" or "shipping");
         var completed = orders.Count(order => order.Status is "received" or "completed");
-        var monthlySales = orders.Sum(order => order.TotalAmount);
+        var now = DateTimeOffset.UtcNow;
+        var monthlySales = orders
+            .Where(order => order.CreatedAt.Year == now.Year && order.CreatedAt.Month == now.Month)
+            .Sum(order => order.TotalAmount);
         return new DashboardSummaryDto(active, completed, monthlySales, orders.Take(5).ToList());
     }
+
+    public static async Task<IReadOnlyList<ShipmentSummaryDto>> GetShipmentsAsync(
+        IConfiguration configuration,
+        string? transportirEmail,
+        CancellationToken cancellationToken)
+    {
+        var shipments = new List<ShipmentSummaryDto>();
+        var connectionString = ConnectionStringFactory.Build(configuration);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT ShipmentNumber, Status, COALESCE(DriverName, ''), TruckLabel, PoliceNumber,
+                   DestinationLabel, DestinationAddress, OriginLat, OriginLng, DestinationLat, DestinationLng,
+                   CreatedAt, CompletedAt
+            FROM dbo.Shipments
+            WHERE @TransportirEmail IS NULL OR TransportirEmail IS NULL OR TransportirEmail = @TransportirEmail
+            ORDER BY CreatedAt DESC;
+            """;
+        command.Parameters.AddWithValue("@TransportirEmail", string.IsNullOrWhiteSpace(transportirEmail) ? DBNull.Value : transportirEmail);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var status = reader.GetString(1);
+            shipments.Add(new ShipmentSummaryDto(
+                reader.GetString(0),
+                status,
+                ToShipmentStatusLabel(status),
+                reader.GetString(2),
+                reader.IsDBNull(3) ? null : reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4),
+                reader.IsDBNull(5) ? null : reader.GetString(5),
+                reader.IsDBNull(6) ? null : reader.GetString(6),
+                reader.IsDBNull(7) ? null : (double)reader.GetDecimal(7),
+                reader.IsDBNull(8) ? null : (double)reader.GetDecimal(8),
+                reader.IsDBNull(9) ? null : (double)reader.GetDecimal(9),
+                reader.IsDBNull(10) ? null : (double)reader.GetDecimal(10),
+                reader.GetFieldValue<DateTimeOffset>(11),
+                reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12)));
+        }
+
+        return shipments;
+    }
+
+    public static async Task<TransportirDashboardSummaryDto> GetTransportirDashboardSummaryAsync(
+        IConfiguration configuration,
+        string? transportirEmail,
+        CancellationToken cancellationToken)
+    {
+        var shipments = await GetShipmentsAsync(configuration, transportirEmail, cancellationToken);
+        var active = shipments.Where(s => s.Status != "selesai").ToList();
+        var activeShipment = active.FirstOrDefault(s => s.Status == "dalam_perjalanan") ?? active.FirstOrDefault();
+        return new TransportirDashboardSummaryDto(shipments.Count, active.Count, activeShipment);
+    }
+
+    private static string ToShipmentStatusLabel(string status) => status switch
+    {
+        "siap_muat" => "Siap Muat",
+        "dalam_perjalanan" => "Dalam Perjalanan",
+        "selesai" => "Selesai",
+        _ => status,
+    };
 
     public static async Task<IReadOnlyList<NotificationDto>> GetNotificationsAsync(
         IConfiguration configuration,
@@ -924,6 +1021,24 @@ static class CommerceDatabase
             ('PO Baru #PO-2026-10-9842', 'Purchase order baru dengan nilai Rp 13.736.500.'),
             ('Pembayaran berhasil', 'Pembayaran PO-2026-10-9842 telah diterima.'),
             ('Pesanan dalam perjalanan', 'Kurir sedang mengantar pesanan ke kios.');
+        END
+
+        IF NOT EXISTS (SELECT 1 FROM dbo.Shipments WHERE ShipmentNumber = N'SJ-2026-001')
+        BEGIN
+            DECLARE @MonthStart DATETIMEOFFSET = DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1);
+
+            INSERT INTO dbo.Shipments
+            (ShipmentNumber, DriverName, Status, CreatedAt, TruckLabel, PoliceNumber, DestinationLabel, DestinationAddress, OriginLat, OriginLng, DestinationLat, DestinationLng)
+            VALUES
+            (N'SJ-2026-001', N'Budi Santoso', N'siap_muat', DATEADD(DAY, 6, @MonthStart), N'Truk Engkel (Nopol: B 1234 YXZ)', N'B 1234 YXZ', N'Kios Tani Makmur', N'Driyorejo, Gresik', -7.257500, 112.752100, -7.385000, 112.592800),
+            (N'SJ-2026-002', N'Hotma Simangunsong', N'dalam_perjalanan', DATEADD(DAY, 3, @MonthStart), N'Truk Fuso (Nopol: B 9021 XB)', N'B 9021 XB', N'Kios Makmur Jaya', N'Sukabumi, Bandar Lampung', -5.450000, 105.266700, -5.398000, 105.301000);
+
+            UPDATE dbo.Shipments SET MuatInCompletedAt = DATEADD(HOUR, 4, CreatedAt) WHERE ShipmentNumber = N'SJ-2026-002';
+
+            INSERT INTO dbo.Shipments
+            (ShipmentNumber, DriverName, Status, CreatedAt, MuatInCompletedAt, MuatOutCompletedAt, CompletedAt, TotalDistanceMeters, TruckLabel, PoliceNumber, DestinationLabel, DestinationAddress, OriginLat, OriginLng, DestinationLat, DestinationLng)
+            VALUES
+            (N'SJ-2026-003', N'Agus Wibowo', N'selesai', DATEADD(DAY, 1, @MonthStart), DATEADD(DAY, 1, DATEADD(HOUR, 2, @MonthStart)), DATEADD(DAY, 1, DATEADD(HOUR, 6, @MonthStart)), DATEADD(DAY, 1, DATEADD(HOUR, 6, @MonthStart)), 21000, N'Truk Engkel (Nopol: BE 9911 AC)', N'BE 9911 AC', N'Gudang Tani Sejahtera', N'Metro Pusat, Lampung', -5.450000, 105.266700, -5.113500, 105.306100);
         END
         """);
     }

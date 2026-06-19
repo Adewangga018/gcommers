@@ -96,7 +96,7 @@ class _OtpScreenState extends State<OtpScreen> {
               const Spacer(),
               const Text(
                 'Masukkan Kode OTP',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),

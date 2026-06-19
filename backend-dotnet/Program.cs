@@ -25,6 +25,7 @@ app.UseCors("AllowAll");
 try
 {
     await AuthDatabase.EnsureSchemaAsync(app.Configuration);
+    await RegionDatabase.EnsureSchemaAsync(app.Configuration);
     await CommerceDatabase.EnsureSchemaAsync(app.Configuration);
 }
 catch (Exception ex)
@@ -458,6 +459,18 @@ orders.MapPost("/{poNumber}/confirm-received", async (string poNumber, ConfirmRe
     return ok
         ? Results.Ok(new { message = "Konfirmasi penerimaan barang tersimpan." })
         : Results.NotFound(new { message = "Pesanan tidak ditemukan." });
+});
+
+app.MapGet("/shipments", async (string? transportirEmail, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var shipments = await CommerceDatabase.GetShipmentsAsync(configuration, transportirEmail, cancellationToken);
+    return Results.Ok(shipments);
+});
+
+app.MapGet("/transportir/dashboard-summary", async (string? transportirEmail, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var summary = await CommerceDatabase.GetTransportirDashboardSummaryAsync(configuration, transportirEmail, cancellationToken);
+    return Results.Ok(summary);
 });
 
 app.MapGet("/notifications", async (string? userEmail, IConfiguration configuration, CancellationToken cancellationToken) =>

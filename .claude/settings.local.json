@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(dotnet build *)",
-      "Bash(Select-String \"error CS\")"
+      "Bash(Select-String \"error CS\")",
+      "Bash(python3 -)",
+      "Bash(flutter analyze *)"
     ]
   }
 }

@@ -7,9 +7,9 @@ import '../utils/formatters.dart';
 class PaymentSuccessPage extends StatelessWidget {
   const PaymentSuccessPage({super.key});
 
-  static const _navy = Color(0xFF1A237E);
-  static const _purple = Color(0xFF38804B);
-  static const _mandiriBlue = Color(0xFF003D7C);
+  static const _navy = Color(0xFF0F261F);
+  static const _purple = Color(0xFF2F6C3F);
+  static const _mandiriBlue = Color(0xFF0F261F);
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +17,13 @@ class PaymentSuccessPage extends StatelessWidget {
     final result = args is PaymentResult ? args : null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5FF),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         automaticallyImplyLeading: false,
         title: const Text('Konfirmasi Pembayaran',
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 18)),
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 18)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -170,7 +170,7 @@ class PaymentSuccessPage extends StatelessWidget {
                       const Divider(height: 20),
                       _detailRow('Metode', 'Mandiri Virtual Account'),
                       const Divider(height: 20),
-                      _detailRow('Status', 'Menunggu Pembayaran'),
+                      _detailRow('Status', _statusLabel(result.status)),
                     ],
                   ),
                 ),
@@ -271,10 +271,17 @@ class PaymentSuccessPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFD7D1EA)),
+          border: Border.all(color: const Color(0xFFB5D4BC)),
         ),
         child: child,
       );
+
+  String _statusLabel(String status) => switch (status) {
+        'pending_payment' || 'pending' => 'Menunggu Pembayaran',
+        'paid' => 'Pembayaran Diterima',
+        'expired' => 'Kedaluwarsa',
+        _ => status,
+      };
 
   Widget _detailRow(String label, String value) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

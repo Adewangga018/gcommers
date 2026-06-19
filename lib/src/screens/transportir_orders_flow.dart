@@ -1,11 +1,8 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../models/auth_models.dart';
+import '../theme/app_theme.dart';
 import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 
@@ -36,8 +33,8 @@ class TransportirOrdersPage extends StatelessWidget {
           truckLabel: 'Truk A (Nopol: BB 8108 HA)',
           driverName: 'Hotma',
           statusLabel: 'Delivered',
-          statusColor: Color(0xFF7268D8),
-          statusBackground: Color(0xFFE7E4FF),
+          statusColor: Color(0xFF2F6C3F),
+          statusBackground: Color(0xFFE2F0E6),
           items: [
             TransportirShipmentItem(name: 'UREA DO. 3640134773UR / BA.2', quantityText: '15,00'),
             TransportirShipmentItem(name: 'NPK DO. 3640134774NK / BA.2', quantityText: '10,00'),
@@ -74,8 +71,8 @@ class TransportirOrdersPage extends StatelessWidget {
       invoiceNumber: 'INV-2023-1184',
       invoiceLabel: 'INVOICE',
       statusLabel: 'Terkirim',
-      statusColor: Color(0xFF1F6CBF),
-      statusBackground: Color(0xFFE2EEFF),
+      statusColor: Color(0xFF2F6C3F),
+      statusBackground: Color(0xFFE2F0E6),
       createdAtLabel: '19 Okt 2023',
       totalAmountLabel: 'Rp 33.500.000',
       clientName: 'PT. Cahaya Agro Mandiri',
@@ -91,8 +88,8 @@ class TransportirOrdersPage extends StatelessWidget {
           truckLabel: 'Truk C (Nopol: BE 9911 AC)',
           driverName: 'Agus',
           statusLabel: 'Delivered',
-          statusColor: Color(0xFF7268D8),
-          statusBackground: Color(0xFFE7E4FF),
+          statusColor: Color(0xFF2F6C3F),
+          statusBackground: Color(0xFFE2F0E6),
           items: [
             TransportirShipmentItem(name: 'Urea Subsidi / BA.2', quantityText: '12,00'),
             TransportirShipmentItem(name: 'NPK Phonska / BA.2', quantityText: '9,00'),
@@ -112,19 +109,16 @@ class TransportirOrdersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF5),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF409557)),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.ink),
           onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session),
         ),
-        title: const Text(
-          'GCommers',
-          style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800),
-        ),
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
 
       ),
       body: ListView(
@@ -132,12 +126,12 @@ class TransportirOrdersPage extends StatelessWidget {
         children: [
           const Text(
             'Daftar Pemesanan',
-            style: TextStyle(fontSize: 30 / 2, fontWeight: FontWeight.w900, color: Color(0xFF17203A)),
+            style: TextStyle(fontSize: 30 / 2, fontWeight: FontWeight.w900, color: Color(0xFF0F261F)),
           ),
           const SizedBox(height: 6),
           const Text(
             'Kelola pemesanan BPTP dan tagihan invoices.',
-            style: TextStyle(fontSize: 16, color: Color(0xFF6A6780), height: 1.25),
+            style: TextStyle(fontSize: 16, color: Color(0xFF5E7D66), height: 1.25),
           ),
           const SizedBox(height: 18),
           ..._orders.map(
@@ -168,17 +162,17 @@ class TransportirOrderDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF5),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF409557)),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.ink),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('GCommers', style: TextStyle(color: Color(0xFF409557), fontWeight: FontWeight.w800)),
-        actions: const [NotificationBadge(iconColor: Color(0xFF409557))],
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
+        actions: const [NotificationBadge(iconColor: AppTheme.ink)],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
@@ -189,7 +183,7 @@ class TransportirOrderDetailPage extends StatelessWidget {
           const SizedBox(height: 20),
           const Text(
             'Daftar Surat Jalan',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF17203A)),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F261F)),
           ),
           const SizedBox(height: 14),
           ...order.shipments.map(
@@ -227,9 +221,9 @@ class TransportirShipmentDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF2F77C4);
-    const Color primaryPurple = Color(0xFF38804B);
-    const Color bgLight = Color(0xFFF4FAF5);
+    const Color primaryBlue = Color(0xFF2F6C3F);
+    const Color primaryPurple = Color(0xFF2F6C3F);
+    const Color bgLight = Color(0xFFFFFFFF);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -237,13 +231,10 @@ class TransportirShipmentDetailPage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: primaryPurple),
+          icon: const Icon(Icons.arrow_back, color: AppTheme.ink),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'GCommers',
-          style: TextStyle(color: primaryPurple, fontWeight: FontWeight.w700),
-        ),
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
         centerTitle: true,
         actions: [
           TextButton.icon(
@@ -265,7 +256,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFD1CBE4)),
+                  border: Border.all(color: const Color(0xFFB5D4BC)),
                   boxShadow: const [
                     BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 8)),
                   ],
@@ -282,11 +273,11 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                             children: [
                               const Text('Tanggal', style: TextStyle(color: Colors.black54, fontSize: 12)),
                               const SizedBox(height: 4),
-                              Text(shipment.deliveryDateLabel, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
+                              Text(shipment.deliveryDateLabel, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                               const SizedBox(height: 12),
                               const Text('Pengemudi', style: TextStyle(color: Colors.black54, fontSize: 12)),
                               const SizedBox(height: 4),
-                              Text(shipment.driverName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF20202D))),
+                              Text(shipment.driverName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
                             ],
                           ),
                         ),
@@ -296,11 +287,11 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                             children: [
                               const Text('Transportir', style: TextStyle(color: Colors.black54, fontSize: 12)),
                               const SizedBox(height: 4),
-                              Text(shipment.transportirName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF20202D))),
+                              Text(shipment.transportirName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
                               const SizedBox(height: 12),
                               const Text('Plat Nomor', style: TextStyle(color: Colors.black54, fontSize: 12)),
                               const SizedBox(height: 4),
-                              Text(shipment.policeNumber, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF20202D))),
+                              Text(shipment.policeNumber, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
                             ],
                           ),
                         ),
@@ -322,7 +313,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFD1CBE4)),
+                  border: Border.all(color: const Color(0xFFB5D4BC)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,15 +324,15 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F1FF),
+                        color: const Color(0xFFEAF2EC),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(shipment.recipientName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
+                          Text(shipment.recipientName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                           const SizedBox(height: 4),
-                          Text(shipment.destinationAddress, style: const TextStyle(color: Color(0xFF66637A), fontSize: 14, height: 1.35)),
+                          Text(shipment.destinationAddress, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 14, height: 1.35)),
                         ],
                       ),
                     ),
@@ -350,13 +341,13 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF2ECF6),
+                        color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFD8CDE8), style: BorderStyle.solid),
+                        border: Border.all(color: const Color(0xFFB5D4BC), style: BorderStyle.solid),
                       ),
                       child: Column(
                         children: [
-                          const Text('PINDAI UNTUK KONFIRMASI', style: TextStyle(color: Color(0xFF6A647D), fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                          const Text('PINDAI UNTUK KONFIRMASI', style: TextStyle(color: Color(0xFF5E7D66), fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                           const SizedBox(height: 16),
                           Container(
                             width: 104,
@@ -393,7 +384,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                           const SizedBox(height: 12),
                           Text(
                             shipment.qrHint,
-                            style: const TextStyle(color: Color(0xFF6A647D), fontSize: 13, height: 1.35),
+                            style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 13, height: 1.35),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -409,7 +400,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFD1CBE4)),
+                  border: Border.all(color: const Color(0xFFB5D4BC)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,314 +507,6 @@ class TransportirShipmentItem {
   final String quantityText;
 }
 
-Future<void> _downloadShipmentPdf(
-  BuildContext context, {
-  required TransportirOrderRecord order,
-  required TransportirShipmentRecord shipment,
-  required AuthSession? session,
-}) async {
-  try {
-    final bytes = await _buildShipmentPdf(order: order, shipment: shipment, session: session);
-    await Printing.sharePdf(bytes: bytes, filename: 'surat-jalan-${shipment.shipmentNumber}.pdf');
-  } catch (error) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Gagal membuat PDF surat jalan: $error')),
-    );
-  }
-}
-
-Future<Uint8List> _buildShipmentPdf({
-  required TransportirOrderRecord order,
-  required TransportirShipmentRecord shipment,
-  required AuthSession? session,
-}) async {
-  final logoData = await rootBundle.load('gcs.png');
-  final logo = pw.MemoryImage(logoData.buffer.asUint8List());
-  final pdf = pw.Document();
-
-  final driverName  = _firstFilled([session?.displayName, shipment.driverName]);
-  final ownerName   = _firstFilled([session?.companyName, session?.transportirName, shipment.transportirName]);
-  final phone       = _firstFilled([session?.phone, '-']);
-  final policeNumber = _firstFilled([session?.policeNumber, shipment.policeNumber]);
-  final qrData = shipment.shipmentNumber;
-
-  pw.Widget infoRow(String label, String value, {double labelWidth = 110}) {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.SizedBox(
-          width: labelWidth,
-          child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
-        ),
-        pw.Text(':  ', style: const pw.TextStyle(fontSize: 9)),
-        pw.Expanded(
-          child: pw.Text(value, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-        ),
-      ],
-    );
-  }
-
-  pdf.addPage(
-    pw.Page(
-      pageFormat: PdfPageFormat.a4.landscape,
-      margin: const pw.EdgeInsets.fromLTRB(32, 26, 32, 26),
-      build: (ctx) {
-        return pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            // ── Header ───────────────────────────────────────────────────────
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                pw.Image(logo, width: 90, height: 90, fit: pw.BoxFit.contain),
-                pw.SizedBox(width: 12),
-                pw.Expanded(
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'PT. GRESIK CIPTA SEJAHTERA',
-                        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-                      ),
-                      pw.Text('Jl. KIG Raya Selatan Blok A5 - Gresik',
-                          style: const pw.TextStyle(fontSize: 10)),
-                      pw.Text('Telp. (031) 3985543, 3984822, 3973239',
-                          style: const pw.TextStyle(fontSize: 10)),
-                    ],
-                  ),
-                ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text('No.', style: const pw.TextStyle(fontSize: 10)),
-                    pw.Text(
-                      shipment.shipmentNumber,
-                      style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 8),
-
-            // ── Title ────────────────────────────────────────────────────────
-            pw.Text(
-              'SURAT PENGANTAR',
-              style: pw.TextStyle(
-                fontSize: 13,
-                fontWeight: pw.FontWeight.bold,
-                decoration: pw.TextDecoration.underline,
-              ),
-            ),
-            pw.Text('Surat Jalan Pengiriman Barang',
-                style: const pw.TextStyle(fontSize: 9)),
-            pw.SizedBox(height: 6),
-            pw.Divider(thickness: 1),
-            pw.SizedBox(height: 8),
-
-            // ── Info Block ───────────────────────────────────────────────────
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // Left: vehicle info
-                pw.SizedBox(
-                  width: 220,
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      infoRow('Kendaraan No. Pol', policeNumber, labelWidth: 112),
-                      pw.SizedBox(height: 5),
-                      infoRow('Barang EX', order.clientName, labelWidth: 112),
-                    ],
-                  ),
-                ),
-                pw.SizedBox(width: 12),
-                // Right: date + recipient
-                pw.Expanded(
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'Tanggal  :  ${shipment.deliveryDateLabel}',
-                        style: const pw.TextStyle(fontSize: 9),
-                      ),
-                      pw.SizedBox(height: 5),
-                      pw.Text('Kepada Yth.',
-                          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                      pw.SizedBox(height: 2),
-                      pw.Text(
-                        shipment.recipientName,
-                        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
-                      ),
-                      pw.SizedBox(height: 2),
-                      pw.Text('Di ${shipment.destinationAddress}',
-                          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 10),
-
-            // ── Table (no Harga / Nilai / Total Nilai) ───────────────────────
-            pw.Table(
-              border: pw.TableBorder.all(width: 0.7),
-              columnWidths: const {
-                0: pw.FixedColumnWidth(26),
-                1: pw.FlexColumnWidth(),
-                2: pw.FixedColumnWidth(60),
-                3: pw.FixedColumnWidth(58),
-              },
-              children: [
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFFE8E8E8)),
-                  children: [
-                    _pdfCell('NO', bold: true, align: pw.TextAlign.center),
-                    _pdfCell('URAIAN BARANG', bold: true),
-                    _pdfCell('JUMLAH', bold: true, align: pw.TextAlign.center),
-                    _pdfCell('SATUAN', bold: true, align: pw.TextAlign.center),
-                  ],
-                ),
-                for (var i = 0; i < shipment.items.length; i++)
-                  pw.TableRow(
-                    children: [
-                      _pdfCell('${i + 1}', align: pw.TextAlign.center),
-                      _pdfCell(shipment.items[i].name),
-                      _pdfCell(shipment.items[i].quantityText, align: pw.TextAlign.center),
-                      _pdfCell('TON', align: pw.TextAlign.center),
-                    ],
-                  ),
-              ],
-            ),
-
-            pw.SizedBox(height: 10),
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Expanded(child: pw.SizedBox()),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(6),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: const PdfColor.fromInt(0xFF38804B), width: 1.2),
-                    borderRadius: pw.BorderRadius.circular(6),
-                  ),
-                  child: pw.Column(
-                    children: [
-                      pw.BarcodeWidget(
-                        barcode: pw.Barcode.qrCode(),
-                        data: qrData,
-                        width: 70,
-                        height: 70,
-                      ),
-                      pw.SizedBox(height: 3),
-pw.Text(qrData, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('Scan untuk konfirmasi kios', style: const pw.TextStyle(fontSize: 6)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            pw.Spacer(),
-
-            // ── Footer Info ──────────────────────────────────────────────────
-            pw.Divider(thickness: 0.6),
-            pw.SizedBox(height: 5),
-            pw.Text(
-              'Dikirim ke alamat tersebut untuk memenuhi permintaan',
-              style: const pw.TextStyle(fontSize: 9),
-            ),
-            pw.SizedBox(height: 3),
-            pw.Text('Pemilik  :  $ownerName', style: const pw.TextStyle(fontSize: 9)),
-            pw.SizedBox(height: 2),
-            pw.Row(
-              children: [
-                pw.Text('Telp       :  $phone', style: const pw.TextStyle(fontSize: 9)),
-                pw.SizedBox(width: 24),
-                pw.Text('GP : ${order.bptpReference}', style: const pw.TextStyle(fontSize: 9)),
-              ],
-            ),
-            pw.SizedBox(height: 6),
-            pw.Text(
-              'Catatan :',
-              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.SizedBox(height: 3),
-            for (final note in const [
-              '1. Dilarang menjual di atas HET, sesuai SK mentan.',
-              '2. Dilarang menjual antar kios, industri, dan di luar peruntukannya.',
-              '3. Harap menyimpan surat pengantar ini sebagai arsip.',
-              '4. Surat pengantar ini sebagai Nota Penjualan.',
-            ])
-              pw.Text(note, style: const pw.TextStyle(fontSize: 8)),
-
-            pw.SizedBox(height: 16),
-
-            // ── Signatures ───────────────────────────────────────────────────
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.end,
-              children: [
-                _pdfSignBox('Penerima,', ''),
-                pw.SizedBox(width: 20),
-                _pdfSignBox('Tanda Tangan,\nSopir/Pembawa', driverName),
-                pw.SizedBox(width: 20),
-                _pdfSignBox('Pengirim,', ownerName),
-              ],
-            ),
-          ],
-        );
-      },
-    ),
-  );
-
-  return pdf.save();
-}
-
-pw.Widget _pdfSignBox(String title, String name) {
-  return pw.Expanded(
-    child: pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.center,
-      children: [
-        pw.Text(
-          title,
-          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-          textAlign: pw.TextAlign.center,
-        ),
-        pw.SizedBox(height: 44),
-        pw.Container(
-          width: 110,
-          decoration: const pw.BoxDecoration(
-            border: pw.Border(bottom: pw.BorderSide(width: 0.8)),
-          ),
-        ),
-        pw.SizedBox(height: 4),
-        if (name.isNotEmpty)
-          pw.Text(name, style: const pw.TextStyle(fontSize: 9), textAlign: pw.TextAlign.center),
-      ],
-    ),
-  );
-}
-
-pw.Widget _pdfCell(String text, {bool bold = false, pw.TextAlign align = pw.TextAlign.left}) {
-  return pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-    child: pw.Text(
-      text,
-      style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal),
-      textAlign: align,
-    ),
-  );
-}
-
-String _firstFilled(List<String?> values) {
-  for (final value in values) {
-    final trimmed = value?.trim();
-    if (trimmed != null && trimmed.isNotEmpty) return trimmed;
-  }
-  return '-';
-}
-
 class _TransportirOrderCard extends StatelessWidget {
   const _TransportirOrderCard({required this.order, required this.onTap});
 
@@ -842,7 +525,7 @@ class _TransportirOrderCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD1CBE4)),
+            border: Border.all(color: const Color(0xFFB5D4BC)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -853,19 +536,19 @@ class _TransportirOrderCard extends StatelessWidget {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEAE8FF),
+                      color: const Color(0xFFE2F0E6),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF409557)),
+                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF2F6C3F)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(order.invoiceLabel, style: const TextStyle(color: Color(0xFF6A6780), fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+                        Text(order.invoiceLabel, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
                         const SizedBox(height: 3),
-                        Text(order.invoiceNumber, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
+                        Text(order.invoiceNumber, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                       ],
                     ),
                   ),
@@ -877,7 +560,7 @@ class _TransportirOrderCard extends StatelessWidget {
                 children: [
                   Expanded(child: _KeyText(label: 'Tanggal', value: order.createdAtLabel)),
                   const SizedBox(width: 12),
-                  Expanded(child: _KeyText(label: 'Nilai Tagihan', value: order.totalAmountLabel, valueColor: const Color(0xFF409557))),
+                  Expanded(child: _KeyText(label: 'Nilai Tagihan', value: order.totalAmountLabel, valueColor: const Color(0xFF2F6C3F))),
                 ],
               ),
               const SizedBox(height: 10),
@@ -889,8 +572,8 @@ class _TransportirOrderCard extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: onTap,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF409557),
-                    side: const BorderSide(color: Color(0xFFB9B5E4)),
+                    foregroundColor: const Color(0xFF2F6C3F),
+                    side: const BorderSide(color: Color(0xFFB5D4BC)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Lihat Detail', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -917,7 +600,7 @@ class _DetailHeaderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD1CBE4)),
+        border: Border.all(color: const Color(0xFFB5D4BC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -929,9 +612,9 @@ class _DetailHeaderCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Nomor Invoice', style: TextStyle(color: Color(0xFF6A6780), fontSize: 12)),
+                    const Text('Nomor Invoice', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 12)),
                     const SizedBox(height: 4),
-                    Text('#${order.invoiceNumber}', style: const TextStyle(fontSize: 26 / 2, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
+                    Text('#${order.invoiceNumber}', style: const TextStyle(fontSize: 26 / 2, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                   ],
                 ),
               ),
@@ -945,7 +628,7 @@ class _DetailHeaderCard extends StatelessWidget {
           const SizedBox(height: 10),
           _KeyText(label: 'Tujuan Kios', value: order.buyerName),
           const SizedBox(height: 4),
-          Text(order.buyerAddress, style: const TextStyle(color: Color(0xFF66637A), fontSize: 14, height: 1.35)),
+          Text(order.buyerAddress, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 14, height: 1.35)),
           const SizedBox(height: 10),
           _KeyText(label: 'Total Item', value: order.totalItemsLabel),
         ],
@@ -1005,7 +688,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD1CBE4)),
+        border: Border.all(color: const Color(0xFFB5D4BC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1018,19 +701,19 @@ class _ShipmentSummaryCard extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE9F1FF),
+                    color: const Color(0xFFDCEDE1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.description_outlined, color: Color(0xFF2F77C4)),
+                  child: const Icon(Icons.description_outlined, color: Color(0xFF2F6C3F)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Surat Jalan #${shipment.shipmentNumber}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF20202D))),
+                      Text('Surat Jalan #${shipment.shipmentNumber}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                       const SizedBox(height: 3),
-                      Text('${shipment.truckLabel} • Supir: ${shipment.driverName}', style: const TextStyle(color: Color(0xFF66637A), fontSize: 13, height: 1.2)),
+                      Text('${shipment.truckLabel} • Supir: ${shipment.driverName}', style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 13, height: 1.2)),
                     ],
                   ),
                 ),
@@ -1044,8 +727,8 @@ class _ShipmentSummaryCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: const [
-                Text('Produk', style: TextStyle(color: Color(0xFF6A6780), fontSize: 13)),
-                Text('Jumlah (TON)', style: TextStyle(color: Color(0xFF6A6780), fontSize: 13)),
+                Text('Produk', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 13)),
+                Text('Jumlah (TON)', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 13)),
               ],
             ),
           ),
@@ -1061,14 +744,14 @@ class _ShipmentSummaryCard extends StatelessWidget {
                       children: [
                         const Padding(
                           padding: EdgeInsets.only(top: 7),
-                          child: Icon(Icons.circle, size: 8, color: Color(0xFF777184)),
+                          child: Icon(Icons.circle, size: 8, color: Color(0xFF5E7D66)),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Text(item.name, style: const TextStyle(color: Color(0xFF20202D), fontSize: 14, height: 1.3)),
+                          child: Text(item.name, style: const TextStyle(color: Color(0xFF0F261F), fontSize: 14, height: 1.3)),
                         ),
                         const SizedBox(width: 10),
-                        Text(item.quantityText, style: const TextStyle(color: Color(0xFF20202D), fontSize: 15, fontWeight: FontWeight.w800)),
+                        Text(item.quantityText, style: const TextStyle(color: Color(0xFF0F261F), fontSize: 15, fontWeight: FontWeight.w800)),
                       ],
                     ),
                   ),
@@ -1079,14 +762,14 @@ class _ShipmentSummaryCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF4F0FF),
+                    color: const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFD8D3EA)),
+                    border: Border.all(color: const Color(0xFFB5D4BC)),
                   ),
                   child: Row(
                     children: [
                       const Icon(Icons.admin_panel_settings_outlined,
-                          color: Color(0xFF38804B), size: 16),
+                          color: Color(0xFF2F6C3F), size: 16),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -1095,7 +778,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                             const Text('Ditentukan Admin',
                                 style: TextStyle(
                                     fontSize: 11,
-                                    color: Color(0xFF7B6FFF),
+                                    color: Color(0xFF2F6C3F),
                                     fontWeight: FontWeight.w700)),
                             const SizedBox(height: 2),
                             Text(
@@ -1103,7 +786,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                               '  ·  ${shipment.totalQuantityLabel}',
                               style: const TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF252335),
+                                  color: Color(0xFF0F261F),
                                   fontWeight: FontWeight.w800),
                             ),
                           ],
@@ -1131,21 +814,6 @@ class _ShipmentSummaryCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _downloadShipmentPdf(context, order: order, shipment: shipment, session: session),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4438A7),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    icon: const Icon(Icons.qr_code_2_rounded, size: 26),
-                    label: const Text('Download Surat Jalan', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ),
-                ),
               ],
             ),
           ),
@@ -1167,14 +835,14 @@ class _ShipmentItemRow extends StatelessWidget {
       children: [
         const Padding(
           padding: EdgeInsets.only(top: 6),
-          child: Icon(Icons.circle, size: 8, color: Color(0xFF777184)),
+          child: Icon(Icons.circle, size: 8, color: Color(0xFF5E7D66)),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(item.name, style: const TextStyle(color: Color(0xFF20202D), fontSize: 14, height: 1.35)),
+          child: Text(item.name, style: const TextStyle(color: Color(0xFF0F261F), fontSize: 14, height: 1.35)),
         ),
         const SizedBox(width: 10),
-        Text(item.quantityText, style: const TextStyle(color: Color(0xFF20202D), fontSize: 15, fontWeight: FontWeight.w800)),
+        Text(item.quantityText, style: const TextStyle(color: Color(0xFF0F261F), fontSize: 15, fontWeight: FontWeight.w800)),
       ],
     );
   }
@@ -1192,9 +860,9 @@ class _KeyText extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Color(0xFF6A6780), fontSize: 12)),
+        Text(label, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 12)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: valueColor ?? const Color(0xFF20202D))),
+        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: valueColor ?? const Color(0xFF0F261F))),
       ],
     );
   }

@@ -19,8 +19,8 @@ class RoleSelectionScreen extends StatelessWidget {
               end: Alignment.bottomCenter,
               colors: [
                 AppTheme.navy,
-                Color(0xFF091A11),
-                Color(0xFFF4FAF5),
+                Color(0xFF0F261F),
+                Color(0xFFFFFFFF),
               ],
               stops: [0.0, 0.56, 1.0],
             ),
@@ -35,7 +35,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFF4FAF5),
+                    color: Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(32),
                       topRight: Radius.circular(32),

@@ -140,6 +140,38 @@ static class AuthDatabase
             ALTER TABLE dbo.Users ADD AvatarImage VARBINARY(MAX) NULL;
         END
 
+        -- Add id_kab column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'id_kab'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD id_kab INT NULL;
+        END
+
+        -- Add kode_kec column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'kode_kec'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD kode_kec NVARCHAR(20) NULL;
+        END
+
+        -- Add nama_kec column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'nama_kec'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD nama_kec NVARCHAR(150) NULL;
+        END
+
+        -- Add nama_kab column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'nama_kab'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD nama_kab NVARCHAR(150) NULL;
+        END
+
         -- Add ProvinsiId / KabupatenId / KecamatanId columns if missing (administrative location, FK to propinsi/kabupaten/kecamatan)
         IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
             SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'ProvinsiId'
