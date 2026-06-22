@@ -264,7 +264,10 @@ static class CommerceDatabase
         await connection.OpenAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
-        var hasKecamatan = !string.IsNullOrWhiteSpace(kecamatan);
+        // kecamatan names aren't unique nationally (e.g. several "Genteng" kecamatan exist in
+        // different provinces), so kecamatan alone is not a safe lookup key -- region must be
+        // matched too, same as the compound key used in kecamatan_product_prices/_stocks.
+        var hasKecamatan = !string.IsNullOrWhiteSpace(kecamatan) && !string.IsNullOrWhiteSpace(region);
         var hasRegion = !hasKecamatan && !string.IsNullOrWhiteSpace(region);
 
         if (hasKecamatan)
@@ -272,22 +275,24 @@ static class CommerceDatabase
             // dbo.kecamatan_product_prices / dbo.kecamatan_product_stocks are managed by the admin
             // console (subsidy quota per kecamatan) and are the source of truth for kiosk pricing now
             // that kiosks are registered against a specific kecamatan. Stock is allocated monthly.
+            // kecamatan_product_prices has no pph_persen column, so PPh falls back to the standard 0.25.
             command.CommandText = """
                 SELECT p.Id, COALESCE(p.ProductCode, ''), p.Name, p.Description, p.Category,
                        kpp.harga_satuan, CAST(kps.quota_ton AS INT), p.MinimumOrder, p.Unit, p.IconName,
                        p.Status, p.Rating, p.Specification,
-                       kpp.biaya_pengiriman, kpp.pph_persen
+                       kpp.biaya_pengiriman, 0.25
                 FROM dbo.Products p
                 INNER JOIN dbo.kecamatan_product_prices kpp
-                    ON kpp.product_code = p.ProductCode AND kpp.kecamatan = @Kecamatan
+                    ON kpp.product_code = p.ProductCode AND kpp.kecamatan = @Kecamatan AND kpp.region = @Region
                 INNER JOIN dbo.kecamatan_product_stocks kps
-                    ON kps.product_code = p.ProductCode AND kps.kecamatan = @Kecamatan AND kps.period = @Period
+                    ON kps.product_code = p.ProductCode AND kps.kecamatan = @Kecamatan AND kps.region = @Region AND kps.period = @Period
                 WHERE (@Category IS NULL OR p.Category = @Category)
                   AND p.Status = N'Aktif'
                   AND kps.quota_ton > 0
                 ORDER BY p.Id;
                 """;
             command.Parameters.AddWithValue("@Kecamatan", kecamatan);
+            command.Parameters.AddWithValue("@Region", region);
             command.Parameters.AddWithValue("@Period", CurrentPeriod());
         }
         else if (hasRegion)
@@ -405,7 +410,7 @@ static class CommerceDatabase
 
         try
         {
-            var hasKecamatan = !string.IsNullOrWhiteSpace(request.Kecamatan);
+            var hasKecamatan = !string.IsNullOrWhiteSpace(request.Kecamatan) && !string.IsNullOrWhiteSpace(request.Region);
             var hasRegion = !hasKecamatan && !string.IsNullOrWhiteSpace(request.Region);
             var period = CurrentPeriod();
             var orderItems = new List<(int ProductId, string ProductCode, string Name, string Unit, int Quantity, decimal UnitPrice, decimal TotalPrice)>();
@@ -421,18 +426,21 @@ static class CommerceDatabase
                 if (hasKecamatan)
                 {
                     // dbo.kecamatan_product_prices / dbo.kecamatan_product_stocks are managed by the
-                    // admin console (subsidy quota per kecamatan); ProductCode is the join key.
+                    // admin console (subsidy quota per kecamatan); ProductCode is the join key, scoped
+                    // by region+kecamatan since kecamatan names aren't unique nationally. That table has
+                    // no pph_persen column, so PPh falls back to the standard 0.25.
                     productCommand.CommandText = """
                         SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), kpp.harga_satuan,
-                               kps.quota_ton, kpp.biaya_pengiriman, kpp.pph_persen
+                               kps.quota_ton, kpp.biaya_pengiriman, 0.25
                         FROM dbo.Products p
                         INNER JOIN dbo.kecamatan_product_prices kpp
-                            ON kpp.product_code = p.ProductCode AND kpp.kecamatan = @Kecamatan
+                            ON kpp.product_code = p.ProductCode AND kpp.kecamatan = @Kecamatan AND kpp.region = @Region
                         INNER JOIN dbo.kecamatan_product_stocks kps
-                            ON kps.product_code = p.ProductCode AND kps.kecamatan = @Kecamatan AND kps.period = @Period
+                            ON kps.product_code = p.ProductCode AND kps.kecamatan = @Kecamatan AND kps.region = @Region AND kps.period = @Period
                         WHERE p.Id = @Id;
                         """;
                     productCommand.Parameters.AddWithValue("@Kecamatan", request.Kecamatan!);
+                    productCommand.Parameters.AddWithValue("@Region", request.Region!);
                     productCommand.Parameters.AddWithValue("@Period", period);
                 }
                 else if (hasRegion)
@@ -530,7 +538,7 @@ static class CommerceDatabase
 
                         UPDATE dbo.kecamatan_product_stocks
                         SET quota_ton = quota_ton - @Quantity
-                        WHERE product_code = @ProductCode AND kecamatan = @Kecamatan AND period = @Period;
+                        WHERE product_code = @ProductCode AND kecamatan = @Kecamatan AND region = @Region AND period = @Period;
                         """
                     : hasRegion
                         ? """
@@ -564,6 +572,7 @@ static class CommerceDatabase
                 {
                     itemCommand.Parameters.AddWithValue("@ProductCode", item.ProductCode);
                     itemCommand.Parameters.AddWithValue("@Kecamatan", request.Kecamatan!);
+                    itemCommand.Parameters.AddWithValue("@Region", request.Region!);
                     itemCommand.Parameters.AddWithValue("@Period", period);
                 }
                 else if (hasRegion)
@@ -1191,7 +1200,8 @@ static class CommerceDatabase
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private static string CurrentPeriod() => DateTimeOffset.UtcNow.ToString("yyyy-MM");
+    // Admin console allocates kecamatan_product_stocks quota yearly (period = "yyyy"), not monthly.
+    private static string CurrentPeriod() => DateTimeOffset.UtcNow.ToString("yyyy");
 
     private static string ToStatusLabel(string status) => status switch
     {

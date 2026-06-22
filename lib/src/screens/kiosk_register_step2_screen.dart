@@ -62,12 +62,6 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
   bool _loadingKecamatan = false;
 
   @override
-  void initState() {
-    super.initState();
-    _loadProvinsiList();
-  }
-
-  @override
   void dispose() {
     _addressController.dispose();
     super.dispose();
@@ -87,7 +81,7 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
   Future<void> _loadProvinsiList() async {
     setState(() => _loadingProvinsi = true);
     try {
-      final list = await _wilayahService.getProvinsiList();
+      final list = await _wilayahService.getProvinsiList(region: _selectedRegion);
       if (!mounted) return;
       setState(() {
         _provinsiList = list;
@@ -268,7 +262,18 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                         items: _regions
                             .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                             .toList(),
-                        onChanged: (v) => setState(() => _selectedRegion = v),
+                        onChanged: (v) {
+                          setState(() {
+                            _selectedRegion = v;
+                            _selectedProvinsi = null;
+                            _selectedKabupaten = null;
+                            _selectedKecamatan = null;
+                            _provinsiList = [];
+                            _kabupatenList = [];
+                            _kecamatanList = [];
+                          });
+                          _loadProvinsiList();
+                        },
                         decoration: const InputDecoration(hintText: 'Pilih region kios'),
                       ),
                       const SizedBox(height: 14),
@@ -279,9 +284,13 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                         items: _provinsiList
                             .map((p) => DropdownMenuItem(value: p, child: Text(p.nama)))
                             .toList(),
-                        onChanged: _loadingProvinsi ? null : _onProvinsiChanged,
+                        onChanged: (_selectedRegion == null || _loadingProvinsi) ? null : _onProvinsiChanged,
                         decoration: InputDecoration(
-                          hintText: _loadingProvinsi ? 'Memuat provinsi...' : 'Pilih provinsi',
+                          hintText: _selectedRegion == null
+                              ? 'Pilih region kios terlebih dahulu'
+                              : _loadingProvinsi
+                                  ? 'Memuat provinsi...'
+                                  : 'Pilih provinsi',
                         ),
                       ),
                       const SizedBox(height: 14),

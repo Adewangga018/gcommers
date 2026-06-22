@@ -2,19 +2,29 @@ using Microsoft.Data.SqlClient;
 
 static class WilayahDatabase
 {
-    public static async Task<List<ProvinsiDto>> GetProvinsiListAsync(IConfiguration configuration, CancellationToken cancellationToken)
+    public static async Task<List<ProvinsiDto>> GetProvinsiListAsync(IConfiguration configuration, string? region, CancellationToken cancellationToken)
     {
         var connectionString = ConnectionStringFactory.Build(configuration);
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
+        // Filter provinces to the selected commercial region. Jawa Tengah has no propinsi-level
+        // id_reg (its kabupaten are split between Utara/Selatan via kabupaten.id_reg instead), so
+        // a province also matches when any of its kabupaten carry that region override.
         command.CommandText = """
-            SELECT id, kode_pro, nama_pro
-            FROM dbo.propinsi
-            WHERE status = N'Aktif'
-            ORDER BY nama_pro;
+            DECLARE @RegionId INT = (SELECT id FROM dbo.region WHERE nama_reg = @Region);
+            SELECT p.id, p.kode_pro, p.nama_pro
+            FROM dbo.propinsi p
+            WHERE p.status = N'Aktif'
+              AND (
+                @RegionId IS NULL
+                OR p.id_reg = @RegionId
+                OR EXISTS (SELECT 1 FROM dbo.kabupaten k WHERE k.id_pro = p.id AND k.id_reg = @RegionId)
+              )
+            ORDER BY p.nama_pro;
             """;
+        command.Parameters.AddWithValue("@Region", string.IsNullOrWhiteSpace(region) ? DBNull.Value : region);
 
         var result = new List<ProvinsiDto>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);

@@ -364,9 +364,9 @@ app.MapGet("/dashboard/summary", async (IConfiguration configuration, Cancellati
 
 var wilayah = app.MapGroup("/wilayah");
 
-wilayah.MapGet("/provinsi", async (IConfiguration configuration, CancellationToken cancellationToken) =>
+wilayah.MapGet("/provinsi", async (string? region, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
-    var data = await WilayahDatabase.GetProvinsiListAsync(configuration, cancellationToken);
+    var data = await WilayahDatabase.GetProvinsiListAsync(configuration, region, cancellationToken);
     return Results.Ok(data);
 });
 

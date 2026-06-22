@@ -37,7 +37,7 @@ class _OrderPageState extends State<OrderPage> {
     _userEmail = session?.email;
     return _commerceService.getProducts(
       category: _selectedCategory,
-      region: _hasKecamatan ? null : _userRegion,
+      region: _userRegion,
       kecamatan: _userKecamatan,
     );
   }
@@ -55,7 +55,7 @@ class _OrderPageState extends State<OrderPage> {
       _selectedCategory = category;
       _productsFuture = _commerceService.getProducts(
         category: category,
-        region: _hasKecamatan ? null : _userRegion,
+        region: _userRegion,
         kecamatan: _userKecamatan,
       );
     });
@@ -64,7 +64,7 @@ class _OrderPageState extends State<OrderPage> {
   Future<void> _refreshProducts() {
     final future = _commerceService.getProducts(
       category: _selectedCategory,
-      region: _hasKecamatan ? null : _userRegion,
+      region: _userRegion,
       kecamatan: _userKecamatan,
     );
     setState(() => _productsFuture = future);
@@ -90,7 +90,7 @@ class _OrderPageState extends State<OrderPage> {
     try {
       final order = await _commerceService.createOrder(
         userEmail: _userEmail,
-        region: _hasKecamatan ? null : _userRegion,
+        region: _userRegion,
         kecamatan: _userKecamatan,
         quantities: selected,
       );
@@ -471,7 +471,12 @@ class _ProductCard extends StatelessWidget {
                       alignment: Alignment.center,
                       child: Text('$quantity', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                     ),
-                    _StepperButton(icon: Icons.add, color: primaryPurple, filled: true, onTap: onAdd),
+                    _StepperButton(
+                      icon: Icons.add,
+                      color: primaryPurple,
+                      filled: true,
+                      onTap: quantity >= product.stock ? null : onAdd,
+                    ),
                   ],
                 ),
               ),
@@ -672,11 +677,12 @@ class _StepperButton extends StatelessWidget {
 
   final IconData icon;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool filled;
 
   @override
   Widget build(BuildContext context) {
+    final disabled = onTap == null;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -684,10 +690,10 @@ class _StepperButton extends StatelessWidget {
         width: 34,
         height: 40,
         decoration: BoxDecoration(
-          color: filled ? color : Colors.white,
+          color: disabled ? Colors.grey[200] : (filled ? color : Colors.white),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, color: filled ? Colors.white : color, size: 18),
+        child: Icon(icon, color: disabled ? Colors.grey[400] : (filled ? Colors.white : color), size: 18),
       ),
     );
   }
