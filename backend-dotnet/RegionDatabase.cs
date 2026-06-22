@@ -2,6 +2,25 @@ using Microsoft.Data.SqlClient;
 
 static class RegionDatabase
 {
+    public static async Task<List<RegionDto>> GetRegionListAsync(IConfiguration configuration, CancellationToken cancellationToken)
+    {
+        var connectionString = ConnectionStringFactory.Build(configuration);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT id, nama_reg FROM dbo.region ORDER BY nama_reg;";
+
+        var result = new List<RegionDto>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(new RegionDto(reader.GetInt32(0), reader.GetString(1)));
+        }
+
+        return result;
+    }
+
     private static readonly string[] SeedRegions =
     {
         "Jawa Tengah Selatan",

@@ -192,11 +192,23 @@ class AuthService {
         'type': draft.type,
         'email': draft.email,
         'password': draft.password,
+        'region': draft.region,
         'termsAccepted': draft.termsAccepted,
       }),
     );
 
     return _decodeAuthSession(response);
+  }
+
+  Future<List<String>> getTransportirCompanyNames({String? region}) async {
+    final uri = Uri.parse('$baseUrl/auth/transportir-companies').replace(
+      queryParameters: (region != null && region.isNotEmpty) ? {'region': region} : null,
+    );
+    final response = await http.get(uri);
+    if (response.statusCode != 200) {
+      throw _toException(response);
+    }
+    return (jsonDecode(response.body) as List<dynamic>).map((e) => e as String).toList();
   }
 
   AuthSession _decodeAuthSession(http.Response response) {

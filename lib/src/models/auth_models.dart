@@ -75,6 +75,7 @@ class TransportirRegistrationDraft {
     required this.type,
     required this.email,
     required this.password,
+    required this.region,
     required this.termsAccepted,
   });
 
@@ -85,6 +86,7 @@ class TransportirRegistrationDraft {
   final String type;
   final String email;
   final String password;
+  final String region;
   final bool termsAccepted;
 }
 

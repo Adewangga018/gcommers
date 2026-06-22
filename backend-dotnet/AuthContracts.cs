@@ -54,6 +54,7 @@ public sealed record RegisterTransportirRequest(
     string Password,
     string PoliceNumber,
     string Type,
+    string Region,
     bool TermsAccepted)
 {
     public string? Validate()
@@ -64,7 +65,8 @@ public sealed record RegisterTransportirRequest(
             string.IsNullOrWhiteSpace(Email) ||
             string.IsNullOrWhiteSpace(Password) ||
             string.IsNullOrWhiteSpace(PoliceNumber) ||
-            string.IsNullOrWhiteSpace(Type))
+            string.IsNullOrWhiteSpace(Type) ||
+            string.IsNullOrWhiteSpace(Region))
         {
             return "Semua field wajib diisi.";
         }

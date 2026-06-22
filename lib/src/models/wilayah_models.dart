@@ -1,3 +1,15 @@
+class Region {
+  const Region({required this.id, required this.namaReg});
+
+  final int id;
+  final String namaReg;
+
+  factory Region.fromJson(Map<String, dynamic> json) => Region(
+        id: json['id'] as int,
+        namaReg: json['namaReg'] as String? ?? '',
+      );
+}
+
 class Provinsi {
   const Provinsi({required this.id, required this.kode, required this.nama});
 

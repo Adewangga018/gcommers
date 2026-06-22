@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
+import '../models/wilayah_models.dart';
 import '../services/auth_service.dart';
 import '../services/session_manager.dart';
+import '../services/wilayah_service.dart';
 import '../widgets/auth_widgets.dart';
 import 'role_selection_screen.dart';
 
@@ -15,7 +17,6 @@ class TransportirRegisterScreen extends StatefulWidget {
 
 class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
   final _transportirNameController = TextEditingController();
-  final _companyNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _policeNumberController = TextEditingController();
   final _typeController = TextEditingController();
@@ -23,15 +24,29 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
+  final _wilayahService = WilayahService();
   bool _accepted = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _loading = false;
 
+  List<Region> _regionList = [];
+  Region? _selectedRegion;
+  bool _loadingRegions = false;
+
+  List<String> _companyNames = [];
+  String? _selectedCompanyName;
+  bool _loadingCompanies = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRegionList();
+  }
+
   @override
   void dispose() {
     _transportirNameController.dispose();
-    _companyNameController.dispose();
     _phoneController.dispose();
     _policeNumberController.dispose();
     _typeController.dispose();
@@ -39,6 +54,50 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRegionList() async {
+    setState(() => _loadingRegions = true);
+    try {
+      final list = await _wilayahService.getRegionList();
+      if (!mounted) return;
+      setState(() {
+        _regionList = list;
+        _loadingRegions = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingRegions = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat daftar region: ${e.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _onRegionChanged(Region? region) async {
+    setState(() {
+      _selectedRegion = region;
+      _selectedCompanyName = null;
+      _companyNames = [];
+    });
+
+    if (region == null) return;
+
+    setState(() => _loadingCompanies = true);
+    try {
+      final list = await _authService.getTransportirCompanyNames(region: region.namaReg);
+      if (!mounted) return;
+      setState(() {
+        _companyNames = list;
+        _loadingCompanies = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingCompanies = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat daftar perusahaan: ${e.toString()}')),
+      );
+    }
   }
 
   Future<void> _submit() async {
@@ -49,16 +108,31 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
       return;
     }
 
+    if (_selectedRegion == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih region terlebih dahulu')),
+      );
+      return;
+    }
+
+    if (_selectedCompanyName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih nama perusahaan transportir')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       final draft = TransportirRegistrationDraft(
         transportirName: _transportirNameController.text,
-        companyName: _companyNameController.text,
+        companyName: _selectedCompanyName!,
         phone: _phoneController.text,
         policeNumber: _policeNumberController.text,
         type: _typeController.text,
         email: _emailController.text,
         password: _passwordController.text,
+        region: _selectedRegion!.namaReg,
         termsAccepted: _accepted,
       );
 
@@ -112,10 +186,47 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
                         icon: Icons.local_shipping_outlined,
                       ),
                       const SizedBox(height: 14),
-                      AuthTextField(
-                        controller: _companyNameController,
-                        hintText: 'Nama perusahaan transportir',
-                        icon: Icons.business_outlined,
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Region', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<Region>(
+                        value: _selectedRegion,
+                        items: _regionList
+                            .map((r) => DropdownMenuItem(value: r, child: Text(r.namaReg)))
+                            .toList(),
+                        onChanged: _loadingRegions ? null : _onRegionChanged,
+                        decoration: InputDecoration(
+                          hintText: _loadingRegions ? 'Memuat region...' : 'Pilih region',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Nama Perusahaan Transportir',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedCompanyName,
+                        items: _companyNames
+                            .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                            .toList(),
+                        onChanged: (_selectedRegion == null || _loadingCompanies)
+                            ? null
+                            : (v) => setState(() => _selectedCompanyName = v),
+                        decoration: InputDecoration(
+                          hintText: _selectedRegion == null
+                              ? 'Pilih region terlebih dahulu'
+                              : _loadingCompanies
+                                  ? 'Memuat perusahaan...'
+                                  : _companyNames.isEmpty
+                                      ? 'Belum ada perusahaan terdaftar di region ini'
+                                      : 'Pilih perusahaan',
+                        ),
                       ),
                       const SizedBox(height: 14),
                       AuthTextField(

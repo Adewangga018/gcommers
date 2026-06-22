@@ -24,6 +24,14 @@ class WilayahService {
     return Uri.parse('$baseUrl$path').replace(queryParameters: filtered.isEmpty ? null : filtered);
   }
 
+  Future<List<Region>> getRegionList() async {
+    final response = await http.get(_uri('/region'));
+    _ensureOk(response);
+    return (jsonDecode(response.body) as List<dynamic>)
+        .map((item) => Region.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<Provinsi>> getProvinsiList({String? region}) async {
     final response = await http.get(_uri('/wilayah/provinsi', {'region': region}));
     _ensureOk(response);

@@ -183,6 +183,12 @@ auth.MapPost("/register-transportir", async (RegisterTransportirRequest request,
     return Results.Ok(session);
 });
 
+auth.MapGet("/transportir-companies", async (string? region, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var data = await AuthDatabase.GetTransportirCompanyNamesAsync(configuration, region, cancellationToken);
+    return Results.Ok(data);
+});
+
 auth.MapPost("/forgot-password", async (ForgotPasswordRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
     var email = NormalizeEmail(request.Email);
@@ -367,6 +373,12 @@ app.MapGet("/dashboard/summary", async (IConfiguration configuration, Cancellati
 {
     var summary = await CommerceDatabase.GetDashboardSummaryAsync(configuration, cancellationToken);
     return Results.Ok(summary);
+});
+
+app.MapGet("/region", async (IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var data = await RegionDatabase.GetRegionListAsync(configuration, cancellationToken);
+    return Results.Ok(data);
 });
 
 var wilayah = app.MapGroup("/wilayah");
