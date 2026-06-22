@@ -554,7 +554,7 @@ static class AuthDatabase
                 @PoliceNumber,
                 @Type,
                 NULL,
-                NULL,
+                @Region,
                 NULL,
                 SYSUTCDATETIME(),
                 SYSUTCDATETIME()
@@ -571,6 +571,7 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@Phone", request.Phone.Trim());
         command.Parameters.AddWithValue("@PoliceNumber", request.PoliceNumber.Trim());
         command.Parameters.AddWithValue("@Type", request.Type.Trim());
+        command.Parameters.AddWithValue("@Region", request.Region.Trim());
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -579,14 +580,46 @@ static class AuthDatabase
         }
 
         return new AuthSession(
-            normalizedEmail,
-            reader.GetString(2),
-            reader.GetString(3),
-            Guid.NewGuid().ToString("N"),
-            request.TransportirName.Trim(),
-            request.CompanyName.Trim(),
-            request.PoliceNumber.Trim(),
-            request.Type.Trim());
+            Email: normalizedEmail,
+            Role: reader.GetString(2),
+            DisplayName: reader.GetString(3),
+            Token: Guid.NewGuid().ToString("N"),
+            Phone: request.Phone.Trim(),
+            Region: request.Region.Trim(),
+            TransportirName: request.TransportirName.Trim(),
+            CompanyName: request.CompanyName.Trim(),
+            PoliceNumber: request.PoliceNumber.Trim(),
+            VehicleType: request.Type.Trim());
+    }
+
+    public static async Task<List<string>> GetTransportirCompanyNamesAsync(
+        IConfiguration configuration,
+        string? region,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = ConnectionStringFactory.Build(configuration);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT DISTINCT CompanyName
+            FROM dbo.Users
+            WHERE Role = N'transportir'
+              AND CompanyName IS NOT NULL
+              AND (@Region IS NULL OR Region = @Region)
+            ORDER BY CompanyName;
+            """;
+        command.Parameters.AddWithValue("@Region", string.IsNullOrWhiteSpace(region) ? DBNull.Value : region);
+
+        var result = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(reader.GetString(0));
+        }
+
+        return result;
     }
 
     public static async Task StoreResetOtpAsync(SqlConnection connection, int userId, string otp, CancellationToken cancellationToken)
