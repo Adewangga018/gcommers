@@ -63,6 +63,10 @@ class OrderSummary {
     required this.createdAt,
     required this.paymentMethod,
     required this.itemCount,
+    this.orderStatus,
+    required this.orderStatusLabel,
+    required this.paymentStatus,
+    required this.paymentStatusLabel,
   });
 
   factory OrderSummary.fromJson(Map<String, dynamic> json) {
@@ -74,6 +78,10 @@ class OrderSummary {
       createdAt: DateTime.parse(json['createdAt'] as String),
       paymentMethod: json['paymentMethod'] as String,
       itemCount: json['itemCount'] as int,
+      orderStatus: json['orderStatus'] as String?,
+      orderStatusLabel: json['orderStatusLabel'] as String? ?? 'Menunggu Pembayaran',
+      paymentStatus: json['paymentStatus'] as String? ?? 'pending',
+      paymentStatusLabel: json['paymentStatusLabel'] as String? ?? 'Pending',
     );
   }
 
@@ -84,6 +92,12 @@ class OrderSummary {
   final DateTime createdAt;
   final String paymentMethod;
   final int itemCount;
+  /// 4 nilai kontrak: processing/shipping/delivered/cancelled, null sebelum bayar.
+  final String? orderStatus;
+  final String orderStatusLabel;
+  /// Diturunkan dari PaidAt: 'pending' atau 'paid'.
+  final String paymentStatus;
+  final String paymentStatusLabel;
 }
 
 class DashboardSummary {
@@ -127,6 +141,11 @@ class OrderDetail {
     required this.deliveredAt,
     required this.items,
     required this.timeline,
+    this.orderStatus,
+    required this.orderStatusLabel,
+    this.orderStatusNote,
+    required this.paymentStatus,
+    required this.paymentStatusLabel,
   });
 
   factory OrderDetail.fromJson(Map<String, dynamic> json) {
@@ -149,6 +168,11 @@ class OrderDetail {
       timeline: (json['timeline'] as List<dynamic>)
           .map((item) => OrderTimeline.fromJson(item as Map<String, dynamic>))
           .toList(),
+      orderStatus: json['orderStatus'] as String?,
+      orderStatusLabel: json['orderStatusLabel'] as String? ?? 'Menunggu Pembayaran',
+      orderStatusNote: json['orderStatusNote'] as String?,
+      paymentStatus: json['paymentStatus'] as String? ?? 'pending',
+      paymentStatusLabel: json['paymentStatusLabel'] as String? ?? 'Pending',
     );
   }
 
@@ -166,6 +190,11 @@ class OrderDetail {
   final DateTime? deliveredAt;
   final List<OrderItem> items;
   final List<OrderTimeline> timeline;
+  final String? orderStatus;
+  final String orderStatusLabel;
+  final String? orderStatusNote;
+  final String paymentStatus;
+  final String paymentStatusLabel;
 }
 
 class OrderItem {
@@ -265,6 +294,16 @@ class ShipmentSummary {
     required this.destinationLng,
     required this.createdAt,
     required this.completedAt,
+    this.orderId,
+    this.poNumber,
+    this.warehouseName,
+    this.warehouseAddress,
+    this.muatInPhotoUrl,
+    this.muatOutPhotoUrl,
+    this.note,
+    this.assignedBy,
+    this.muatInCompletedAt,
+    this.muatOutCompletedAt,
   });
 
   factory ShipmentSummary.fromJson(Map<String, dynamic> json) {
@@ -283,6 +322,18 @@ class ShipmentSummary {
       destinationLng: (json['destinationLng'] as num?)?.toDouble(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       completedAt: json['completedAt'] == null ? null : DateTime.parse(json['completedAt'] as String),
+      orderId: json['orderId'] as int?,
+      poNumber: json['poNumber'] as String?,
+      warehouseName: json['warehouseName'] as String?,
+      warehouseAddress: json['warehouseAddress'] as String?,
+      muatInPhotoUrl: json['muatInPhotoUrl'] as String?,
+      muatOutPhotoUrl: json['muatOutPhotoUrl'] as String?,
+      note: json['note'] as String?,
+      assignedBy: json['assignedBy'] as String?,
+      muatInCompletedAt:
+          json['muatInCompletedAt'] == null ? null : DateTime.parse(json['muatInCompletedAt'] as String),
+      muatOutCompletedAt:
+          json['muatOutCompletedAt'] == null ? null : DateTime.parse(json['muatOutCompletedAt'] as String),
     );
   }
 
@@ -300,6 +351,16 @@ class ShipmentSummary {
   final double? destinationLng;
   final DateTime createdAt;
   final DateTime? completedAt;
+  final int? orderId;
+  final String? poNumber;
+  final String? warehouseName;
+  final String? warehouseAddress;
+  final String? muatInPhotoUrl;
+  final String? muatOutPhotoUrl;
+  final String? note;
+  final String? assignedBy;
+  final DateTime? muatInCompletedAt;
+  final DateTime? muatOutCompletedAt;
 }
 
 class TransportirDashboardSummary {
