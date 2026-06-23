@@ -169,6 +169,8 @@ class _KiosProfilePageState extends State<KiosProfilePage> {
                   children: [
                     _MenuTile(icon: Icons.person_outline_rounded, title: 'Informasi Akun', route: '/account-info'),
                     _divider(),
+                    _MenuTile(icon: Icons.location_on_outlined, title: 'Alamat', route: '/address'),
+                    _divider(),
                     _MenuTile(icon: Icons.shield_outlined, title: 'Keamanan', route: '/security'),
                     _divider(),
                     _MenuTile(icon: Icons.notifications_outlined, title: 'Notifikasi', route: '/notification-settings'),

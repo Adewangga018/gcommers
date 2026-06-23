@@ -159,6 +159,35 @@ class AuthService {
     return _decodeAuthSession(response);
   }
 
+  Future<AuthSession> updateAddress({
+    required String email,
+    int? provinsiId,
+    int? kabupatenId,
+    int? kecamatanId,
+    String? kelurahan,
+    String? kodePos,
+    String? address,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final response = await http.put(
+      _uri('/auth/address'),
+      headers: _headers,
+      body: jsonEncode({
+        'email': email,
+        'provinsiId': provinsiId,
+        'kabupatenId': kabupatenId,
+        'kecamatanId': kecamatanId,
+        'kelurahan': kelurahan,
+        'kodePos': kodePos,
+        'address': address,
+        'latitude': latitude,
+        'longitude': longitude,
+      }),
+    );
+    return _decodeAuthSession(response);
+  }
+
   Future<void> changePassword({
     required String email,
     required String currentPassword,
@@ -228,9 +257,16 @@ class AuthService {
         address: data['address'] as String?,
         region: data['region'] as String?,
         avatarImageBase64: data['avatarImageBase64'] as String?,
+        provinsiId: (data['provinsiId'] as num?)?.toInt(),
+        kabupatenId: (data['kabupatenId'] as num?)?.toInt(),
+        kecamatanId: (data['kecamatanId'] as num?)?.toInt(),
         provinsiNama: data['provinsiNama'] as String?,
         kabupatenNama: data['kabupatenNama'] as String?,
         kecamatanNama: data['kecamatanNama'] as String?,
+        kelurahan: data['kelurahan'] as String?,
+        kodePos: data['kodePos'] as String?,
+        latitude: (data['latitude'] as num?)?.toDouble(),
+        longitude: (data['longitude'] as num?)?.toDouble(),
       );
     }
 

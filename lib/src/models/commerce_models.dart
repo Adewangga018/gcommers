@@ -127,6 +127,11 @@ class OrderDetail {
     required this.deliveredAt,
     required this.items,
     required this.timeline,
+    this.deliveryAddress,
+    this.deliveryKelurahan,
+    this.deliveryKodePos,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
   });
 
   factory OrderDetail.fromJson(Map<String, dynamic> json) {
@@ -149,6 +154,11 @@ class OrderDetail {
       timeline: (json['timeline'] as List<dynamic>)
           .map((item) => OrderTimeline.fromJson(item as Map<String, dynamic>))
           .toList(),
+      deliveryAddress: json['deliveryAddress'] as String?,
+      deliveryKelurahan: json['deliveryKelurahan'] as String?,
+      deliveryKodePos: json['deliveryKodePos'] as String?,
+      deliveryLatitude: (json['deliveryLatitude'] as num?)?.toDouble(),
+      deliveryLongitude: (json['deliveryLongitude'] as num?)?.toDouble(),
     );
   }
 
@@ -166,6 +176,11 @@ class OrderDetail {
   final DateTime? deliveredAt;
   final List<OrderItem> items;
   final List<OrderTimeline> timeline;
+  final String? deliveryAddress;
+  final String? deliveryKelurahan;
+  final String? deliveryKodePos;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
 }
 
 class OrderItem {

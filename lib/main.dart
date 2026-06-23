@@ -23,6 +23,8 @@ import 'src/screens/received_goods_page.dart';
 import 'src/screens/notification_page.dart';
 import 'src/screens/settings_pages.dart';
 import 'src/screens/edit_profile_page.dart';
+import 'src/screens/address_page.dart';
+import 'src/screens/order_preview_page.dart';
 import 'src/theme/app_theme.dart';
 
 void main() {
@@ -87,6 +89,10 @@ class GCommersApp extends StatelessWidget {
           return OrderHistoryDetailPage(poNumber: poNumber);
         },
         '/orders': (context) => const OrderPage(),
+        '/order-preview': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as OrderPreviewArgs;
+          return OrderPreviewPage(args: args);
+        },
         '/scan-qr': (context) => const ScanQrPage(),
         '/received-goods': (context) => const ReceivedGoodsPage(),
         '/payment': (context) => const PaymentPage(),
@@ -95,6 +101,7 @@ class GCommersApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/notifications': (context) => const NotificationPage(),
         '/edit-profile': (context) => const EditProfilePage(),
+        '/address': (context) => const AddressPage(),
         '/account-info': (context) => const AccountInfoPage(),
         '/security': (context) => const SecurityPage(),
         '/notification-settings': (context) => const NotificationSettingsPage(),

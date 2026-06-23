@@ -4,6 +4,7 @@ import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
 import '../services/session_manager.dart';
 import '../utils/formatters.dart';
+import 'order_preview_page.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -19,7 +20,6 @@ class _OrderPageState extends State<OrderPage> {
   final Map<int, int> _quantities = {};
   List<Product> _products = const [];
   String _selectedCategory = 'Subsidi';
-  bool _submitting = false;
   String? _userRegion;
   String? _userKecamatan;
   String? _userEmail;
@@ -77,7 +77,12 @@ class _OrderPageState extends State<OrderPage> {
     setState(() => _quantities[product.id] = next);
   }
 
-  Future<void> _confirmOrder() async {
+  void _setQuantity(Product product, int quantity) {
+    final next = quantity.clamp(0, product.stock);
+    setState(() => _quantities[product.id] = next);
+  }
+
+  void _confirmOrder() {
     final selected = Map<int, int>.fromEntries(_quantities.entries.where((entry) => entry.value > 0));
     if (selected.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,24 +91,16 @@ class _OrderPageState extends State<OrderPage> {
       return;
     }
 
-    setState(() => _submitting = true);
-    try {
-      final order = await _commerceService.createOrder(
+    Navigator.of(context).pushNamed(
+      '/order-preview',
+      arguments: OrderPreviewArgs(
+        products: _products,
+        quantities: selected,
         userEmail: _userEmail,
         region: _userRegion,
         kecamatan: _userKecamatan,
-        quantities: selected,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pushNamed('/payment', arguments: order.poNumber);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal membuat pesanan: $error')),
-      );
-    } finally {
-      if (mounted) setState(() => _submitting = false);
-    }
+      ),
+    );
   }
 
   @override
@@ -243,6 +240,7 @@ class _OrderPageState extends State<OrderPage> {
                           quantity: _quantities[product.id] ?? 0,
                           onAdd: () => _changeQuantity(product, 1),
                           onRemove: () => _changeQuantity(product, -1),
+                          onQuantityChanged: (value) => _setQuantity(product, value),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute<void>(
                               builder: (_) => ProductDetailPage(product: product),
@@ -296,16 +294,16 @@ class _OrderPageState extends State<OrderPage> {
                 child: SizedBox(
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: _submitting ? null : _confirmOrder,
+                    onPressed: _confirmOrder,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryPurple,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: Text(
-                      _submitting ? 'MEMPROSES...' : 'KONFIRMASI PESANAN',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    child: const Text(
+                      'PREVIEW PESANAN',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -385,13 +383,14 @@ class _TabChip extends StatelessWidget {
   }
 }
 
-class _ProductCard extends StatelessWidget {
+class _ProductCard extends StatefulWidget {
   const _ProductCard({
     required this.product,
     required this.quantity,
     required this.onTap,
     required this.onAdd,
     required this.onRemove,
+    required this.onQuantityChanged,
   });
 
   final Product product;
@@ -399,9 +398,46 @@ class _ProductCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
+  final ValueChanged<int> onQuantityChanged;
+
+  @override
+  State<_ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<_ProductCard> {
+  late final TextEditingController _quantityCtrl =
+      TextEditingController(text: '${widget.quantity}');
+
+  @override
+  void didUpdateWidget(_ProductCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final text = '${widget.quantity}';
+    if (_quantityCtrl.text != text) {
+      _quantityCtrl.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _quantityCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onQuantityTextChanged(String value) {
+    final parsed = int.tryParse(value) ?? 0;
+    widget.onQuantityChanged(parsed);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final product = widget.product;
+    final quantity = widget.quantity;
+    final onTap = widget.onTap;
+    final onAdd = widget.onAdd;
+    final onRemove = widget.onRemove;
     const Color primaryPurple = Color(0xFF2F6C3F);
 
     return Material(
@@ -466,10 +502,20 @@ class _ProductCard extends StatelessWidget {
                 child: Row(
                   children: [
                     _StepperButton(icon: Icons.remove, color: Colors.grey[700]!, onTap: onRemove),
-                    Container(
+                    SizedBox(
                       width: 34,
-                      alignment: Alignment.center,
-                      child: Text('$quantity', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      child: TextField(
+                        controller: _quantityCtrl,
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          border: InputBorder.none,
+                        ),
+                        onChanged: _onQuantityTextChanged,
+                      ),
                     ),
                     _StepperButton(
                       icon: Icons.add,

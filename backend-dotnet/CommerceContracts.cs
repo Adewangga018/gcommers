@@ -69,7 +69,12 @@ public sealed record OrderDetailDto(
     DateTimeOffset? PaidAt,
     DateTimeOffset? DeliveredAt,
     IReadOnlyList<OrderItemDto> Items,
-    IReadOnlyList<OrderTimelineDto> Timeline);
+    IReadOnlyList<OrderTimelineDto> Timeline,
+    string? DeliveryAddress = null,
+    string? DeliveryKelurahan = null,
+    string? DeliveryKodePos = null,
+    double? DeliveryLatitude = null,
+    double? DeliveryLongitude = null);
 
 public sealed record OrderItemDto(
     string ProductName,

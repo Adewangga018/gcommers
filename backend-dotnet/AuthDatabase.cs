@@ -201,6 +201,37 @@ static class AuthDatabase
         BEGIN
             ALTER TABLE dbo.Users ADD Kecamatan NVARCHAR(150) NULL;
         END
+
+        -- Add Kelurahan column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'Kelurahan'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD Kelurahan NVARCHAR(150) NULL;
+        END
+
+        -- Add KodePos column if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'KodePos'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD KodePos NVARCHAR(10) NULL;
+        END
+
+        -- Add Latitude/Longitude columns if missing
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'Latitude'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD Latitude DECIMAL(10,6) NULL;
+        END
+
+        IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Users') AND name = N'Longitude'
+        )
+        BEGIN
+            ALTER TABLE dbo.Users ADD Longitude DECIMAL(10,6) NULL;
+        END
         """;
 
         await using var command = connection.CreateCommand();
@@ -214,7 +245,7 @@ static class AuthDatabase
     {
         await EnsureAdminUserAsync(connection, "superadmin@gcommers.id", "Super Admin", "superadmin", null);
 
-        foreach (var region in new[] { "Makassar", "Medan", "Lampung", "Gresik" })
+        foreach (var region in new[] { "Makassar", "Medan", "Lampung", "Jawa Tengah Utara" })
         {
             await EnsureAdminUserAsync(
                 connection,
@@ -307,7 +338,11 @@ static class AuthDatabase
                 u.KecamatanId,
                 p.nama_pro,
                 k.nama_kab,
-                c.nama_kec
+                c.nama_kec,
+                u.Kelurahan,
+                u.KodePos,
+                u.Latitude,
+                u.Longitude
             FROM dbo.Users u
             LEFT JOIN dbo.propinsi p ON p.id = u.ProvinsiId
             LEFT JOIN dbo.kabupaten k ON k.id = u.KabupatenId
@@ -323,34 +358,70 @@ static class AuthDatabase
         }
 
         return new AuthUserRecord(
-            reader.GetInt32(0),                 // Id
-            reader.GetString(1),                // Email
-            (byte[])reader[2],                   // PasswordHash
-            (byte[])reader[3],                   // PasswordSalt
-            reader.GetString(4),                // Role
-            reader.GetString(5),                // DisplayName
-            reader.IsDBNull(6) ? null : reader.GetString(6),   // Phone
-            reader.IsDBNull(7) ? null : reader.GetString(7),   // PicName
-            reader.IsDBNull(8) ? null : reader.GetString(8),   // Address
-            reader.IsDBNull(9) ? null : reader.GetString(9),   // Region
-            reader.IsDBNull(10) ? null : reader.GetString(10), // TransportirName
-            reader.IsDBNull(11) ? null : reader.GetString(11), // CompanyName
-            reader.IsDBNull(12) ? null : reader.GetString(12), // PoliceNumber
-            reader.IsDBNull(13) ? null : reader.GetString(13), // VehicleType ([Type])
-            reader.IsDBNull(14) ? null : (byte[])reader[14],    // ResetOtpHash
-            reader.IsDBNull(15) ? null : (byte[])reader[15],    // ResetOtpSalt
-            reader.IsDBNull(16) ? null : reader.GetFieldValue<DateTimeOffset>(16), // ResetOtpExpiresAt
-            reader.IsDBNull(17) ? null : reader.GetFieldValue<DateTimeOffset>(17), // ResetOtpVerifiedAt
-            reader.GetInt32(18),                                // FailedLoginCount
-            reader.IsDBNull(19) ? null : reader.GetFieldValue<DateTimeOffset>(19), // LastFailedLoginAt
-            reader.IsDBNull(20) ? null : reader.GetFieldValue<DateTimeOffset>(20), // LockoutUntil
-            reader.IsDBNull(21) ? null : (byte[])reader[21],   // AvatarImage
-            reader.IsDBNull(22) ? null : reader.GetInt64(22),  // ProvinsiId
-            reader.IsDBNull(23) ? null : reader.GetInt64(23),  // KabupatenId
-            reader.IsDBNull(24) ? null : reader.GetInt64(24),  // KecamatanId
-            reader.IsDBNull(25) ? null : reader.GetString(25), // ProvinsiNama
-            reader.IsDBNull(26) ? null : reader.GetString(26), // KabupatenNama
-            reader.IsDBNull(27) ? null : reader.GetString(27)); // KecamatanNama
+            Id: reader.GetInt32(0),
+            Email: reader.GetString(1),
+            PasswordHash: (byte[])reader[2],
+            PasswordSalt: (byte[])reader[3],
+            Role: reader.GetString(4),
+            DisplayName: reader.GetString(5),
+            Phone: reader.IsDBNull(6) ? null : reader.GetString(6),
+            PicName: reader.IsDBNull(7) ? null : reader.GetString(7),
+            Address: reader.IsDBNull(8) ? null : reader.GetString(8),
+            Region: reader.IsDBNull(9) ? null : reader.GetString(9),
+            TransportirName: reader.IsDBNull(10) ? null : reader.GetString(10),
+            CompanyName: reader.IsDBNull(11) ? null : reader.GetString(11),
+            PoliceNumber: reader.IsDBNull(12) ? null : reader.GetString(12),
+            VehicleType: reader.IsDBNull(13) ? null : reader.GetString(13),
+            ResetOtpHash: reader.IsDBNull(14) ? null : (byte[])reader[14],
+            ResetOtpSalt: reader.IsDBNull(15) ? null : (byte[])reader[15],
+            ResetOtpExpiresAt: reader.IsDBNull(16) ? null : reader.GetFieldValue<DateTimeOffset>(16),
+            ResetOtpVerifiedAt: reader.IsDBNull(17) ? null : reader.GetFieldValue<DateTimeOffset>(17),
+            FailedLoginCount: reader.GetInt32(18),
+            LastFailedLoginAt: reader.IsDBNull(19) ? null : reader.GetFieldValue<DateTimeOffset>(19),
+            LockoutUntil: reader.IsDBNull(20) ? null : reader.GetFieldValue<DateTimeOffset>(20),
+            AvatarImage: reader.IsDBNull(21) ? null : (byte[])reader[21],
+            ProvinsiId: reader.IsDBNull(22) ? null : reader.GetInt64(22),
+            KabupatenId: reader.IsDBNull(23) ? null : reader.GetInt64(23),
+            KecamatanId: reader.IsDBNull(24) ? null : reader.GetInt64(24),
+            ProvinsiNama: reader.IsDBNull(25) ? null : reader.GetString(25),
+            KabupatenNama: reader.IsDBNull(26) ? null : reader.GetString(26),
+            KecamatanNama: reader.IsDBNull(27) ? null : reader.GetString(27),
+            Kelurahan: reader.IsDBNull(28) ? null : reader.GetString(28),
+            KodePos: reader.IsDBNull(29) ? null : reader.GetString(29),
+            Latitude: reader.IsDBNull(30) ? null : (double)reader.GetDecimal(30),
+            Longitude: reader.IsDBNull(31) ? null : (double)reader.GetDecimal(31));
+    }
+
+    public static async Task UpdateAddressAsync(
+        SqlConnection connection,
+        UpdateAddressRequest request,
+        string normalizedEmail,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE dbo.Users
+            SET ProvinsiId  = @ProvinsiId,
+                KabupatenId = @KabupatenId,
+                KecamatanId = @KecamatanId,
+                Kelurahan   = @Kelurahan,
+                KodePos     = @KodePos,
+                Address     = @Address,
+                Latitude    = @Latitude,
+                Longitude   = @Longitude,
+                UpdatedAt   = SYSUTCDATETIME()
+            WHERE Email = @Email;
+            """;
+        command.Parameters.AddWithValue("@Email", normalizedEmail);
+        command.Parameters.AddWithValue("@ProvinsiId", (object?)request.ProvinsiId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@KabupatenId", (object?)request.KabupatenId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@KecamatanId", (object?)request.KecamatanId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Kelurahan", (object?)request.Kelurahan?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@KodePos", (object?)request.KodePos?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Address", (object?)request.Address?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Latitude", (object?)request.Latitude ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Longitude", (object?)request.Longitude ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public static async Task ResetLoginAttemptsAsync(SqlConnection connection, int userId, CancellationToken cancellationToken)

@@ -129,6 +129,18 @@ class _PaymentPageState extends State<PaymentPage> {
                                     fontSize: 28,
                                     fontWeight: FontWeight.w800),
                               ),
+                              if (order.deliveryAddress != null && order.deliveryAddress!.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                const Divider(height: 1),
+                                const SizedBox(height: 14),
+                                const Text('Alamat Pengiriman',
+                                    style: TextStyle(color: Colors.black54, fontSize: 12)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  order.deliveryAddress!,
+                                  style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
+                                ),
+                              ],
                             ],
                           ),
                         ),

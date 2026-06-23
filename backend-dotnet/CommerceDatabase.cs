@@ -184,7 +184,12 @@ static class CommerceDatabase
                 CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Orders_CreatedAt DEFAULT SYSUTCDATETIME(),
                 UpdatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Orders_UpdatedAt DEFAULT SYSUTCDATETIME(),
                 PaidAt DATETIMEOFFSET NULL,
-                DeliveredAt DATETIMEOFFSET NULL
+                DeliveredAt DATETIMEOFFSET NULL,
+                DeliveryAddress NVARCHAR(500) NULL,
+                DeliveryKelurahan NVARCHAR(150) NULL,
+                DeliveryKodePos NVARCHAR(10) NULL,
+                DeliveryLatitude DECIMAL(10,6) NULL,
+                DeliveryLongitude DECIMAL(10,6) NULL
             );
 
             CREATE UNIQUE INDEX UX_Orders_PoNumber ON dbo.Orders(PoNumber);
@@ -195,6 +200,16 @@ static class CommerceDatabase
                 ALTER TABLE dbo.Orders ADD VirtualAccount NVARCHAR(30) NULL;
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'VaExpiredAt')
                 ALTER TABLE dbo.Orders ADD VaExpiredAt DATETIMEOFFSET NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'DeliveryAddress')
+                ALTER TABLE dbo.Orders ADD DeliveryAddress NVARCHAR(500) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'DeliveryKelurahan')
+                ALTER TABLE dbo.Orders ADD DeliveryKelurahan NVARCHAR(150) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'DeliveryKodePos')
+                ALTER TABLE dbo.Orders ADD DeliveryKodePos NVARCHAR(10) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'DeliveryLatitude')
+                ALTER TABLE dbo.Orders ADD DeliveryLatitude DECIMAL(10,6) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'DeliveryLongitude')
+                ALTER TABLE dbo.Orders ADD DeliveryLongitude DECIMAL(10,6) NULL;
         END
 
         IF OBJECT_ID(N'dbo.OrderItems', N'U') IS NULL
@@ -508,20 +523,49 @@ static class CommerceDatabase
             var total = subtotal + tax + shipping;
             var poNumber = $"PO-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}";
 
+            string? deliveryAddress = null, deliveryKelurahan = null, deliveryKodePos = null;
+            decimal? deliveryLatitude = null, deliveryLongitude = null;
+            if (!string.IsNullOrWhiteSpace(request.UserEmail))
+            {
+                await using var addressCommand = connection.CreateCommand();
+                addressCommand.Transaction = (SqlTransaction)transaction;
+                addressCommand.CommandText = """
+                    SELECT Address, Kelurahan, KodePos, Latitude, Longitude
+                    FROM dbo.Users WHERE Email = @Email;
+                    """;
+                addressCommand.Parameters.AddWithValue("@Email", request.UserEmail!);
+                await using var addressReader = await addressCommand.ExecuteReaderAsync(cancellationToken);
+                if (await addressReader.ReadAsync(cancellationToken))
+                {
+                    deliveryAddress = addressReader.IsDBNull(0) ? null : addressReader.GetString(0);
+                    deliveryKelurahan = addressReader.IsDBNull(1) ? null : addressReader.GetString(1);
+                    deliveryKodePos = addressReader.IsDBNull(2) ? null : addressReader.GetString(2);
+                    deliveryLatitude = addressReader.IsDBNull(3) ? null : addressReader.GetDecimal(3);
+                    deliveryLongitude = addressReader.IsDBNull(4) ? null : addressReader.GetDecimal(4);
+                }
+            }
+
             await using var orderCommand = connection.CreateCommand();
             orderCommand.Transaction = (SqlTransaction)transaction;
             orderCommand.CommandText = """
                 INSERT INTO dbo.Orders
-                (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, TaxAmount, ShippingAmount, TotalAmount)
+                (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, TaxAmount, ShippingAmount, TotalAmount,
+                 DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude)
                 OUTPUT INSERTED.Id
                 VALUES
-                (@PoNumber, @UserEmail, 'pending_payment', 'PT Global Logistik Nusantara', '-', @Subtotal, @TaxAmount, @ShippingAmount, @TotalAmount);
+                (@PoNumber, @UserEmail, 'pending_payment', 'PT Global Logistik Nusantara', '-', @Subtotal, @TaxAmount, @ShippingAmount, @TotalAmount,
+                 @DeliveryAddress, @DeliveryKelurahan, @DeliveryKodePos, @DeliveryLatitude, @DeliveryLongitude);
                 """;
             orderCommand.Parameters.AddWithValue("@PoNumber", poNumber);
             orderCommand.Parameters.AddWithValue("@UserEmail", (object?)request.UserEmail ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@Subtotal", subtotal);
             orderCommand.Parameters.AddWithValue("@TaxAmount", tax);
             orderCommand.Parameters.AddWithValue("@ShippingAmount", shipping);
+            orderCommand.Parameters.AddWithValue("@DeliveryAddress", (object?)deliveryAddress ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@DeliveryKelurahan", (object?)deliveryKelurahan ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@DeliveryKodePos", (object?)deliveryKodePos ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@DeliveryLatitude", (object?)deliveryLatitude ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@DeliveryLongitude", (object?)deliveryLongitude ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@TotalAmount", total);
             var orderId = Convert.ToInt32(await orderCommand.ExecuteScalarAsync(cancellationToken));
 
@@ -652,7 +696,8 @@ static class CommerceDatabase
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT Id, PoNumber, Status, Vendor, PaymentMethod, Subtotal, TaxAmount, ShippingAmount,
-                   TotalAmount, CreatedAt, PaidAt, DeliveredAt
+                   TotalAmount, CreatedAt, PaidAt, DeliveredAt,
+                   DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude
             FROM dbo.Orders
             WHERE PoNumber = @PoNumber;
             """;
@@ -678,7 +723,12 @@ static class CommerceDatabase
             TotalAmount = reader.GetDecimal(8),
             CreatedAt = reader.GetFieldValue<DateTimeOffset>(9),
             PaidAt = reader.IsDBNull(10) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(10),
-            DeliveredAt = reader.IsDBNull(11) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(11)
+            DeliveredAt = reader.IsDBNull(11) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(11),
+            DeliveryAddress = reader.IsDBNull(12) ? null : reader.GetString(12),
+            DeliveryKelurahan = reader.IsDBNull(13) ? null : reader.GetString(13),
+            DeliveryKodePos = reader.IsDBNull(14) ? null : reader.GetString(14),
+            DeliveryLatitude = reader.IsDBNull(15) ? (double?)null : (double)reader.GetDecimal(15),
+            DeliveryLongitude = reader.IsDBNull(16) ? (double?)null : (double)reader.GetDecimal(16)
         };
         await reader.CloseAsync();
 
@@ -699,7 +749,12 @@ static class CommerceDatabase
             detail.PaidAt,
             detail.DeliveredAt,
             items,
-            timeline);
+            timeline,
+            detail.DeliveryAddress,
+            detail.DeliveryKelurahan,
+            detail.DeliveryKodePos,
+            detail.DeliveryLatitude,
+            detail.DeliveryLongitude);
     }
 
     public static async Task<PaymentResponse?> PayOrderAsync(

@@ -21,6 +21,13 @@ class SessionManager {
   static const _keyProvinsiNama = 'session_provinsi_nama';
   static const _keyKabupatenNama = 'session_kabupaten_nama';
   static const _keyKecamatanNama = 'session_kecamatan_nama';
+  static const _keyProvinsiId = 'session_provinsi_id';
+  static const _keyKabupatenId = 'session_kabupaten_id';
+  static const _keyKecamatanId = 'session_kecamatan_id';
+  static const _keyKelurahan = 'session_kelurahan';
+  static const _keyKodePos = 'session_kode_pos';
+  static const _keyLatitude = 'session_latitude';
+  static const _keyLongitude = 'session_longitude';
   static const _keyAvatarB64 = 'session_avatar_b64';
 
   late final SharedPreferences _prefs;
@@ -56,6 +63,13 @@ class SessionManager {
       _prefs.setString(_keyProvinsiNama, session.provinsiNama ?? ''),
       _prefs.setString(_keyKabupatenNama, session.kabupatenNama ?? ''),
       _prefs.setString(_keyKecamatanNama, session.kecamatanNama ?? ''),
+      _prefs.setString(_keyProvinsiId, session.provinsiId?.toString() ?? ''),
+      _prefs.setString(_keyKabupatenId, session.kabupatenId?.toString() ?? ''),
+      _prefs.setString(_keyKecamatanId, session.kecamatanId?.toString() ?? ''),
+      _prefs.setString(_keyKelurahan, session.kelurahan ?? ''),
+      _prefs.setString(_keyKodePos, session.kodePos ?? ''),
+      _prefs.setString(_keyLatitude, session.latitude?.toString() ?? ''),
+      _prefs.setString(_keyLongitude, session.longitude?.toString() ?? ''),
     ];
     if (session.avatarImageBase64 != null && session.avatarImageBase64!.isNotEmpty) {
       try {
@@ -89,6 +103,13 @@ class SessionManager {
     final provinsiNama = _prefs.getString(_keyProvinsiNama);
     final kabupatenNama = _prefs.getString(_keyKabupatenNama);
     final kecamatanNama = _prefs.getString(_keyKecamatanNama);
+    final provinsiId = _prefs.getString(_keyProvinsiId);
+    final kabupatenId = _prefs.getString(_keyKabupatenId);
+    final kecamatanId = _prefs.getString(_keyKecamatanId);
+    final kelurahan = _prefs.getString(_keyKelurahan);
+    final kodePos = _prefs.getString(_keyKodePos);
+    final latitude = _prefs.getString(_keyLatitude);
+    final longitude = _prefs.getString(_keyLongitude);
 
     if (email == null || role == null || displayName == null) {
       return null;
@@ -110,6 +131,13 @@ class SessionManager {
       provinsiNama: provinsiNama?.isEmpty == true ? null : provinsiNama,
       kabupatenNama: kabupatenNama?.isEmpty == true ? null : kabupatenNama,
       kecamatanNama: kecamatanNama?.isEmpty == true ? null : kecamatanNama,
+      provinsiId: (provinsiId == null || provinsiId.isEmpty) ? null : int.tryParse(provinsiId),
+      kabupatenId: (kabupatenId == null || kabupatenId.isEmpty) ? null : int.tryParse(kabupatenId),
+      kecamatanId: (kecamatanId == null || kecamatanId.isEmpty) ? null : int.tryParse(kecamatanId),
+      kelurahan: kelurahan?.isEmpty == true ? null : kelurahan,
+      kodePos: kodePos?.isEmpty == true ? null : kodePos,
+      latitude: (latitude == null || latitude.isEmpty) ? null : double.tryParse(latitude),
+      longitude: (longitude == null || longitude.isEmpty) ? null : double.tryParse(longitude),
       avatarImageBase64: _loadAvatarBase64ForEmail(email),
     );
   }
@@ -151,6 +179,13 @@ class SessionManager {
       _prefs.remove(_keyProvinsiNama),
       _prefs.remove(_keyKabupatenNama),
       _prefs.remove(_keyKecamatanNama),
+      _prefs.remove(_keyProvinsiId),
+      _prefs.remove(_keyKabupatenId),
+      _prefs.remove(_keyKecamatanId),
+      _prefs.remove(_keyKelurahan),
+      _prefs.remove(_keyKodePos),
+      _prefs.remove(_keyLatitude),
+      _prefs.remove(_keyLongitude),
       _prefs.remove(_keyAvatarB64),
     ]);
   }

@@ -26,7 +26,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _displayNameCtrl = TextEditingController();
   final _picNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
 
   final _currentPassCtrl = TextEditingController();
   final _newPassCtrl = TextEditingController();
@@ -50,7 +49,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _displayNameCtrl.dispose();
     _picNameCtrl.dispose();
     _phoneCtrl.dispose();
-    _addressCtrl.dispose();
     _currentPassCtrl.dispose();
     _newPassCtrl.dispose();
     _confirmPassCtrl.dispose();
@@ -69,7 +67,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           isTransportir ? (session?.companyName ?? session?.displayName ?? '') : session?.displayName ?? '';
       _picNameCtrl.text = isTransportir ? (session?.transportirName ?? '') : session?.picName ?? '';
       _phoneCtrl.text = session?.phone ?? '';
-      _addressCtrl.text = session?.address ?? '';
     });
   }
 
@@ -106,7 +103,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         displayName: name,
         picName: _picNameCtrl.text.trim().isEmpty ? null : _picNameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
         avatarImageBase64: _avatarBytes != null ? base64Encode(_avatarBytes!) : null,
       );
       await sessionManager.saveSession(updated);
@@ -269,15 +265,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 hint: 'Nomor telepon',
                 keyboardType: TextInputType.phone,
               ),
-              if (!isTransportir) ...[
-                _divider(),
-                _field(
-                  controller: _addressCtrl,
-                  label: 'Alamat',
-                  hint: 'Alamat lengkap kios',
-                  maxLines: 2,
-                ),
-              ],
             ]),
             const SizedBox(height: 16),
             SizedBox(

@@ -292,6 +292,31 @@ auth.MapPut("/profile", async (UpdateProfileRequest request, IConfiguration conf
     return Results.Ok(AuthSession.FromUser(updated!));
 });
 
+auth.MapPut("/address", async (UpdateAddressRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var validationError = request.Validate();
+    if (validationError is not null)
+    {
+        return Results.BadRequest(new { message = validationError });
+    }
+
+    var email = NormalizeEmail(request.Email);
+    var connectionString = ConnectionStringFactory.Build(configuration);
+    await using var connection = new SqlConnection(connectionString);
+    await connection.OpenAsync(cancellationToken);
+
+    var user = await AuthDatabase.FindUserByEmailAsync(connection, email, cancellationToken);
+    if (user is null)
+    {
+        return Results.NotFound(new { message = "Akun tidak ditemukan." });
+    }
+
+    await AuthDatabase.UpdateAddressAsync(connection, request, email, cancellationToken);
+
+    var updated = await AuthDatabase.FindUserByEmailAsync(connection, email, cancellationToken);
+    return Results.Ok(AuthSession.FromUser(updated!));
+});
+
 auth.MapPost("/change-password", async (ChangePasswordRequest request, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
     var email = NormalizeEmail(request.Email);

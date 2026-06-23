@@ -93,6 +93,28 @@ public sealed record UpdateProfileRequest(
     string? Address = null,
     string? AvatarImageBase64 = null);
 
+public sealed record UpdateAddressRequest(
+    string Email,
+    long? ProvinsiId,
+    long? KabupatenId,
+    long? KecamatanId,
+    string? Kelurahan,
+    string? KodePos,
+    string? Address,
+    double? Latitude,
+    double? Longitude)
+{
+    public string? Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Email))
+        {
+            return "Email wajib diisi.";
+        }
+
+        return null;
+    }
+}
+
 public sealed record ChangePasswordRequest(
     string Email,
     string CurrentPassword,
@@ -123,29 +145,37 @@ public sealed record AuthSession(
     long? KecamatanId = null,
     string? ProvinsiNama = null,
     string? KabupatenNama = null,
-    string? KecamatanNama = null)
+    string? KecamatanNama = null,
+    string? Kelurahan = null,
+    string? KodePos = null,
+    double? Latitude = null,
+    double? Longitude = null)
 {
     public static AuthSession FromUser(AuthUserRecord user)
         => new(
-            user.Email,
-            user.Role,
-            user.DisplayName,
-            Guid.NewGuid().ToString("N"),
-            user.Phone,
-            user.PicName,
-            user.Address,
-            user.Region,
-            user.TransportirName,
-            user.CompanyName,
-            user.PoliceNumber,
-            user.VehicleType,
-            user.AvatarImage is { Length: > 0 } bytes ? Convert.ToBase64String(bytes) : null,
-            user.ProvinsiId,
-            user.KabupatenId,
-            user.KecamatanId,
-            user.ProvinsiNama,
-            user.KabupatenNama,
-            user.KecamatanNama);
+            Email: user.Email,
+            Role: user.Role,
+            DisplayName: user.DisplayName,
+            Token: Guid.NewGuid().ToString("N"),
+            Phone: user.Phone,
+            PicName: user.PicName,
+            Address: user.Address,
+            Region: user.Region,
+            TransportirName: user.TransportirName,
+            CompanyName: user.CompanyName,
+            PoliceNumber: user.PoliceNumber,
+            VehicleType: user.VehicleType,
+            AvatarImageBase64: user.AvatarImage is { Length: > 0 } bytes ? Convert.ToBase64String(bytes) : null,
+            ProvinsiId: user.ProvinsiId,
+            KabupatenId: user.KabupatenId,
+            KecamatanId: user.KecamatanId,
+            ProvinsiNama: user.ProvinsiNama,
+            KabupatenNama: user.KabupatenNama,
+            KecamatanNama: user.KecamatanNama,
+            Kelurahan: user.Kelurahan,
+            KodePos: user.KodePos,
+            Latitude: user.Latitude,
+            Longitude: user.Longitude);
 }
 
 public sealed record AuthUserRecord(
@@ -176,4 +206,8 @@ public sealed record AuthUserRecord(
     long? KecamatanId = null,
     string? ProvinsiNama = null,
     string? KabupatenNama = null,
-    string? KecamatanNama = null);
+    string? KecamatanNama = null,
+    string? Kelurahan = null,
+    string? KodePos = null,
+    double? Latitude = null,
+    double? Longitude = null);
