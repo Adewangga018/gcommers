@@ -185,6 +185,8 @@ static class CommerceDatabase
                 UpdatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Orders_UpdatedAt DEFAULT SYSUTCDATETIME(),
                 PaidAt DATETIMEOFFSET NULL,
                 DeliveredAt DATETIMEOFFSET NULL,
+                OrderStatus NVARCHAR(50) NULL,
+                OrderStatusNote NVARCHAR(500) NULL,
                 DeliveryAddress NVARCHAR(500) NULL,
                 DeliveryKelurahan NVARCHAR(150) NULL,
                 DeliveryKodePos NVARCHAR(10) NULL,
@@ -200,6 +202,10 @@ static class CommerceDatabase
                 ALTER TABLE dbo.Orders ADD VirtualAccount NVARCHAR(30) NULL;
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'VaExpiredAt')
                 ALTER TABLE dbo.Orders ADD VaExpiredAt DATETIMEOFFSET NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'OrderStatus')
+                ALTER TABLE dbo.Orders ADD OrderStatus NVARCHAR(50) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'OrderStatusNote')
+                ALTER TABLE dbo.Orders ADD OrderStatusNote NVARCHAR(500) NULL;
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'DeliveryAddress')
                 ALTER TABLE dbo.Orders ADD DeliveryAddress NVARCHAR(500) NULL;
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'DeliveryKelurahan')
@@ -521,7 +527,9 @@ static class CommerceDatabase
             var tax = Math.Round(subtotal * pphPersen / 100m, 2);
             var shipping = Math.Round(totalShipping, 2);
             var total = subtotal + tax + shipping;
-            var poNumber = $"PO-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}";
+            // Kode pemesanan sementara - diganti kode pembayaran resmi (GCS-{tahun}-{urutan}) oleh PayOrderAsync saat bayar sukses.
+            var orderCode = $"ORD-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8]}";
+            var vendor = await GetVendorForUserAsync(connection, (SqlTransaction)transaction, request.UserEmail, cancellationToken);
 
             string? deliveryAddress = null, deliveryKelurahan = null, deliveryKodePos = null;
             decimal? deliveryLatitude = null, deliveryLongitude = null;
@@ -553,11 +561,12 @@ static class CommerceDatabase
                  DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude)
                 OUTPUT INSERTED.Id
                 VALUES
-                (@PoNumber, @UserEmail, 'pending_payment', 'PT Global Logistik Nusantara', '-', @Subtotal, @TaxAmount, @ShippingAmount, @TotalAmount,
+                (@PoNumber, @UserEmail, 'pending_payment', @Vendor, '-', @Subtotal, @TaxAmount, @ShippingAmount, @TotalAmount,
                  @DeliveryAddress, @DeliveryKelurahan, @DeliveryKodePos, @DeliveryLatitude, @DeliveryLongitude);
                 """;
-            orderCommand.Parameters.AddWithValue("@PoNumber", poNumber);
+            orderCommand.Parameters.AddWithValue("@PoNumber", orderCode);
             orderCommand.Parameters.AddWithValue("@UserEmail", (object?)request.UserEmail ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@Vendor", vendor);
             orderCommand.Parameters.AddWithValue("@Subtotal", subtotal);
             orderCommand.Parameters.AddWithValue("@TaxAmount", tax);
             orderCommand.Parameters.AddWithValue("@ShippingAmount", shipping);
@@ -630,7 +639,7 @@ static class CommerceDatabase
             await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId, "Pesanan Dibuat", "Menunggu pembayaran", "created", true, 10, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
-            return await GetOrderDetailAsync(configuration, poNumber, cancellationToken)
+            return await GetOrderDetailAsync(configuration, orderCode, cancellationToken)
                 ?? throw new InvalidOperationException("Pesanan gagal dibuat.");
         }
         catch
@@ -638,6 +647,26 @@ static class CommerceDatabase
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    private static async Task<string> GetVendorForUserAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        string? userEmail,
+        CancellationToken cancellationToken)
+    {
+        const string fallbackVendor = "PT Global Logistik Nusantara";
+        if (string.IsNullOrWhiteSpace(userEmail))
+        {
+            return fallbackVendor;
+        }
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT Region FROM dbo.Users WHERE Email = @Email;";
+        command.Parameters.AddWithValue("@Email", userEmail);
+        var regionObj = await command.ExecuteScalarAsync(cancellationToken);
+        return regionObj is string region && !string.IsNullOrWhiteSpace(region) ? region : fallbackVendor;
     }
 
     public static async Task<IReadOnlyList<OrderSummaryDto>> GetOrdersAsync(
@@ -658,11 +687,13 @@ static class CommerceDatabase
                 o.TotalAmount,
                 o.CreatedAt,
                 o.PaymentMethod,
-                COUNT(oi.Id) AS ItemCount
+                COUNT(oi.Id) AS ItemCount,
+                o.OrderStatus,
+                o.PaidAt
             FROM dbo.Orders o
             LEFT JOIN dbo.OrderItems oi ON oi.OrderId = o.Id
             WHERE @UserEmail IS NULL OR o.UserEmail = @UserEmail
-            GROUP BY o.PoNumber, o.Status, o.TotalAmount, o.CreatedAt, o.PaymentMethod
+            GROUP BY o.PoNumber, o.Status, o.TotalAmount, o.CreatedAt, o.PaymentMethod, o.OrderStatus, o.PaidAt
             ORDER BY o.CreatedAt DESC;
             """;
         command.Parameters.AddWithValue("@UserEmail", string.IsNullOrWhiteSpace(userEmail) ? DBNull.Value : userEmail);
@@ -671,6 +702,9 @@ static class CommerceDatabase
         while (await reader.ReadAsync(cancellationToken))
         {
             var status = reader.GetString(1);
+            var orderStatus = reader.IsDBNull(6) ? null : reader.GetString(6);
+            var paidAt = reader.IsDBNull(7) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(7);
+            var (paymentStatus, paymentStatusLabel) = DerivePaymentStatus(paidAt);
             orders.Add(new OrderSummaryDto(
                 reader.GetString(0),
                 status,
@@ -678,7 +712,11 @@ static class CommerceDatabase
                 reader.GetDecimal(2),
                 reader.GetFieldValue<DateTimeOffset>(3),
                 reader.GetString(4),
-                reader.GetInt32(5)));
+                reader.GetInt32(5),
+                orderStatus,
+                ToOrderStatusLabel(orderStatus),
+                paymentStatus,
+                paymentStatusLabel));
         }
 
         return orders;
@@ -696,7 +734,7 @@ static class CommerceDatabase
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT Id, PoNumber, Status, Vendor, PaymentMethod, Subtotal, TaxAmount, ShippingAmount,
-                   TotalAmount, CreatedAt, PaidAt, DeliveredAt,
+                   TotalAmount, CreatedAt, PaidAt, DeliveredAt, OrderStatus, OrderStatusNote,
                    DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude
             FROM dbo.Orders
             WHERE PoNumber = @PoNumber;
@@ -724,16 +762,19 @@ static class CommerceDatabase
             CreatedAt = reader.GetFieldValue<DateTimeOffset>(9),
             PaidAt = reader.IsDBNull(10) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(10),
             DeliveredAt = reader.IsDBNull(11) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(11),
-            DeliveryAddress = reader.IsDBNull(12) ? null : reader.GetString(12),
-            DeliveryKelurahan = reader.IsDBNull(13) ? null : reader.GetString(13),
-            DeliveryKodePos = reader.IsDBNull(14) ? null : reader.GetString(14),
-            DeliveryLatitude = reader.IsDBNull(15) ? (double?)null : (double)reader.GetDecimal(15),
-            DeliveryLongitude = reader.IsDBNull(16) ? (double?)null : (double)reader.GetDecimal(16)
+            OrderStatus = reader.IsDBNull(12) ? null : reader.GetString(12),
+            OrderStatusNote = reader.IsDBNull(13) ? null : reader.GetString(13),
+            DeliveryAddress = reader.IsDBNull(14) ? null : reader.GetString(14),
+            DeliveryKelurahan = reader.IsDBNull(15) ? null : reader.GetString(15),
+            DeliveryKodePos = reader.IsDBNull(16) ? null : reader.GetString(16),
+            DeliveryLatitude = reader.IsDBNull(17) ? (double?)null : (double)reader.GetDecimal(17),
+            DeliveryLongitude = reader.IsDBNull(18) ? (double?)null : (double)reader.GetDecimal(18)
         };
         await reader.CloseAsync();
 
         var items = await GetOrderItemsAsync(connection, orderId, cancellationToken);
         var timeline = await GetOrderTimelineAsync(connection, orderId, cancellationToken);
+        var (paymentStatus, paymentStatusLabel) = DerivePaymentStatus(detail.PaidAt);
 
         return new OrderDetailDto(
             detail.PoNumber,
@@ -750,6 +791,11 @@ static class CommerceDatabase
             detail.DeliveredAt,
             items,
             timeline,
+            detail.OrderStatus,
+            ToOrderStatusLabel(detail.OrderStatus),
+            detail.OrderStatusNote,
+            paymentStatus,
+            paymentStatusLabel,
             detail.DeliveryAddress,
             detail.DeliveryKelurahan,
             detail.DeliveryKodePos,
@@ -780,11 +826,17 @@ static class CommerceDatabase
         var (vaNumber, vaExpiredAt) = await mandiriSnap.CreateVirtualAccountAsync(poNumber, total, cancellationToken);
 
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        // Kode pembayaran resmi (PoNumber final) - kontrak §4: GCS-{tahun}-{urutan}, atomic increment per tahun.
+        var finalPoNumber = await GenerateFinalPoNumberAsync(connection, (SqlTransaction)transaction, cancellationToken);
+
         await using var command = connection.CreateCommand();
         command.Transaction = (SqlTransaction)transaction;
         command.CommandText = """
             UPDATE dbo.Orders
-            SET Status = 'paid',
+            SET PoNumber = @FinalPoNumber,
+                Status = 'paid',
+                OrderStatus = 'processing',
                 PaymentMethod = @PaymentMethod,
                 VirtualAccount = @VirtualAccount,
                 VaExpiredAt = @VaExpiredAt,
@@ -794,6 +846,7 @@ static class CommerceDatabase
             WHERE PoNumber = @PoNumber;
             """;
         command.Parameters.AddWithValue("@PoNumber", poNumber);
+        command.Parameters.AddWithValue("@FinalPoNumber", finalPoNumber);
         command.Parameters.AddWithValue("@PaymentMethod", method);
         command.Parameters.AddWithValue("@VirtualAccount", vaNumber);
         command.Parameters.AddWithValue("@VaExpiredAt", vaExpiredAt);
@@ -812,12 +865,39 @@ static class CommerceDatabase
         await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId,
             "Pembayaran Berhasil", $"Mandiri Virtual Account {vaNumber}", "paid", true, 20, cancellationToken);
         await AddNotificationAsync(connection, (SqlTransaction)transaction,
-            "Pembayaran berhasil", $"Pembayaran {poNumber} melalui Mandiri Virtual Account telah diterima.", userEmail, cancellationToken);
+            "Pembayaran berhasil", $"Pembayaran {finalPoNumber} melalui Mandiri Virtual Account telah diterima.", userEmail, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return new PaymentResponse(
-            poNumber, method, vaNumber, total, "paid",
+            finalPoNumber, method, vaNumber, total, "paid",
             vaExpiredAt, MandiriSnapService.HowToPayInstructions(vaNumber));
+    }
+
+    private static async Task<string> GenerateFinalPoNumberAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            DECLARE @year INT = YEAR(GETDATE());
+            DECLARE @seq INT;
+
+            UPDATE dbo.order_code_counters
+            SET last_seq = last_seq + 1, @seq = last_seq + 1, updated_at = SYSDATETIME()
+            WHERE year = @year;
+
+            IF @@ROWCOUNT = 0
+            BEGIN
+                SET @seq = 1;
+                INSERT INTO dbo.order_code_counters (year, last_seq, updated_at) VALUES (@year, 1, SYSDATETIME());
+            END
+
+            SELECT 'GCS-' + CAST(@year AS NVARCHAR(4)) + '-' + CAST(@seq AS NVARCHAR(10));
+            """;
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return (string)result!;
     }
 
     public static async Task<bool> ConfirmReceivedAsync(
@@ -889,38 +969,77 @@ static class CommerceDatabase
         await connection.OpenAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT ShipmentNumber, Status, COALESCE(DriverName, ''), TruckLabel, PoliceNumber,
-                   DestinationLabel, DestinationAddress, OriginLat, OriginLng, DestinationLat, DestinationLng,
-                   CreatedAt, CompletedAt
-            FROM dbo.Shipments
-            WHERE @TransportirEmail IS NULL OR TransportirEmail IS NULL OR TransportirEmail = @TransportirEmail
-            ORDER BY CreatedAt DESC;
+        command.CommandText = ShipmentSelectSql + """
+            WHERE @TransportirEmail IS NULL OR s.TransportirEmail IS NULL OR s.TransportirEmail = @TransportirEmail
+            ORDER BY s.CreatedAt DESC;
             """;
         command.Parameters.AddWithValue("@TransportirEmail", string.IsNullOrWhiteSpace(transportirEmail) ? DBNull.Value : transportirEmail);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            var status = reader.GetString(1);
-            shipments.Add(new ShipmentSummaryDto(
-                reader.GetString(0),
-                status,
-                ToShipmentStatusLabel(status),
-                reader.GetString(2),
-                reader.IsDBNull(3) ? null : reader.GetString(3),
-                reader.IsDBNull(4) ? null : reader.GetString(4),
-                reader.IsDBNull(5) ? null : reader.GetString(5),
-                reader.IsDBNull(6) ? null : reader.GetString(6),
-                reader.IsDBNull(7) ? null : (double)reader.GetDecimal(7),
-                reader.IsDBNull(8) ? null : (double)reader.GetDecimal(8),
-                reader.IsDBNull(9) ? null : (double)reader.GetDecimal(9),
-                reader.IsDBNull(10) ? null : (double)reader.GetDecimal(10),
-                reader.GetFieldValue<DateTimeOffset>(11),
-                reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12)));
+            shipments.Add(MapShipmentRow(reader));
         }
 
         return shipments;
+    }
+
+    public static async Task<ShipmentSummaryDto?> GetShipmentByNumberAsync(
+        IConfiguration configuration,
+        string shipmentNumber,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = ConnectionStringFactory.Build(configuration);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = ShipmentSelectSql + "WHERE s.ShipmentNumber = @ShipmentNumber;";
+        command.Parameters.AddWithValue("@ShipmentNumber", shipmentNumber);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? MapShipmentRow(reader) : null;
+    }
+
+    private const string ShipmentSelectSql = """
+        SELECT s.ShipmentNumber, s.Status, COALESCE(s.DriverName, ''), s.TruckLabel, s.PoliceNumber,
+               s.DestinationLabel, s.DestinationAddress, s.OriginLat, s.OriginLng, s.DestinationLat, s.DestinationLng,
+               s.CreatedAt, s.CompletedAt, s.OrderId, o.PoNumber, w.name, w.address,
+               s.MuatInPhotoUrl, s.MuatOutPhotoUrl, s.Note, s.AssignedBy, s.MuatInCompletedAt, s.MuatOutCompletedAt
+        FROM dbo.Shipments s
+        LEFT JOIN dbo.Orders o ON o.Id = s.OrderId
+        LEFT JOIN dbo.warehouses w ON w.id = s.WarehouseId
+
+        """;
+
+    private static ShipmentSummaryDto MapShipmentRow(SqlDataReader reader)
+    {
+        var status = reader.GetString(1);
+        return new ShipmentSummaryDto(
+            reader.GetString(0),
+            status,
+            ToShipmentStatusLabel(status),
+            reader.GetString(2),
+            reader.IsDBNull(3) ? null : reader.GetString(3),
+            reader.IsDBNull(4) ? null : reader.GetString(4),
+            reader.IsDBNull(5) ? null : reader.GetString(5),
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            reader.IsDBNull(7) ? null : (double)reader.GetDecimal(7),
+            reader.IsDBNull(8) ? null : (double)reader.GetDecimal(8),
+            reader.IsDBNull(9) ? null : (double)reader.GetDecimal(9),
+            reader.IsDBNull(10) ? null : (double)reader.GetDecimal(10),
+            reader.GetFieldValue<DateTimeOffset>(11),
+            reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12),
+            reader.IsDBNull(13) ? null : reader.GetInt32(13),
+            reader.IsDBNull(14) ? null : reader.GetString(14),
+            reader.IsDBNull(15) ? null : reader.GetString(15),
+            reader.IsDBNull(16) ? null : reader.GetString(16),
+            reader.IsDBNull(17) ? null : reader.GetString(17),
+            reader.IsDBNull(18) ? null : reader.GetString(18),
+            reader.IsDBNull(19) ? null : reader.GetString(19),
+            reader.IsDBNull(20) ? null : reader.GetString(20),
+            reader.IsDBNull(21) ? null : reader.GetFieldValue<DateTimeOffset>(21),
+            reader.IsDBNull(22) ? null : reader.GetFieldValue<DateTimeOffset>(22));
     }
 
     public static async Task<TransportirDashboardSummaryDto> GetTransportirDashboardSummaryAsync(
@@ -941,6 +1060,159 @@ static class CommerceDatabase
         "selesai" => "Selesai",
         _ => status,
     };
+
+    public static async Task<ShipmentSummaryDto> UploadShipmentPhotoAsync(
+        IConfiguration configuration,
+        string shipmentNumber,
+        string muatType,
+        string transportirEmail,
+        string photoUrl,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = ConnectionStringFactory.Build(configuration);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            await using var lookupCommand = connection.CreateCommand();
+            lookupCommand.Transaction = (SqlTransaction)transaction;
+            lookupCommand.CommandText = """
+                SELECT Id, OrderId, TransportirEmail, MuatInCompletedAt, MuatOutCompletedAt
+                FROM dbo.Shipments
+                WHERE ShipmentNumber = @ShipmentNumber;
+                """;
+            lookupCommand.Parameters.AddWithValue("@ShipmentNumber", shipmentNumber);
+
+            int shipmentId;
+            int? orderId;
+            bool muatInDone;
+            bool muatOutDone;
+            await using (var reader = await lookupCommand.ExecuteReaderAsync(cancellationToken))
+            {
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    throw new InvalidOperationException($"Shipment {shipmentNumber} tidak ditemukan.");
+                }
+
+                shipmentId = reader.GetInt32(0);
+                orderId = reader.IsDBNull(1) ? null : reader.GetInt32(1);
+                var ownerEmail = reader.IsDBNull(2) ? null : reader.GetString(2);
+                muatInDone = !reader.IsDBNull(3);
+                muatOutDone = !reader.IsDBNull(4);
+
+                if (!string.Equals(ownerEmail, transportirEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Shipment ini tidak dialokasikan untuk akun Transportir Anda.");
+                }
+            }
+
+            if (orderId is null)
+            {
+                throw new InvalidOperationException($"Shipment {shipmentNumber} belum terhubung ke order manapun.");
+            }
+
+            if (muatType == "load-in")
+            {
+                if (muatInDone)
+                {
+                    throw new InvalidOperationException("Foto load-in sudah diunggah sebelumnya.");
+                }
+
+                await using var updateShipment = connection.CreateCommand();
+                updateShipment.Transaction = (SqlTransaction)transaction;
+                updateShipment.CommandText = """
+                    UPDATE dbo.Shipments
+                    SET MuatInPhotoUrl = @PhotoUrl, MuatInCompletedAt = SYSUTCDATETIME(),
+                        Status = 'dalam_perjalanan', UpdatedAt = SYSUTCDATETIME()
+                    WHERE Id = @Id;
+                    """;
+                updateShipment.Parameters.AddWithValue("@PhotoUrl", photoUrl);
+                updateShipment.Parameters.AddWithValue("@Id", shipmentId);
+                await updateShipment.ExecuteNonQueryAsync(cancellationToken);
+
+                var userEmail = await UpdateOrderForShipmentEventAsync(
+                    connection, (SqlTransaction)transaction, orderId.Value,
+                    orderStatus: "shipping", legacyStatus: "shipping", setDeliveredAt: false, cancellationToken);
+
+                await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId.Value,
+                    "Dalam Perjalanan", "Kendaraan berangkat dari gudang.", "shipping", true, 30, cancellationToken);
+                await AddNotificationAsync(connection, (SqlTransaction)transaction,
+                    "Pesanan dalam perjalanan", $"Shipment {shipmentNumber} sudah berangkat dari gudang.", userEmail, cancellationToken);
+            }
+            else
+            {
+                if (!muatInDone)
+                {
+                    throw new InvalidOperationException("Foto load-in belum diunggah, tidak bisa unggah foto load-out.");
+                }
+
+                if (muatOutDone)
+                {
+                    throw new InvalidOperationException("Foto load-out sudah diunggah sebelumnya.");
+                }
+
+                await using var updateShipment = connection.CreateCommand();
+                updateShipment.Transaction = (SqlTransaction)transaction;
+                updateShipment.CommandText = """
+                    UPDATE dbo.Shipments
+                    SET MuatOutPhotoUrl = @PhotoUrl, MuatOutCompletedAt = SYSUTCDATETIME(),
+                        CompletedAt = SYSUTCDATETIME(), Status = 'selesai', UpdatedAt = SYSUTCDATETIME()
+                    WHERE Id = @Id;
+                    """;
+                updateShipment.Parameters.AddWithValue("@PhotoUrl", photoUrl);
+                updateShipment.Parameters.AddWithValue("@Id", shipmentId);
+                await updateShipment.ExecuteNonQueryAsync(cancellationToken);
+
+                var userEmail = await UpdateOrderForShipmentEventAsync(
+                    connection, (SqlTransaction)transaction, orderId.Value,
+                    orderStatus: "delivered", legacyStatus: "delivered", setDeliveredAt: true, cancellationToken);
+
+                await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId.Value,
+                    "Pemesanan Selesai", "Barang telah diserahterimakan di kios tujuan.", "delivered", true, 40, cancellationToken);
+                await AddNotificationAsync(connection, (SqlTransaction)transaction,
+                    "Pesanan selesai", $"Shipment {shipmentNumber} telah sampai di tujuan.", userEmail, cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+
+        return await GetShipmentByNumberAsync(configuration, shipmentNumber, cancellationToken)
+            ?? throw new InvalidOperationException("Shipment tidak ditemukan setelah pembaruan status.");
+    }
+
+    private static async Task<string?> UpdateOrderForShipmentEventAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int orderId,
+        string orderStatus,
+        string legacyStatus,
+        bool setDeliveredAt,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = $"""
+            UPDATE dbo.Orders
+            SET OrderStatus = @OrderStatus,
+                Status = @LegacyStatus,
+                DeliveredAt = {(setDeliveredAt ? "COALESCE(DeliveredAt, SYSUTCDATETIME())" : "DeliveredAt")},
+                UpdatedAt = SYSUTCDATETIME()
+            OUTPUT INSERTED.UserEmail
+            WHERE Id = @OrderId;
+            """;
+        command.Parameters.AddWithValue("@OrderStatus", orderStatus);
+        command.Parameters.AddWithValue("@LegacyStatus", legacyStatus);
+        command.Parameters.AddWithValue("@OrderId", orderId);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is string email ? email : null;
+    }
 
     public static async Task<IReadOnlyList<NotificationDto>> GetNotificationsAsync(
         IConfiguration configuration,
@@ -1268,6 +1540,18 @@ static class CommerceDatabase
         "delivery_issue" => "BERMASALAH",
         _ => status.ToUpperInvariant()
     };
+
+    private static string ToOrderStatusLabel(string? orderStatus) => orderStatus switch
+    {
+        "processing" => "Sedang Diproses",
+        "shipping" => "Dalam Perjalanan",
+        "delivered" => "Pemesanan Selesai",
+        "cancelled" => "Dibatalkan",
+        _ => "Menunggu Pembayaran"
+    };
+
+    private static (string Status, string Label) DerivePaymentStatus(DateTimeOffset? paidAt) =>
+        paidAt is null ? ("pending", "Pending") : ("paid", "Sudah Dibayar");
 
 }
 

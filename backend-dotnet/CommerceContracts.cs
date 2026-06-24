@@ -53,7 +53,11 @@ public sealed record OrderSummaryDto(
     decimal TotalAmount,
     DateTimeOffset CreatedAt,
     string PaymentMethod,
-    int ItemCount);
+    int ItemCount,
+    string? OrderStatus,
+    string OrderStatusLabel,
+    string PaymentStatus,
+    string PaymentStatusLabel);
 
 public sealed record OrderDetailDto(
     string PoNumber,
@@ -70,6 +74,11 @@ public sealed record OrderDetailDto(
     DateTimeOffset? DeliveredAt,
     IReadOnlyList<OrderItemDto> Items,
     IReadOnlyList<OrderTimelineDto> Timeline,
+    string? OrderStatus,
+    string OrderStatusLabel,
+    string? OrderStatusNote,
+    string PaymentStatus,
+    string PaymentStatusLabel,
     string? DeliveryAddress = null,
     string? DeliveryKelurahan = null,
     string? DeliveryKodePos = null,
@@ -122,7 +131,24 @@ public sealed record ShipmentSummaryDto(
     double? DestinationLat,
     double? DestinationLng,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? CompletedAt);
+    DateTimeOffset? CompletedAt,
+    int? OrderId,
+    string? PoNumber,
+    string? WarehouseName,
+    string? WarehouseAddress,
+    string? MuatInPhotoUrl,
+    string? MuatOutPhotoUrl,
+    string? Note,
+    string? AssignedBy,
+    DateTimeOffset? MuatInCompletedAt,
+    DateTimeOffset? MuatOutCompletedAt);
+
+public sealed record ShipmentPhotoUploadResponse(
+    string ShipmentNumber,
+    string Status,
+    string StatusLabel,
+    string PhotoUrl,
+    DateTimeOffset CompletedAt);
 
 public sealed record TransportirDashboardSummaryDto(
     int TotalShipments,

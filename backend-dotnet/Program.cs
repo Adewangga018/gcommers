@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.FileProviders;
 using System.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,12 @@ builder.Services.AddSingleton<MandiriSnapService>();
 var app = builder.Build();
 
 app.UseCors("AllowAll");
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "uploads")),
+    RequestPath = "/uploads"
+});
 
 try
 {
@@ -504,6 +511,20 @@ app.MapGet("/shipments", async (string? transportirEmail, IConfiguration configu
     return Results.Ok(shipments);
 });
 
+app.MapGet("/shipments/{shipmentNumber}", async (string shipmentNumber, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var shipment = await CommerceDatabase.GetShipmentByNumberAsync(configuration, shipmentNumber, cancellationToken);
+    return shipment is null
+        ? Results.NotFound(new { message = "Shipment tidak ditemukan." })
+        : Results.Ok(shipment);
+});
+
+app.MapPost("/shipments/{shipmentNumber}/load-in", (string shipmentNumber, HttpRequest request, IWebHostEnvironment environment, IConfiguration configuration, CancellationToken cancellationToken) =>
+    UploadShipmentPhotoAsync(shipmentNumber, "load-in", request, environment, configuration, cancellationToken));
+
+app.MapPost("/shipments/{shipmentNumber}/load-out", (string shipmentNumber, HttpRequest request, IWebHostEnvironment environment, IConfiguration configuration, CancellationToken cancellationToken) =>
+    UploadShipmentPhotoAsync(shipmentNumber, "load-out", request, environment, configuration, cancellationToken));
+
 app.MapGet("/transportir/dashboard-summary", async (string? transportirEmail, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
     var summary = await CommerceDatabase.GetTransportirDashboardSummaryAsync(configuration, transportirEmail, cancellationToken);
@@ -539,6 +560,69 @@ app.Run();
 static string NormalizeEmail(string? email)
 {
     return email?.Trim().ToLowerInvariant() ?? string.Empty;
+}
+
+static async Task<IResult> UploadShipmentPhotoAsync(
+    string shipmentNumber,
+    string muatType,
+    HttpRequest request,
+    IWebHostEnvironment environment,
+    IConfiguration configuration,
+    CancellationToken cancellationToken)
+{
+    if (!request.HasFormContentType)
+    {
+        return Results.BadRequest(new { message = "Request harus multipart/form-data." });
+    }
+
+    var form = await request.ReadFormAsync(cancellationToken);
+    var file = form.Files["file"];
+    if (file is null || file.Length == 0)
+    {
+        return Results.BadRequest(new { message = "Foto wajib diunggah." });
+    }
+
+    var transportirEmail = form["transportirEmail"].ToString();
+    if (string.IsNullOrWhiteSpace(transportirEmail))
+    {
+        return Results.BadRequest(new { message = "transportirEmail wajib diisi." });
+    }
+
+    var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+    if (extension is not ".jpg" and not ".jpeg" and not ".png")
+    {
+        return Results.BadRequest(new { message = "Format foto harus JPG atau PNG." });
+    }
+
+    const long maxFileSize = 5 * 1024 * 1024;
+    if (file.Length > maxFileSize)
+    {
+        return Results.BadRequest(new { message = "Ukuran foto maksimal 5MB." });
+    }
+
+    var uploadRoot = Path.Combine(environment.ContentRootPath, "uploads", "shipments", muatType);
+    Directory.CreateDirectory(uploadRoot);
+
+    var safeName = $"{shipmentNumber}-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}{extension}";
+    var destination = Path.Combine(uploadRoot, safeName);
+
+    await using (var stream = File.Create(destination))
+    {
+        await file.CopyToAsync(stream, cancellationToken);
+    }
+
+    var photoUrl = $"/uploads/shipments/{muatType}/{safeName}";
+
+    try
+    {
+        var shipment = await CommerceDatabase.UploadShipmentPhotoAsync(
+            configuration, shipmentNumber, muatType, transportirEmail, photoUrl, cancellationToken);
+        return Results.Ok(shipment);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 }
 
 static class ConnectionStringFactory

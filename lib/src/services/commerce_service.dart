@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -110,6 +111,30 @@ class CommerceService {
     return (jsonDecode(response.body) as List<dynamic>)
         .map((item) => ShipmentSummary.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<ShipmentSummary> getShipmentDetail(String shipmentNumber) async {
+    final response = await http.get(_uri('/shipments/$shipmentNumber'));
+    _ensureOk(response);
+    return ShipmentSummary.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// [muatType] harus 'load-in' atau 'load-out', sesuai route backend.
+  Future<ShipmentSummary> uploadShipmentPhoto({
+    required String shipmentNumber,
+    required String muatType,
+    required String transportirEmail,
+    required Uint8List photoBytes,
+    required String fileName,
+  }) async {
+    final request = http.MultipartRequest('POST', _uri('/shipments/$shipmentNumber/$muatType'));
+    request.fields['transportirEmail'] = transportirEmail;
+    request.files.add(http.MultipartFile.fromBytes('file', photoBytes, filename: fileName));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    _ensureOk(response);
+    return ShipmentSummary.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<TransportirDashboardSummary> getTransportirDashboardSummary({String? transportirEmail}) async {
