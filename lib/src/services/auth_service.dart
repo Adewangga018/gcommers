@@ -130,6 +130,8 @@ class AuthService {
         'kecamatanId': draft.kecamatanId,
         'termsAccepted': draft.termsAccepted,
         'licenseImageName': draft.licenseImageName,
+        'latitude': draft.latitude,
+        'longitude': draft.longitude,
       }),
     );
 

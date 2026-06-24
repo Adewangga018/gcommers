@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/auth_models.dart';
 import '../models/wilayah_models.dart';
@@ -8,6 +11,9 @@ import '../services/wilayah_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/ktp_picker_helper.dart';
 import '../widgets/auth_widgets.dart';
+
+/// Default map center when no coordinates are set yet — roughly the centroid of Indonesia.
+const _defaultCenter = LatLng(-2.5, 118.0);
 
 class KioskRegisterStep2Screen extends StatefulWidget {
   const KioskRegisterStep2Screen({
@@ -33,11 +39,16 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
   final _addressController = TextEditingController();
   final _authService = AuthService();
   final _wilayahService = WilayahService();
+  final _mapController = MapController();
 
   bool _accepted = false;
   bool _loading = false;
   bool _uploading = false;
+  bool _locating = false;
   String? _selectedRegion;
+
+  double? _latitude;
+  double? _longitude;
 
   KtpPickResult? _ktpFile;
   String? _uploadedFileName;
@@ -74,9 +85,46 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
       _selectedKabupaten != null &&
       _selectedKecamatan != null &&
       _uploadedFileName != null &&
+      _latitude != null &&
+      _longitude != null &&
       _accepted &&
       !_loading &&
       !_uploading;
+
+  LatLng get _mapCenter =>
+      (_latitude != null && _longitude != null) ? LatLng(_latitude!, _longitude!) : _defaultCenter;
+
+  Future<void> _useCurrentLocation() async {
+    setState(() => _locating = true);
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        _showLocationError('Izin lokasi ditolak.');
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition().timeout(const Duration(seconds: 8));
+      if (!mounted) return;
+      final latLng = LatLng(position.latitude, position.longitude);
+      _mapController.move(latLng, 16.0);
+      setState(() {
+        _latitude = latLng.latitude;
+        _longitude = latLng.longitude;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showLocationError('Gagal mengambil lokasi saat ini: $e');
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  void _showLocationError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   Future<void> _loadProvinsiList() async {
     setState(() => _loadingProvinsi = true);
@@ -210,6 +258,8 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
           kecamatanId: _selectedKecamatan!.id,
           termsAccepted: _accepted,
           licenseImageName: _uploadedFileName,
+          latitude: _latitude,
+          longitude: _longitude,
         ),
       );
 
@@ -331,6 +381,71 @@ class _KioskRegisterStep2ScreenState extends State<KioskRegisterStep2Screen> {
                                   : 'Pilih kecamatan',
                         ),
                       ),
+                      const SizedBox(height: 20),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Text('Titik Lokasi Kios', style: TextStyle(fontWeight: FontWeight.w700)),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: _locating ? null : _useCurrentLocation,
+                            icon: _locating
+                                ? const SizedBox(
+                                    width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.my_location, size: 16),
+                            label: const Text('Pilih Lokasi Anda Sekarang'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Geser peta agar pin di tengah menunjukkan lokasi kios, untuk perhitungan ongkos kirim.',
+                        style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: SizedBox(
+                          height: 220,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              FlutterMap(
+                                mapController: _mapController,
+                                options: MapOptions(
+                                  initialCenter: _mapCenter,
+                                  initialZoom: _latitude != null ? 16.0 : 4.5,
+                                  onPositionChanged: (camera, hasGesture) {
+                                    if (!hasGesture) return;
+                                    setState(() {
+                                      _latitude = camera.center.latitude;
+                                      _longitude = camera.center.longitude;
+                                    });
+                                  },
+                                ),
+                                children: [
+                                  TileLayer(
+                                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    userAgentPackageName: 'com.gcommers.app',
+                                    maxNativeZoom: 19,
+                                  ),
+                                ],
+                              ),
+                              const IgnorePointer(
+                                child: Icon(Icons.location_pin, size: 44, color: Color(0xFF2F6C3F)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (_latitude != null && _longitude != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          '${_latitude!.toStringAsFixed(6)}, ${_longitude!.toStringAsFixed(6)}',
+                          style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       const Text(
                         'Upload KTP Pemilik',

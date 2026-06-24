@@ -12,7 +12,9 @@ public sealed record RegisterKioskRequest(
     long KabupatenId,
     long KecamatanId,
     bool TermsAccepted,
-    string? LicenseImageName)
+    string? LicenseImageName,
+    double? Latitude = null,
+    double? Longitude = null)
 {
     public string? Validate()
     {

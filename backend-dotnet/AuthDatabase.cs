@@ -506,6 +506,8 @@ static class AuthDatabase
                 KecamatanId,
                 Kecamatan,
                 LicenseImageName,
+                Latitude,
+                Longitude,
                 CreatedAt,
                 UpdatedAt
             )
@@ -531,6 +533,8 @@ static class AuthDatabase
                 @KecamatanId,
                 @Kecamatan,
                 @LicenseImageName,
+                @Latitude,
+                @Longitude,
                 SYSUTCDATETIME(),
                 SYSUTCDATETIME()
             );
@@ -553,14 +557,19 @@ static class AuthDatabase
         command.Parameters.AddWithValue("@KabupatenId", request.KabupatenId);
         command.Parameters.AddWithValue("@KecamatanId", request.KecamatanId);
         command.Parameters.AddWithValue("@LicenseImageName", (object?)request.LicenseImageName ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Latitude", (object?)request.Latitude ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Longitude", (object?)request.Longitude ?? DBNull.Value);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
         {
             throw new InvalidOperationException("Failed to create kiosk user.");
         }
+        await reader.DisposeAsync();
 
-        return new AuthSession(normalizedEmail, reader.GetString(2), reader.GetString(3), Guid.NewGuid().ToString("N"));
+        var createdUser = await FindUserByEmailAsync(connection, normalizedEmail, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to load newly created kiosk user.");
+        return AuthSession.FromUser(createdUser);
     }
 
     private static async Task<string?> GetKecamatanNamaAsync(SqlConnection connection, long kecamatanId, CancellationToken cancellationToken)

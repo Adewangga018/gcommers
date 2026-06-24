@@ -66,7 +66,6 @@ public sealed record OrderDetailDto(
     string Vendor,
     string PaymentMethod,
     decimal Subtotal,
-    decimal TaxAmount,
     decimal ShippingAmount,
     decimal TotalAmount,
     DateTimeOffset CreatedAt,

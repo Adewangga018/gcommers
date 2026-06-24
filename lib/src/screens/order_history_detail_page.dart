@@ -165,8 +165,6 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                         const SizedBox(height: 12),
                         _SummaryLine(label: 'Subtotal', value: formatCurrency(order.subtotal)),
                         const SizedBox(height: 8),
-                        _SummaryLine(label: 'PPN (11%)', value: formatCurrency(order.taxAmount)),
-                        const SizedBox(height: 8),
                         _SummaryLine(label: 'Ongkos Kirim', value: formatCurrency(order.shippingAmount)),
                         const SizedBox(height: 10),
                         const Divider(height: 1),

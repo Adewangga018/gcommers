@@ -183,7 +183,7 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
                       AuthTextField(
                         controller: _transportirNameController,
                         hintText: 'Nama transportir',
-                        icon: Icons.local_shipping_outlined,
+                        icon: Icons.person_outline_rounded,
                       ),
                       const SizedBox(height: 14),
                       const Align(
@@ -246,7 +246,7 @@ class _TransportirRegisterScreenState extends State<TransportirRegisterScreen> {
                       AuthTextField(
                         controller: _typeController,
                         hintText: 'Jenis kendaraan',
-                        icon: Icons.two_wheeler_outlined,
+                        icon: Icons.local_shipping_outlined,
                         textCapitalization: TextCapitalization.words,
                       ),
                       const SizedBox(height: 14),

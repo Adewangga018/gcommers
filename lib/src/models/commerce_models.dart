@@ -133,7 +133,6 @@ class OrderDetail {
     required this.vendor,
     required this.paymentMethod,
     required this.subtotal,
-    required this.taxAmount,
     required this.shippingAmount,
     required this.totalAmount,
     required this.createdAt,
@@ -161,7 +160,6 @@ class OrderDetail {
       vendor: json['vendor'] as String,
       paymentMethod: json['paymentMethod'] as String,
       subtotal: (json['subtotal'] as num).toDouble(),
-      taxAmount: (json['taxAmount'] as num).toDouble(),
       shippingAmount: (json['shippingAmount'] as num).toDouble(),
       totalAmount: (json['totalAmount'] as num).toDouble(),
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -192,7 +190,6 @@ class OrderDetail {
   final String vendor;
   final String paymentMethod;
   final double subtotal;
-  final double taxAmount;
   final double shippingAmount;
   final double totalAmount;
   final DateTime createdAt;

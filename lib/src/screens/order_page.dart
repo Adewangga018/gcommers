@@ -278,7 +278,7 @@ class _OrderPageState extends State<OrderPage> {
                     if (_selectedCount() > 0) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'Subtotal ${formatCurrency(_estimatedSubtotal())} + Ongkir & Pajak ${formatCurrency(_estimatedShipping() + _estimatedTax())}',
+                        'Subtotal ${formatCurrency(_estimatedSubtotal())} + Ongkir ${formatCurrency(_estimatedShipping())}',
                         style: const TextStyle(color: Colors.black45, fontSize: 11),
                       ),
                     ],
@@ -338,17 +338,7 @@ class _OrderPageState extends State<OrderPage> {
     return total;
   }
 
-  double _estimatedTax() {
-    final subtotal = _estimatedSubtotal();
-    for (final product in _products) {
-      if ((_quantities[product.id] ?? 0) > 0) {
-        return subtotal * product.pajakPphPersen / 100;
-      }
-    }
-    return 0;
-  }
-
-  num _estimatedTotal() => _estimatedSubtotal() + _estimatedShipping() + _estimatedTax();
+  num _estimatedTotal() => _estimatedSubtotal() + _estimatedShipping();
 }
 
 class _TabChip extends StatelessWidget {
@@ -619,7 +609,6 @@ class ProductDetailPage extends StatelessWidget {
                     if (product.code.isNotEmpty) _DetailRow(label: 'Kode', value: product.code),
                     _DetailRow(label: 'Harga', value: formatCurrency(product.price)),
                     _DetailRow(label: 'Biaya Pengiriman', value: '${formatCurrency(product.biayaPengirimanPerKg)}/kg'),
-                    _DetailRow(label: 'Pajak (PPh)', value: '${product.pajakPphPersen.toStringAsFixed(2)}%'),
                     _DetailRow(label: 'Stok', value: '${product.stock}'),
                     _DetailRow(label: 'Minimal Pembelian', value: '${product.minimumOrder}'),
                     _DetailRow(label: 'Satuan', value: product.unit),

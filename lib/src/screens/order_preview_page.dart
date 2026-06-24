@@ -67,7 +67,9 @@ class _OrderPreviewPageState extends State<OrderPreviewPage> {
   double get _subtotal {
     var total = 0.0;
     for (final product in widget.args.products) {
-      total += product.price * (widget.args.quantities[product.id] ?? 0);
+      final quantity = widget.args.quantities[product.id] ?? 0;
+      if (quantity <= 0) continue;
+      total += product.price * quantity * 1000;
     }
     return total;
   }
@@ -82,16 +84,25 @@ class _OrderPreviewPageState extends State<OrderPreviewPage> {
     return total;
   }
 
-  double get _tax {
-    for (final product in widget.args.products) {
-      if ((widget.args.quantities[product.id] ?? 0) > 0) {
-        return _subtotal * product.pajakPphPersen / 100;
-      }
-    }
-    return 0;
+  double get _total => _subtotal + _shipping;
+
+  bool get _hasAddress {
+    final current = _current;
+    return current != null && current.kecamatan != null && current.address.trim().isNotEmpty;
   }
 
-  double get _total => _subtotal + _shipping + _tax;
+  Future<void> _openAddressDetail() async {
+    final updated = await showModalBottomSheet<EditableAddress>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _AddressDetailSheet(address: _current ?? const EditableAddress()),
+    );
+    if (updated != null) {
+      setState(() => _current = updated);
+    }
+  }
 
   Future<void> _continueToPayment() async {
     final session = _session;
@@ -156,7 +167,16 @@ class _OrderPreviewPageState extends State<OrderPreviewPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Ringkasan Pesanan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    _addressSummaryCard(),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Pesanan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                        Text('${_selectedProducts.length} produk',
+                            style: const TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                     _card(
                       child: Column(
@@ -168,19 +188,10 @@ class _OrderPreviewPageState extends State<OrderPreviewPage> {
                           _totalRow('Subtotal', _subtotal),
                           const SizedBox(height: 6),
                           _totalRow('Ongkir', _shipping),
-                          const SizedBox(height: 6),
-                          _totalRow('Pajak', _tax),
                           const Divider(height: 16),
                           _totalRow('Total', _total, emphasize: true),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text('Alamat Pengiriman', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 12),
-                    AddressEditorForm(
-                      initialAddress: _current ?? const EditableAddress(),
-                      onChanged: (value) => _current = value,
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
@@ -207,6 +218,80 @@ class _OrderPreviewPageState extends State<OrderPreviewPage> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _addressSummaryCard() {
+    final current = _current;
+    final session = _session;
+    final name = (session?.picName?.trim().isNotEmpty ?? false) ? session!.picName!.trim() : session?.displayName ?? '';
+    final phone = session?.phone?.trim();
+
+    final addressLine = current == null
+        ? ''
+        : [
+            current.address.trim(),
+            current.kecamatan?.nama,
+            current.kabupaten?.nama,
+            current.provinsi?.nama,
+            current.kodePos.trim(),
+          ].where((part) => part != null && part.trim().isNotEmpty).join(', ');
+
+    return InkWell(
+      onTap: _openAddressDetail,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFB5D4BC)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.location_on, color: _primaryPurple, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _hasAddress
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                name,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (phone != null && phone.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Text(phone, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          addressLine,
+                          style: const TextStyle(fontSize: 13, color: Colors.black54, height: 1.35),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    )
+                  : const Text(
+                      'Lengkapi alamat pengiriman',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _primaryPurple),
+                    ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.black38),
+          ],
+        ),
+      ),
     );
   }
 
@@ -262,6 +347,135 @@ class _OrderPreviewPageState extends State<OrderPreviewPage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AddressDetailSheet extends StatelessWidget {
+  const _AddressDetailSheet({required this.address});
+
+  final EditableAddress address;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Alamat Pengiriman', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const Divider(height: 20),
+            _row('Provinsi', address.provinsi?.nama),
+            _row('Kabupaten/Kota', address.kabupaten?.nama),
+            _row('Kecamatan', address.kecamatan?.nama),
+            _row('Kelurahan/Desa', address.kelurahan),
+            _row('Kode Pos', address.kodePos),
+            _row('Alamat Lengkap', address.address),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final edited = await Navigator.of(context).push<EditableAddress>(
+                    MaterialPageRoute(builder: (_) => _AddressEditPage(initialAddress: address)),
+                  );
+                  if (edited != null && context.mounted) {
+                    Navigator.of(context).pop(edited);
+                  }
+                },
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Ubah Alamat'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(String label, String? value) {
+    final display = (value == null || value.trim().isEmpty) ? '-' : value.trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 120, child: Text(label, style: const TextStyle(color: Colors.black54, fontSize: 13))),
+          const SizedBox(width: 8),
+          Expanded(child: Text(display, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddressEditPage extends StatefulWidget {
+  const _AddressEditPage({required this.initialAddress});
+
+  final EditableAddress initialAddress;
+
+  @override
+  State<_AddressEditPage> createState() => _AddressEditPageState();
+}
+
+class _AddressEditPageState extends State<_AddressEditPage> {
+  late EditableAddress _value = widget.initialAddress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        title: const Text('Ubah Alamat',
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 18)),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: AddressEditorForm(
+            initialAddress: _value,
+            onChanged: (value) => _value = value,
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(_value),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2F6C3F),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: const Text('Simpan Alamat', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

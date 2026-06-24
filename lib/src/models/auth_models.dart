@@ -64,6 +64,8 @@ class KioskRegistrationDraft {
     required this.kecamatanId,
     required this.termsAccepted,
     required this.licenseImageName,
+    this.latitude,
+    this.longitude,
   });
 
   final String kioskName;
@@ -78,6 +80,8 @@ class KioskRegistrationDraft {
   final int kecamatanId;
   final bool termsAccepted;
   final String? licenseImageName;
+  final double? latitude;
+  final double? longitude;
 }
 
 class TransportirRegistrationDraft {

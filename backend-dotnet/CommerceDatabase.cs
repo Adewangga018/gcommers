@@ -178,7 +178,6 @@ static class CommerceDatabase
                 VirtualAccount NVARCHAR(30) NULL,
                 VaExpiredAt DATETIMEOFFSET NULL,
                 Subtotal DECIMAL(18,2) NOT NULL,
-                TaxAmount DECIMAL(18,2) NOT NULL,
                 ShippingAmount DECIMAL(18,2) NOT NULL,
                 TotalAmount DECIMAL(18,2) NOT NULL,
                 CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Orders_CreatedAt DEFAULT SYSUTCDATETIME(),
@@ -191,7 +190,12 @@ static class CommerceDatabase
                 DeliveryKelurahan NVARCHAR(150) NULL,
                 DeliveryKodePos NVARCHAR(10) NULL,
                 DeliveryLatitude DECIMAL(10,6) NULL,
-                DeliveryLongitude DECIMAL(10,6) NULL
+                DeliveryLongitude DECIMAL(10,6) NULL,
+                KioskRegion NVARCHAR(100) NULL,
+                KioskKabupaten NVARCHAR(150) NULL,
+                KioskKecamatan NVARCHAR(150) NULL,
+                GudangSubmissionId BIGINT NULL,
+                GudangNama NVARCHAR(200) NULL
             );
 
             CREATE UNIQUE INDEX UX_Orders_PoNumber ON dbo.Orders(PoNumber);
@@ -216,6 +220,18 @@ static class CommerceDatabase
                 ALTER TABLE dbo.Orders ADD DeliveryLatitude DECIMAL(10,6) NULL;
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'DeliveryLongitude')
                 ALTER TABLE dbo.Orders ADD DeliveryLongitude DECIMAL(10,6) NULL;
+            IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'TaxAmount')
+                ALTER TABLE dbo.Orders DROP COLUMN TaxAmount;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'KioskRegion')
+                ALTER TABLE dbo.Orders ADD KioskRegion NVARCHAR(100) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'KioskKabupaten')
+                ALTER TABLE dbo.Orders ADD KioskKabupaten NVARCHAR(150) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'KioskKecamatan')
+                ALTER TABLE dbo.Orders ADD KioskKecamatan NVARCHAR(150) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'GudangNama')
+                ALTER TABLE dbo.Orders ADD GudangNama NVARCHAR(200) NULL;
+            IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Orders') AND name = 'GudangId')
+                ALTER TABLE dbo.Orders DROP COLUMN GudangId;
         END
 
         IF OBJECT_ID(N'dbo.OrderItems', N'U') IS NULL
@@ -436,8 +452,6 @@ static class CommerceDatabase
             var period = CurrentPeriod();
             var orderItems = new List<(int ProductId, string ProductCode, string Name, string Unit, int Quantity, decimal UnitPrice, decimal TotalPrice)>();
             var totalShipping = 0m;
-            var pphPersen = 0.25m;
-            var firstRegionPriceRead = false;
 
             foreach (var item in request.Items)
             {
@@ -504,12 +518,6 @@ static class CommerceDatabase
                     price = reader.GetDecimal(3);
                     qtyAvailable = reader.GetDecimal(4);
                     biayaPengirimanPerKg = reader.GetDecimal(5);
-
-                    if (!firstRegionPriceRead)
-                    {
-                        pphPersen = reader.GetDecimal(6);
-                        firstRegionPriceRead = true;
-                    }
                 }
 
                 if (qtyAvailable < item.Quantity)
@@ -520,26 +528,44 @@ static class CommerceDatabase
                 // qty dipesan dalam satuan TON; tarif ongkir region dalam Rp/kg.
                 var beratKg = item.Quantity * 1000m;
                 totalShipping += biayaPengirimanPerKg * beratKg;
-                orderItems.Add((item.ProductId, productCode, name, unit, item.Quantity, price, price * item.Quantity));
+                // harga_satuan dalam Rp/kg; untuk produk satuan TON, qty dipesan dalam TON jadi
+                // harus dikonversi ke kg dulu sebelum dikalikan harga.
+                var isTonUnit = string.Equals(unit, "TON", StringComparison.OrdinalIgnoreCase);
+                var totalPrice = isTonUnit ? price * item.Quantity * 1000m : price * item.Quantity;
+                orderItems.Add((item.ProductId, productCode, name, unit, item.Quantity, price, totalPrice));
             }
 
             var subtotal = orderItems.Sum(item => item.TotalPrice);
-            var tax = Math.Round(subtotal * pphPersen / 100m, 2);
             var shipping = Math.Round(totalShipping, 2);
-            var total = subtotal + tax + shipping;
+            var total = subtotal + shipping;
             // Kode pemesanan sementara - diganti kode pembayaran resmi (GCS-{tahun}-{urutan}) oleh PayOrderAsync saat bayar sukses.
             var orderCode = $"ORD-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8]}";
             var vendor = await GetVendorForUserAsync(connection, (SqlTransaction)transaction, request.UserEmail, cancellationToken);
 
             string? deliveryAddress = null, deliveryKelurahan = null, deliveryKodePos = null;
             decimal? deliveryLatitude = null, deliveryLongitude = null;
+            string? kioskRegion = null, kioskKabupaten = null, kioskKecamatan = null, gudangNama = null;
+            long? gudangSubmissionId = null;
             if (!string.IsNullOrWhiteSpace(request.UserEmail))
             {
                 await using var addressCommand = connection.CreateCommand();
                 addressCommand.Transaction = (SqlTransaction)transaction;
+                // kab/kec diambil live dari dbo.kabupaten/dbo.kecamatan (bukan kolom cache di Users)
+                // supaya tidak terikut data stale; gudang aktif = status 'approved' di gudang_submissions
+                // (dikelola admin console) untuk kecamatan kios tersebut, ambil yang terbaru jika lebih dari satu.
                 addressCommand.CommandText = """
-                    SELECT Address, Kelurahan, KodePos, Latitude, Longitude
-                    FROM dbo.Users WHERE Email = @Email;
+                    SELECT u.Address, u.Kelurahan, u.KodePos, u.Latitude, u.Longitude,
+                           u.Region, kab.nama_kab, kec.nama_kec, g.Id, g.nama_gudang
+                    FROM dbo.Users u
+                    LEFT JOIN dbo.kabupaten kab ON kab.id = u.KabupatenId
+                    LEFT JOIN dbo.kecamatan kec ON kec.id = u.KecamatanId
+                    OUTER APPLY (
+                        SELECT TOP 1 gs.id AS Id, gs.nama_gudang
+                        FROM dbo.gudang_submissions gs
+                        WHERE gs.kecamatan_id = u.KecamatanId AND gs.status = 'approved'
+                        ORDER BY gs.id DESC
+                    ) g
+                    WHERE u.Email = @Email;
                     """;
                 addressCommand.Parameters.AddWithValue("@Email", request.UserEmail!);
                 await using var addressReader = await addressCommand.ExecuteReaderAsync(cancellationToken);
@@ -550,6 +576,11 @@ static class CommerceDatabase
                     deliveryKodePos = addressReader.IsDBNull(2) ? null : addressReader.GetString(2);
                     deliveryLatitude = addressReader.IsDBNull(3) ? null : addressReader.GetDecimal(3);
                     deliveryLongitude = addressReader.IsDBNull(4) ? null : addressReader.GetDecimal(4);
+                    kioskRegion = addressReader.IsDBNull(5) ? null : addressReader.GetString(5);
+                    kioskKabupaten = addressReader.IsDBNull(6) ? null : addressReader.GetString(6);
+                    kioskKecamatan = addressReader.IsDBNull(7) ? null : addressReader.GetString(7);
+                    gudangSubmissionId = addressReader.IsDBNull(8) ? null : addressReader.GetInt64(8);
+                    gudangNama = addressReader.IsDBNull(9) ? null : addressReader.GetString(9);
                 }
             }
 
@@ -557,24 +588,30 @@ static class CommerceDatabase
             orderCommand.Transaction = (SqlTransaction)transaction;
             orderCommand.CommandText = """
                 INSERT INTO dbo.Orders
-                (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, TaxAmount, ShippingAmount, TotalAmount,
-                 DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude)
+                (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, ShippingAmount, TotalAmount,
+                 DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude,
+                 KioskRegion, KioskKabupaten, KioskKecamatan, GudangSubmissionId, GudangNama)
                 OUTPUT INSERTED.Id
                 VALUES
-                (@PoNumber, @UserEmail, 'pending_payment', @Vendor, '-', @Subtotal, @TaxAmount, @ShippingAmount, @TotalAmount,
-                 @DeliveryAddress, @DeliveryKelurahan, @DeliveryKodePos, @DeliveryLatitude, @DeliveryLongitude);
+                (@PoNumber, @UserEmail, 'pending_payment', @Vendor, '-', @Subtotal, @ShippingAmount, @TotalAmount,
+                 @DeliveryAddress, @DeliveryKelurahan, @DeliveryKodePos, @DeliveryLatitude, @DeliveryLongitude,
+                 @KioskRegion, @KioskKabupaten, @KioskKecamatan, @GudangSubmissionId, @GudangNama);
                 """;
             orderCommand.Parameters.AddWithValue("@PoNumber", orderCode);
             orderCommand.Parameters.AddWithValue("@UserEmail", (object?)request.UserEmail ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@Vendor", vendor);
             orderCommand.Parameters.AddWithValue("@Subtotal", subtotal);
-            orderCommand.Parameters.AddWithValue("@TaxAmount", tax);
             orderCommand.Parameters.AddWithValue("@ShippingAmount", shipping);
             orderCommand.Parameters.AddWithValue("@DeliveryAddress", (object?)deliveryAddress ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@DeliveryKelurahan", (object?)deliveryKelurahan ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@DeliveryKodePos", (object?)deliveryKodePos ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@DeliveryLatitude", (object?)deliveryLatitude ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@DeliveryLongitude", (object?)deliveryLongitude ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@KioskRegion", (object?)kioskRegion ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@KioskKabupaten", (object?)kioskKabupaten ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@KioskKecamatan", (object?)kioskKecamatan ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@GudangSubmissionId", (object?)gudangSubmissionId ?? DBNull.Value);
+            orderCommand.Parameters.AddWithValue("@GudangNama", (object?)gudangNama ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@TotalAmount", total);
             var orderId = Convert.ToInt32(await orderCommand.ExecuteScalarAsync(cancellationToken));
 
@@ -733,7 +770,7 @@ static class CommerceDatabase
 
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT Id, PoNumber, Status, Vendor, PaymentMethod, Subtotal, TaxAmount, ShippingAmount,
+            SELECT Id, PoNumber, Status, Vendor, PaymentMethod, Subtotal, ShippingAmount,
                    TotalAmount, CreatedAt, PaidAt, DeliveredAt, OrderStatus, OrderStatusNote,
                    DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude
             FROM dbo.Orders
@@ -756,19 +793,18 @@ static class CommerceDatabase
             Vendor = reader.GetString(3),
             PaymentMethod = reader.GetString(4),
             Subtotal = reader.GetDecimal(5),
-            TaxAmount = reader.GetDecimal(6),
-            ShippingAmount = reader.GetDecimal(7),
-            TotalAmount = reader.GetDecimal(8),
-            CreatedAt = reader.GetFieldValue<DateTimeOffset>(9),
-            PaidAt = reader.IsDBNull(10) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(10),
-            DeliveredAt = reader.IsDBNull(11) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(11),
-            OrderStatus = reader.IsDBNull(12) ? null : reader.GetString(12),
-            OrderStatusNote = reader.IsDBNull(13) ? null : reader.GetString(13),
-            DeliveryAddress = reader.IsDBNull(14) ? null : reader.GetString(14),
-            DeliveryKelurahan = reader.IsDBNull(15) ? null : reader.GetString(15),
-            DeliveryKodePos = reader.IsDBNull(16) ? null : reader.GetString(16),
-            DeliveryLatitude = reader.IsDBNull(17) ? (double?)null : (double)reader.GetDecimal(17),
-            DeliveryLongitude = reader.IsDBNull(18) ? (double?)null : (double)reader.GetDecimal(18)
+            ShippingAmount = reader.GetDecimal(6),
+            TotalAmount = reader.GetDecimal(7),
+            CreatedAt = reader.GetFieldValue<DateTimeOffset>(8),
+            PaidAt = reader.IsDBNull(9) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(9),
+            DeliveredAt = reader.IsDBNull(10) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(10),
+            OrderStatus = reader.IsDBNull(11) ? null : reader.GetString(11),
+            OrderStatusNote = reader.IsDBNull(12) ? null : reader.GetString(12),
+            DeliveryAddress = reader.IsDBNull(13) ? null : reader.GetString(13),
+            DeliveryKelurahan = reader.IsDBNull(14) ? null : reader.GetString(14),
+            DeliveryKodePos = reader.IsDBNull(15) ? null : reader.GetString(15),
+            DeliveryLatitude = reader.IsDBNull(16) ? (double?)null : (double)reader.GetDecimal(16),
+            DeliveryLongitude = reader.IsDBNull(17) ? (double?)null : (double)reader.GetDecimal(17)
         };
         await reader.CloseAsync();
 
@@ -783,7 +819,6 @@ static class CommerceDatabase
             detail.Vendor,
             detail.PaymentMethod,
             detail.Subtotal,
-            detail.TaxAmount,
             detail.ShippingAmount,
             detail.TotalAmount,
             detail.CreatedAt,
@@ -1331,9 +1366,9 @@ static class CommerceDatabase
         IF NOT EXISTS (SELECT 1 FROM dbo.Orders WHERE PoNumber = 'PO-2026-10-9842')
         BEGIN
             INSERT INTO dbo.Orders
-            (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, TaxAmount, ShippingAmount, TotalAmount, PaidAt)
+            (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, ShippingAmount, TotalAmount, PaidAt)
             VALUES
-            ('PO-2026-10-9842', NULL, 'shipping', 'PT Global Logistik Nusantara', 'Bank Transfer (Mandiri)', 12150000, 1336500, 250000, 13736500, SYSUTCDATETIME());
+            ('PO-2026-10-9842', NULL, 'shipping', 'PT Global Logistik Nusantara', 'Bank Transfer (Mandiri)', 12150000, 250000, 12400000, SYSUTCDATETIME());
 
             DECLARE @OrderId INT = SCOPE_IDENTITY();
 
