@@ -94,10 +94,12 @@ class _TransportirStatsCardState extends State<_TransportirStatsCard> {
 
   Future<void> _loadStats() async {
     try {
-      final summary = await _service.getTransportirDashboardSummary(
-        transportirEmail: widget.session?.email,
-      );
-      final orders = await _service.getOrders(userEmail: widget.session?.email);
+      final email = widget.session?.email;
+      if (email == null || email.isEmpty) {
+        throw Exception('Sesi berakhir, silakan login ulang.');
+      }
+      final summary = await _service.getTransportirDashboardSummary(transportirEmail: email);
+      final orders = await _service.getOrders(userEmail: email);
       if (!mounted) return;
 
       final now = DateTime.now();
@@ -291,9 +293,11 @@ class _RouteCardState extends State<_RouteCard> {
 
   Future<void> _loadActiveShipment() async {
     try {
-      final summary = await _service.getTransportirDashboardSummary(
-        transportirEmail: widget.session?.email,
-      );
+      final email = widget.session?.email;
+      if (email == null || email.isEmpty) {
+        throw Exception('Sesi berakhir, silakan login ulang.');
+      }
+      final summary = await _service.getTransportirDashboardSummary(transportirEmail: email);
       if (!mounted) return;
       setState(() {
         _activeShipment = summary.activeShipment == null ? null : _toCardData(summary.activeShipment!);
@@ -306,27 +310,7 @@ class _RouteCardState extends State<_RouteCard> {
   }
 
   TransportirShipmentCardData _toCardData(ShipmentSummary shipment) {
-    final isActive = shipment.status == 'dalam_perjalanan';
-    return TransportirShipmentCardData(
-      shipmentNumber: shipment.shipmentNumber,
-      statusLabel: shipment.statusLabel,
-      statusColor: isActive ? AppTheme.tertiaryGreen : AppTheme.tertiaryGold,
-      statusBackground: isActive ? AppTheme.tertiaryGreenSoft : AppTheme.tertiaryGoldSoft,
-      scheduleLabel: shortDateTime(shipment.createdAt),
-      origin: 'Gudang Pusat',
-      destination: shipment.destinationLabel ?? 'Tujuan',
-      destinationSubtitle: shipment.destinationAddress ?? '',
-      actionPrimaryLabel: 'Lihat Detail',
-      actionSecondaryLabel: '',
-      actionSecondaryKind: TransportirShipmentActionKind.none,
-      originLatLng: shipment.originLat != null && shipment.originLng != null
-          ? LatLng(shipment.originLat!, shipment.originLng!)
-          : null,
-      destinationLatLng: shipment.destinationLat != null && shipment.destinationLng != null
-          ? LatLng(shipment.destinationLat!, shipment.destinationLng!)
-          : null,
-      completed: shipment.status == 'selesai',
-    );
+    return TransportirShipmentCardData(shipment: shipment);
   }
 
   void _navigate(BuildContext context) {
@@ -687,7 +671,11 @@ class _NewOrdersCardState extends State<_NewOrdersCard> {
 
   Future<void> _load() async {
     try {
-      final orders = await _service.getOrders(userEmail: widget.session?.email);
+      final email = widget.session?.email;
+      if (email == null || email.isEmpty) {
+        throw Exception('Sesi berakhir, silakan login ulang.');
+      }
+      final orders = await _service.getOrders(userEmail: email);
       orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (!mounted) return;
       setState(() => _orders = orders.take(5).toList());
@@ -854,7 +842,7 @@ Color _statusColor(String status) {
   return switch (status) {
     'pending_payment' => AppTheme.tertiaryGold,
     'paid' || 'shipping' => AppTheme.tertiaryGreen,
-    'received' || 'completed' => const Color(0xFF059669),
+    'received' || 'completed' || 'delivered' => const Color(0xFF059669),
     _ => AppTheme.muted,
   };
 }

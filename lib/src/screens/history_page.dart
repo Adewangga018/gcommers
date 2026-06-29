@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
+import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
@@ -16,20 +19,42 @@ class _HistoryPageState extends State<HistoryPage> {
   final _commerceService = CommerceService();
   late Future<List<OrderSummary>> _ordersFuture;
   String _selectedFilter = 'Semua';
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
-    _ordersFuture = _commerceService.getOrders();
+    _ordersFuture = _loadOrders();
+    _pollTimer = Timer.periodic(const Duration(seconds: 20), (_) => _refresh().catchError((_) {}));
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<List<OrderSummary>> _loadOrders() async {
+    final session = await sessionManager.getSession();
+    if (session == null || session.email.isEmpty) {
+      throw Exception('Sesi berakhir, silakan login ulang.');
+    }
+    return _commerceService.getOrders(userEmail: session.email);
   }
 
   List<OrderSummary> _applyFilter(List<OrderSummary> orders) {
     return switch (_selectedFilter) {
-      'Pending' => orders.where((o) => o.status == 'pending_payment').toList(),
-      'Diproses' => orders.where((o) => o.status == 'paid' || o.status == 'shipping').toList(),
-      'Selesai' => orders.where((o) => o.status == 'received' || o.status == 'completed').toList(),
+      'Pending' => orders.where((o) => o.orderStatus == null).toList(),
+      'Diproses' => orders.where((o) => o.orderStatus == 'processing' || o.orderStatus == 'shipping').toList(),
+      'Selesai' => orders.where((o) => o.orderStatus == 'delivered').toList(),
       _ => orders,
     };
+  }
+
+  Future<void> _refresh() async {
+    final future = _loadOrders();
+    setState(() => _ordersFuture = future);
+    await future;
   }
 
   @override
@@ -73,34 +98,54 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: FutureBuilder<List<OrderSummary>>(
-                future: _ordersFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Gagal memuat riwayat: ${snapshot.error}'));
-                  }
-
-                  final orders = _applyFilter(snapshot.data!);
-                  if (orders.isEmpty) {
-                    return const Center(child: Text('Belum ada riwayat pesanan.'));
-                  }
-
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                    itemCount: orders.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
-                    itemBuilder: (context, index) {
-                      final order = orders[index];
-                      return _HistoryCard(
-                        order: order,
-                        onTap: () => Navigator.of(context).pushNamed('/history-detail', arguments: order.poNumber),
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                child: FutureBuilder<List<OrderSummary>>(
+                  future: _ordersFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 60),
+                            child: Center(child: Text('Gagal memuat riwayat: ${snapshot.error}')),
+                          ),
+                        ],
                       );
-                    },
-                  );
-                },
+                    }
+
+                    final orders = _applyFilter(snapshot.data!);
+                    if (orders.isEmpty) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          Padding(
+                            padding: EdgeInsets.symmetric(vertical: 60),
+                            child: Center(child: Text('Belum ada riwayat pesanan.')),
+                          ),
+                        ],
+                      );
+                    }
+
+                    return ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                      itemCount: orders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final order = orders[index];
+                        return _HistoryCard(
+                          order: order,
+                          onTap: () => Navigator.of(context).pushNamed('/history-detail', arguments: order.poNumber),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ),
           ],
@@ -156,7 +201,7 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(order.status);
+    final statusColor = _statusColor(order.orderStatus);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -187,7 +232,7 @@ class _HistoryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  order.statusLabel,
+                  order.orderStatusLabel,
                   style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 12),
                 ),
               ),
@@ -266,12 +311,12 @@ class _HistoryBottomBar extends StatelessWidget {
   }
 }
 
-Color _statusColor(String status) {
-  return switch (status) {
-    'pending_payment' => const Color(0xFFD97706),
-    'paid' => const Color(0xFF2F6C3F),
+Color _statusColor(String? orderStatus) {
+  return switch (orderStatus) {
+    'processing' => const Color(0xFFD97706),
     'shipping' => const Color(0xFF2F6C3F),
-    'received' || 'completed' => const Color(0xFF059669),
-    _ => Colors.grey,
+    'delivered' => const Color(0xFF059669),
+    'cancelled' => const Color(0xFFB3261E),
+    _ => const Color(0xFFD97706),
   };
 }

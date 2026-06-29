@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 
 import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
-import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
 class OrderHistoryDetailPage extends StatefulWidget {
@@ -17,11 +18,40 @@ class OrderHistoryDetailPage extends StatefulWidget {
 class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
   final _commerceService = CommerceService();
   late Future<OrderDetail> _detailFuture;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _detailFuture = _commerceService.getOrderDetail(widget.poNumber);
+    // Status pengiriman bisa berubah dari sisi Transportir kapan saja — polling ringan
+    // di sini cukup untuk mendekati real-time tanpa perlu websocket (lihat ORDER_FLOW_CONTRACT.md §1.5).
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _pollRefresh());
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _pollRefresh() async {
+    try {
+      final detail = await _commerceService.getOrderDetail(widget.poNumber);
+      if (!mounted) return;
+      if (detail.orderStatus == 'delivered' || detail.orderStatus == 'cancelled') {
+        _pollTimer?.cancel();
+      }
+      setState(() => _detailFuture = Future.value(detail));
+    } catch (_) {
+      // Diamkan kalau gagal — pull-to-refresh manual masih tersedia.
+    }
+  }
+
+  Future<void> _refresh() async {
+    final future = _commerceService.getOrderDetail(widget.poNumber);
+    setState(() => _detailFuture = future);
+    await future;
   }
 
   @override
@@ -43,18 +73,29 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: FutureBuilder<OrderDetail>(
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: FutureBuilder<OrderDetail>(
           future: _detailFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return Center(child: Text('Gagal memuat detail: ${snapshot.error}'));
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 60),
+                    child: Center(child: Text('Gagal memuat detail: ${snapshot.error}')),
+                  ),
+                ],
+              );
             }
 
             final order = snapshot.data!;
             return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +133,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
-                                order.statusLabel,
+                                order.orderStatusLabel,
                                 style: const TextStyle(color: primaryBlue, fontSize: 12, fontWeight: FontWeight.w800),
                               ),
                             ),
@@ -103,7 +144,7 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(child: _KeyValue(label: 'Vendor', value: order.vendor)),
+                            Expanded(child: _KeyValue(label: 'Wilayah', value: order.vendor)),
                             const SizedBox(width: 12),
                             Expanded(child: _KeyValue(label: 'Metode Pembayaran', value: order.paymentMethod)),
                           ],
@@ -129,6 +170,30 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                       ],
                     ),
                   ),
+                  if (order.driverName != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFB5D4BC)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Informasi Pengiriman', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 12),
+                          _KeyValue(label: 'Sopir', value: order.driverName!),
+                          if (order.truckLabel != null) ...[
+                            const SizedBox(height: 10),
+                            _KeyValue(label: 'Kendaraan', value: order.truckLabel!),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
@@ -164,8 +229,6 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                         const Divider(height: 1),
                         const SizedBox(height: 12),
                         _SummaryLine(label: 'Subtotal', value: formatCurrency(order.subtotal)),
-                        const SizedBox(height: 8),
-                        _SummaryLine(label: 'Ongkos Kirim', value: formatCurrency(order.shippingAmount)),
                         const SizedBox(height: 10),
                         const Divider(height: 1),
                         const SizedBox(height: 10),
@@ -197,26 +260,12 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                         icon: const Icon(Icons.payment_rounded),
                         label: const Text('BAYAR SEKARANG', style: TextStyle(fontWeight: FontWeight.w800)),
                       ),
-                    )
-                  else if (order.status == 'paid' || order.status == 'shipping')
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.of(context).pushNamed('/scan-qr', arguments: order.poNumber),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        icon: const Icon(Icons.qr_code_scanner_rounded),
-                        label: const Text('SCAN QR KONFIRMASI', style: TextStyle(fontWeight: FontWeight.w800)),
-                      ),
                     ),
                 ],
               ),
             );
           },
+          ),
         ),
       ),
     );

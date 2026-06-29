@@ -326,7 +326,7 @@ class _HelpDetailPage extends StatelessWidget {
         _DetailCard(
           children: [
             _BulletText('Pantau pesanan, pengiriman, dan laporan dari navigasi bawah.'),
-            _BulletText('Buka detail pesanan untuk melihat surat jalan dan status pengiriman.'),
+            _BulletText('Buka detail pesanan untuk melihat detail muatan dan status pengiriman.'),
             _BulletText('Gunakan halaman laporan untuk klaim atau riwayat laporan.'),
           ],
         ),

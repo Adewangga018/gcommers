@@ -25,8 +25,8 @@ class CommerceService {
     return Uri.parse('$baseUrl$path').replace(queryParameters: filtered.isEmpty ? null : filtered);
   }
 
-  Future<DashboardSummary> getDashboardSummary() async {
-    final response = await http.get(_uri('/dashboard/summary'));
+  Future<DashboardSummary> getDashboardSummary({String? userEmail}) async {
+    final response = await http.get(_uri('/dashboard/summary', {'userEmail': userEmail}));
     _ensureOk(response);
     return DashboardSummary.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
@@ -94,15 +94,6 @@ class CommerceService {
     );
     _ensureOk(response);
     return PaymentResult.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-  }
-
-  Future<void> confirmReceived(String poNumber) async {
-    final response = await http.post(
-      _uri('/orders/$poNumber/confirm-received'),
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'accepted': true, 'notes': 'Barang diterima oleh kios'}),
-    );
-    _ensureOk(response);
   }
 
   Future<List<ShipmentSummary>> getShipments({String? transportirEmail}) async {

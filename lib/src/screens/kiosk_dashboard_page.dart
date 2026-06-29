@@ -20,14 +20,14 @@ class KiosDashboardPage extends StatefulWidget {
 
 class _KiosDashboardPageState extends State<KiosDashboardPage> {
   final _commerceService = CommerceService();
-  late final Future<DashboardSummary> _summaryFuture;
+  late Future<DashboardSummary> _summaryFuture;
   AuthSession? _session;
   Uint8List? _avatarBytes;
 
   @override
   void initState() {
     super.initState();
-    _summaryFuture = _commerceService.getDashboardSummary();
+    _summaryFuture = _loadSummary();
     _loadSession();
   }
 
@@ -39,6 +39,14 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
       _session = session;
       _avatarBytes = avatar;
     });
+  }
+
+  Future<DashboardSummary> _loadSummary() async {
+    final session = await sessionManager.getSession();
+    if (session == null || session.email.isEmpty) {
+      throw Exception('Sesi berakhir, silakan login ulang.');
+    }
+    return _commerceService.getDashboardSummary(userEmail: session.email);
   }
 
   @override

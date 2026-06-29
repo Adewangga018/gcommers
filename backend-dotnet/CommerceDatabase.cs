@@ -95,6 +95,17 @@ static class CommerceDatabase
         -- ───────────────────────────────────────────────────────────────
         -- Transport / Shipments / Route checks (for tracking & dummy data)
         -- ───────────────────────────────────────────────────────────────
+        IF OBJECT_ID(N'dbo.warehouses', N'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.warehouses
+            (
+                id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_warehouses PRIMARY KEY,
+                name NVARCHAR(200) NOT NULL,
+                address NVARCHAR(500) NULL,
+                created_at DATETIMEOFFSET NOT NULL CONSTRAINT DF_warehouses_created_at DEFAULT SYSUTCDATETIME()
+            );
+        END
+
         IF OBJECT_ID(N'dbo.Shipments', N'U') IS NULL
         BEGIN
             CREATE TABLE dbo.Shipments
@@ -119,6 +130,11 @@ static class CommerceDatabase
                 OriginLng DECIMAL(9,6) NULL,
                 DestinationLat DECIMAL(9,6) NULL,
                 DestinationLng DECIMAL(9,6) NULL,
+                WarehouseId INT NULL,
+                MuatInPhotoUrl NVARCHAR(500) NULL,
+                MuatOutPhotoUrl NVARCHAR(500) NULL,
+                Note NVARCHAR(500) NULL,
+                AssignedBy NVARCHAR(256) NULL,
 
                 CONSTRAINT UX_Shipments_ShipmentNumber UNIQUE (ShipmentNumber),
                 CONSTRAINT FK_Shipments_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(Id)
@@ -144,6 +160,16 @@ static class CommerceDatabase
                 ALTER TABLE dbo.Shipments ADD DestinationLat DECIMAL(9,6) NULL;
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'DestinationLng')
                 ALTER TABLE dbo.Shipments ADD DestinationLng DECIMAL(9,6) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'WarehouseId')
+                ALTER TABLE dbo.Shipments ADD WarehouseId INT NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'MuatInPhotoUrl')
+                ALTER TABLE dbo.Shipments ADD MuatInPhotoUrl NVARCHAR(500) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'MuatOutPhotoUrl')
+                ALTER TABLE dbo.Shipments ADD MuatOutPhotoUrl NVARCHAR(500) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'Note')
+                ALTER TABLE dbo.Shipments ADD Note NVARCHAR(500) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'AssignedBy')
+                ALTER TABLE dbo.Shipments ADD AssignedBy NVARCHAR(256) NULL;
         END
 
         IF OBJECT_ID(N'dbo.ShipmentRouteChecks', N'U') IS NULL
@@ -178,7 +204,6 @@ static class CommerceDatabase
                 VirtualAccount NVARCHAR(30) NULL,
                 VaExpiredAt DATETIMEOFFSET NULL,
                 Subtotal DECIMAL(18,2) NOT NULL,
-                ShippingAmount DECIMAL(18,2) NOT NULL,
                 TotalAmount DECIMAL(18,2) NOT NULL,
                 CreatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Orders_CreatedAt DEFAULT SYSUTCDATETIME(),
                 UpdatedAt DATETIMEOFFSET NOT NULL CONSTRAINT DF_Orders_UpdatedAt DEFAULT SYSUTCDATETIME(),
@@ -317,7 +342,7 @@ static class CommerceDatabase
                 SELECT p.Id, COALESCE(p.ProductCode, ''), p.Name, p.Description, p.Category,
                        kpp.harga_satuan, CAST(kps.quota_ton AS INT), p.MinimumOrder, p.Unit, p.IconName,
                        p.Status, p.Rating, p.Specification,
-                       kpp.biaya_pengiriman, 0.25
+                       0.25
                 FROM dbo.Products p
                 INNER JOIN dbo.kecamatan_product_prices kpp
                     ON kpp.product_code = p.ProductCode AND kpp.kecamatan = @Kecamatan AND kpp.region = @Region
@@ -342,7 +367,7 @@ static class CommerceDatabase
                 SELECT p.Id, COALESCE(p.ProductCode, ''), p.Name, p.Description, p.Category,
                        rp.harga_satuan, CAST(rp.qty_available AS INT), p.MinimumOrder, p.Unit, p.IconName,
                        p.Status, p.Rating, p.Specification,
-                       rp.biaya_pengiriman_per_kg, rp.pajak_pph_persen
+                       rp.pajak_pph_persen
                 FROM dbo.Products p
                 INNER JOIN dbo.product_region_prices rp
                     ON rp.product_code = p.ProductCode AND rp.region = @Region
@@ -358,7 +383,7 @@ static class CommerceDatabase
             command.CommandText = """
                 SELECT Id, COALESCE(ProductCode, ''), Name, Description, Category, Price, Stock,
                        MinimumOrder, Unit, IconName, Status, Rating, Specification,
-                       50.0, 0.25
+                       0.25
                 FROM dbo.Products
                 WHERE (@Category IS NULL OR Category = @Category)
                   AND Status = N'Aktif'
@@ -385,8 +410,7 @@ static class CommerceDatabase
                 reader.GetString(10),
                 reader.GetDecimal(11),
                 reader.IsDBNull(12) ? null : reader.GetString(12),
-                reader.GetDecimal(13),
-                reader.GetDecimal(14)));
+                reader.GetDecimal(13)));
         }
 
         return products;
@@ -451,7 +475,6 @@ static class CommerceDatabase
             var hasRegion = !hasKecamatan && !string.IsNullOrWhiteSpace(request.Region);
             var period = CurrentPeriod();
             var orderItems = new List<(int ProductId, string ProductCode, string Name, string Unit, int Quantity, decimal UnitPrice, decimal TotalPrice)>();
-            var totalShipping = 0m;
 
             foreach (var item in request.Items)
             {
@@ -462,11 +485,10 @@ static class CommerceDatabase
                 {
                     // dbo.kecamatan_product_prices / dbo.kecamatan_product_stocks are managed by the
                     // admin console (subsidy quota per kecamatan); ProductCode is the join key, scoped
-                    // by region+kecamatan since kecamatan names aren't unique nationally. That table has
-                    // no pph_persen column, so PPh falls back to the standard 0.25.
+                    // by region+kecamatan since kecamatan names aren't unique nationally. harga_satuan
+                    // already includes ongkir (set by admin region) - system tidak menambah biaya pengiriman lagi.
                     productCommand.CommandText = """
-                        SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), kpp.harga_satuan,
-                               kps.quota_ton, kpp.biaya_pengiriman, 0.25
+                        SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), kpp.harga_satuan, kps.quota_ton
                         FROM dbo.Products p
                         INNER JOIN dbo.kecamatan_product_prices kpp
                             ON kpp.product_code = p.ProductCode AND kpp.kecamatan = @Kecamatan AND kpp.region = @Region
@@ -483,8 +505,7 @@ static class CommerceDatabase
                     // ProductCode is the join key: dbo.product_region_prices and dbo.Products
                     // have independent id sequences.
                     productCommand.CommandText = """
-                        SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), rp.harga_satuan,
-                               rp.qty_available, rp.biaya_pengiriman_per_kg, rp.pajak_pph_persen
+                        SELECT p.Name, p.Unit, COALESCE(p.ProductCode, ''), rp.harga_satuan, rp.qty_available
                         FROM dbo.Products p
                         INNER JOIN dbo.product_region_prices rp
                             ON rp.product_code = p.ProductCode AND rp.region = @Region
@@ -494,12 +515,12 @@ static class CommerceDatabase
                 }
                 else
                 {
-                    productCommand.CommandText = "SELECT Name, Unit, COALESCE(ProductCode, ''), Price, Stock, 50.0, 0.25 FROM dbo.Products WHERE Id = @Id;";
+                    productCommand.CommandText = "SELECT Name, Unit, COALESCE(ProductCode, ''), Price, Stock FROM dbo.Products WHERE Id = @Id;";
                 }
                 productCommand.Parameters.AddWithValue("@Id", item.ProductId);
 
                 string name, unit, productCode;
-                decimal price, qtyAvailable, biayaPengirimanPerKg;
+                decimal price, qtyAvailable;
 
                 await using (var reader = await productCommand.ExecuteReaderAsync(cancellationToken))
                 {
@@ -517,7 +538,6 @@ static class CommerceDatabase
                     productCode = reader.GetString(2);
                     price = reader.GetDecimal(3);
                     qtyAvailable = reader.GetDecimal(4);
-                    biayaPengirimanPerKg = reader.GetDecimal(5);
                 }
 
                 if (qtyAvailable < item.Quantity)
@@ -525,9 +545,6 @@ static class CommerceDatabase
                     throw new InvalidOperationException($"Stok {name} tidak cukup.");
                 }
 
-                // qty dipesan dalam satuan TON; tarif ongkir region dalam Rp/kg.
-                var beratKg = item.Quantity * 1000m;
-                totalShipping += biayaPengirimanPerKg * beratKg;
                 // harga_satuan dalam Rp/kg; untuk produk satuan TON, qty dipesan dalam TON jadi
                 // harus dikonversi ke kg dulu sebelum dikalikan harga.
                 var isTonUnit = string.Equals(unit, "TON", StringComparison.OrdinalIgnoreCase);
@@ -536,8 +553,7 @@ static class CommerceDatabase
             }
 
             var subtotal = orderItems.Sum(item => item.TotalPrice);
-            var shipping = Math.Round(totalShipping, 2);
-            var total = subtotal + shipping;
+            var total = subtotal;
             // Kode pemesanan sementara - diganti kode pembayaran resmi (GCS-{tahun}-{urutan}) oleh PayOrderAsync saat bayar sukses.
             var orderCode = $"ORD-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8]}";
             var vendor = await GetVendorForUserAsync(connection, (SqlTransaction)transaction, request.UserEmail, cancellationToken);
@@ -552,7 +568,8 @@ static class CommerceDatabase
                 addressCommand.Transaction = (SqlTransaction)transaction;
                 // kab/kec diambil live dari dbo.kabupaten/dbo.kecamatan (bukan kolom cache di Users)
                 // supaya tidak terikut data stale; gudang aktif = status 'approved' di gudang_submissions
-                // (dikelola admin console) untuk kecamatan kios tersebut, ambil yang terbaru jika lebih dari satu.
+                // (dikelola admin console), cakupan kecamatan gudang disimpan di tabel junction
+                // gudang_submission_kecamatans (satu gudang bisa mencakup beberapa kecamatan).
                 addressCommand.CommandText = """
                     SELECT u.Address, u.Kelurahan, u.KodePos, u.Latitude, u.Longitude,
                            u.Region, kab.nama_kab, kec.nama_kec, g.Id, g.nama_gudang
@@ -562,7 +579,8 @@ static class CommerceDatabase
                     OUTER APPLY (
                         SELECT TOP 1 gs.id AS Id, gs.nama_gudang
                         FROM dbo.gudang_submissions gs
-                        WHERE gs.kecamatan_id = u.KecamatanId AND gs.status = 'approved'
+                        INNER JOIN dbo.gudang_submission_kecamatans gsk ON gsk.gudang_submission_id = gs.id
+                        WHERE gsk.kecamatan_id = u.KecamatanId AND gs.status = 'approved'
                         ORDER BY gs.id DESC
                     ) g
                     WHERE u.Email = @Email;
@@ -588,12 +606,12 @@ static class CommerceDatabase
             orderCommand.Transaction = (SqlTransaction)transaction;
             orderCommand.CommandText = """
                 INSERT INTO dbo.Orders
-                (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, ShippingAmount, TotalAmount,
+                (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, TotalAmount,
                  DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude,
                  KioskRegion, KioskKabupaten, KioskKecamatan, GudangSubmissionId, GudangNama)
                 OUTPUT INSERTED.Id
                 VALUES
-                (@PoNumber, @UserEmail, 'pending_payment', @Vendor, '-', @Subtotal, @ShippingAmount, @TotalAmount,
+                (@PoNumber, @UserEmail, 'pending_payment', @Vendor, '-', @Subtotal, @TotalAmount,
                  @DeliveryAddress, @DeliveryKelurahan, @DeliveryKodePos, @DeliveryLatitude, @DeliveryLongitude,
                  @KioskRegion, @KioskKabupaten, @KioskKecamatan, @GudangSubmissionId, @GudangNama);
                 """;
@@ -601,7 +619,6 @@ static class CommerceDatabase
             orderCommand.Parameters.AddWithValue("@UserEmail", (object?)request.UserEmail ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@Vendor", vendor);
             orderCommand.Parameters.AddWithValue("@Subtotal", subtotal);
-            orderCommand.Parameters.AddWithValue("@ShippingAmount", shipping);
             orderCommand.Parameters.AddWithValue("@DeliveryAddress", (object?)deliveryAddress ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@DeliveryKelurahan", (object?)deliveryKelurahan ?? DBNull.Value);
             orderCommand.Parameters.AddWithValue("@DeliveryKodePos", (object?)deliveryKodePos ?? DBNull.Value);
@@ -770,7 +787,7 @@ static class CommerceDatabase
 
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT Id, PoNumber, Status, Vendor, PaymentMethod, Subtotal, ShippingAmount,
+            SELECT Id, PoNumber, Status, Vendor, PaymentMethod, Subtotal,
                    TotalAmount, CreatedAt, PaidAt, DeliveredAt, OrderStatus, OrderStatusNote,
                    DeliveryAddress, DeliveryKelurahan, DeliveryKodePos, DeliveryLatitude, DeliveryLongitude
             FROM dbo.Orders
@@ -793,24 +810,44 @@ static class CommerceDatabase
             Vendor = reader.GetString(3),
             PaymentMethod = reader.GetString(4),
             Subtotal = reader.GetDecimal(5),
-            ShippingAmount = reader.GetDecimal(6),
-            TotalAmount = reader.GetDecimal(7),
-            CreatedAt = reader.GetFieldValue<DateTimeOffset>(8),
-            PaidAt = reader.IsDBNull(9) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(9),
-            DeliveredAt = reader.IsDBNull(10) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(10),
-            OrderStatus = reader.IsDBNull(11) ? null : reader.GetString(11),
-            OrderStatusNote = reader.IsDBNull(12) ? null : reader.GetString(12),
-            DeliveryAddress = reader.IsDBNull(13) ? null : reader.GetString(13),
-            DeliveryKelurahan = reader.IsDBNull(14) ? null : reader.GetString(14),
-            DeliveryKodePos = reader.IsDBNull(15) ? null : reader.GetString(15),
-            DeliveryLatitude = reader.IsDBNull(16) ? (double?)null : (double)reader.GetDecimal(16),
-            DeliveryLongitude = reader.IsDBNull(17) ? (double?)null : (double)reader.GetDecimal(17)
+            TotalAmount = reader.GetDecimal(6),
+            CreatedAt = reader.GetFieldValue<DateTimeOffset>(7),
+            PaidAt = reader.IsDBNull(8) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(8),
+            DeliveredAt = reader.IsDBNull(9) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(9),
+            OrderStatus = reader.IsDBNull(10) ? null : reader.GetString(10),
+            OrderStatusNote = reader.IsDBNull(11) ? null : reader.GetString(11),
+            DeliveryAddress = reader.IsDBNull(12) ? null : reader.GetString(12),
+            DeliveryKelurahan = reader.IsDBNull(13) ? null : reader.GetString(13),
+            DeliveryKodePos = reader.IsDBNull(14) ? null : reader.GetString(14),
+            DeliveryLatitude = reader.IsDBNull(15) ? (double?)null : (double)reader.GetDecimal(15),
+            DeliveryLongitude = reader.IsDBNull(16) ? (double?)null : (double)reader.GetDecimal(16)
         };
         await reader.CloseAsync();
 
         var items = await GetOrderItemsAsync(connection, orderId, cancellationToken);
         var timeline = await GetOrderTimelineAsync(connection, orderId, cancellationToken);
         var (paymentStatus, paymentStatusLabel) = DerivePaymentStatus(detail.PaidAt);
+
+        // Shipment baru terhubung setelah admin region menugaskan transportir untuk order ini;
+        // sebelum itu tidak ada baris Shipments dengan OrderId = orderId.
+        string? driverName = null, truckLabel = null, policeNumber = null;
+        await using (var shipmentCommand = connection.CreateCommand())
+        {
+            shipmentCommand.CommandText = """
+                SELECT TOP 1 DriverName, TruckLabel, PoliceNumber
+                FROM dbo.Shipments
+                WHERE OrderId = @OrderId
+                ORDER BY CreatedAt DESC;
+                """;
+            shipmentCommand.Parameters.AddWithValue("@OrderId", orderId);
+            await using var shipmentReader = await shipmentCommand.ExecuteReaderAsync(cancellationToken);
+            if (await shipmentReader.ReadAsync(cancellationToken))
+            {
+                driverName = shipmentReader.IsDBNull(0) ? null : shipmentReader.GetString(0);
+                truckLabel = shipmentReader.IsDBNull(1) ? null : shipmentReader.GetString(1);
+                policeNumber = shipmentReader.IsDBNull(2) ? null : shipmentReader.GetString(2);
+            }
+        }
 
         return new OrderDetailDto(
             detail.PoNumber,
@@ -819,7 +856,6 @@ static class CommerceDatabase
             detail.Vendor,
             detail.PaymentMethod,
             detail.Subtotal,
-            detail.ShippingAmount,
             detail.TotalAmount,
             detail.CreatedAt,
             detail.PaidAt,
@@ -835,7 +871,10 @@ static class CommerceDatabase
             detail.DeliveryKelurahan,
             detail.DeliveryKodePos,
             detail.DeliveryLatitude,
-            detail.DeliveryLongitude);
+            detail.DeliveryLongitude,
+            driverName,
+            truckLabel,
+            policeNumber);
     }
 
     public static async Task<PaymentResponse?> PayOrderAsync(
@@ -981,9 +1020,10 @@ static class CommerceDatabase
 
     public static async Task<DashboardSummaryDto> GetDashboardSummaryAsync(
         IConfiguration configuration,
+        string? userEmail,
         CancellationToken cancellationToken)
     {
-        var orders = await GetOrdersAsync(configuration, null, cancellationToken);
+        var orders = await GetOrdersAsync(configuration, userEmail, cancellationToken);
         var active = orders.Count(order => order.Status is "pending_payment" or "paid" or "shipping");
         var completed = orders.Count(order => order.Status is "received" or "completed");
         var now = DateTimeOffset.UtcNow;
@@ -998,22 +1038,30 @@ static class CommerceDatabase
         string? transportirEmail,
         CancellationToken cancellationToken)
     {
-        var shipments = new List<ShipmentSummaryDto>();
         var connectionString = ConnectionStringFactory.Build(configuration);
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
 
-        await using var command = connection.CreateCommand();
-        command.CommandText = ShipmentSelectSql + """
-            WHERE @TransportirEmail IS NULL OR s.TransportirEmail IS NULL OR s.TransportirEmail = @TransportirEmail
-            ORDER BY s.CreatedAt DESC;
-            """;
-        command.Parameters.AddWithValue("@TransportirEmail", string.IsNullOrWhiteSpace(transportirEmail) ? DBNull.Value : transportirEmail);
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        var rawRows = new List<RawShipmentRow>();
+        await using (var command = connection.CreateCommand())
         {
-            shipments.Add(MapShipmentRow(reader));
+            command.CommandText = ShipmentSelectSql + """
+                WHERE @TransportirEmail IS NULL OR s.TransportirEmail = @TransportirEmail
+                ORDER BY s.CreatedAt DESC;
+                """;
+            command.Parameters.AddWithValue("@TransportirEmail", string.IsNullOrWhiteSpace(transportirEmail) ? DBNull.Value : transportirEmail);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                rawRows.Add(MapRawShipmentRow(reader));
+            }
+        }
+
+        var shipments = new List<ShipmentSummaryDto>(rawRows.Count);
+        foreach (var row in rawRows)
+        {
+            shipments.Add(await EnrichShipmentRowAsync(connection, row, cancellationToken));
         }
 
         return shipments;
@@ -1028,53 +1076,176 @@ static class CommerceDatabase
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
 
-        await using var command = connection.CreateCommand();
-        command.CommandText = ShipmentSelectSql + "WHERE s.ShipmentNumber = @ShipmentNumber;";
-        command.Parameters.AddWithValue("@ShipmentNumber", shipmentNumber);
+        RawShipmentRow? row = null;
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = ShipmentSelectSql + "WHERE s.ShipmentNumber = @ShipmentNumber;";
+            command.Parameters.AddWithValue("@ShipmentNumber", shipmentNumber);
 
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        return await reader.ReadAsync(cancellationToken) ? MapShipmentRow(reader) : null;
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                row = MapRawShipmentRow(reader);
+            }
+        }
+
+        return row is null ? null : await EnrichShipmentRowAsync(connection, row, cancellationToken);
     }
 
     private const string ShipmentSelectSql = """
         SELECT s.ShipmentNumber, s.Status, COALESCE(s.DriverName, ''), s.TruckLabel, s.PoliceNumber,
                s.DestinationLabel, s.DestinationAddress, s.OriginLat, s.OriginLng, s.DestinationLat, s.DestinationLng,
-               s.CreatedAt, s.CompletedAt, s.OrderId, o.PoNumber, w.name, w.address,
+               s.CreatedAt, s.CompletedAt, s.OrderId, o.PoNumber,
+               s.ProductId, s.ProductCode, s.ProductName, s.QuotaTon,
                s.MuatInPhotoUrl, s.MuatOutPhotoUrl, s.Note, s.AssignedBy, s.MuatInCompletedAt, s.MuatOutCompletedAt
         FROM dbo.Shipments s
         LEFT JOIN dbo.Orders o ON o.Id = s.OrderId
-        LEFT JOIN dbo.warehouses w ON w.id = s.WarehouseId
 
         """;
 
-    private static ShipmentSummaryDto MapShipmentRow(SqlDataReader reader)
+    /// <summary>Unenriched shipment row — gudang/kode SO come from the SO submission tables (admin console/Laravel
+    /// side), looked up separately per (OrderId, ProductId) since they're computed, not a plain column join.</summary>
+    private sealed record RawShipmentRow(
+        string ShipmentNumber, string Status, string DriverName, string? TruckLabel, string? PoliceNumber,
+        string? DestinationLabel, string? DestinationAddress, double? OriginLat, double? OriginLng,
+        double? DestinationLat, double? DestinationLng, DateTimeOffset CreatedAt, DateTimeOffset? CompletedAt,
+        int? OrderId, string? PoNumber, int? ProductId, string? ProductCode, string? ProductName, decimal? QuotaTon,
+        string? MuatInPhotoUrl, string? MuatOutPhotoUrl, string? Note, string? AssignedBy,
+        DateTimeOffset? MuatInCompletedAt, DateTimeOffset? MuatOutCompletedAt);
+
+    private static RawShipmentRow MapRawShipmentRow(SqlDataReader reader) => new(
+        reader.GetString(0),
+        reader.GetString(1),
+        reader.GetString(2),
+        reader.IsDBNull(3) ? null : reader.GetString(3),
+        reader.IsDBNull(4) ? null : reader.GetString(4),
+        reader.IsDBNull(5) ? null : reader.GetString(5),
+        reader.IsDBNull(6) ? null : reader.GetString(6),
+        reader.IsDBNull(7) ? null : (double)reader.GetDecimal(7),
+        reader.IsDBNull(8) ? null : (double)reader.GetDecimal(8),
+        reader.IsDBNull(9) ? null : (double)reader.GetDecimal(9),
+        reader.IsDBNull(10) ? null : (double)reader.GetDecimal(10),
+        reader.GetFieldValue<DateTimeOffset>(11),
+        reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12),
+        reader.IsDBNull(13) ? null : reader.GetInt32(13),
+        reader.IsDBNull(14) ? null : reader.GetString(14),
+        // Shipments.ProductId is BIGINT in SQL Server (added via Laravel's unsignedBigInteger()), unlike
+        // the other (smaller) int columns here that pre-date that migration.
+        reader.IsDBNull(15) ? null : (int)reader.GetInt64(15),
+        reader.IsDBNull(16) ? null : reader.GetString(16),
+        reader.IsDBNull(17) ? null : reader.GetString(17),
+        reader.IsDBNull(18) ? null : reader.GetDecimal(18),
+        reader.IsDBNull(19) ? null : reader.GetString(19),
+        reader.IsDBNull(20) ? null : reader.GetString(20),
+        reader.IsDBNull(21) ? null : reader.GetString(21),
+        reader.IsDBNull(22) ? null : reader.GetString(22),
+        reader.IsDBNull(23) ? null : reader.GetFieldValue<DateTimeOffset>(23),
+        reader.IsDBNull(24) ? null : reader.GetFieldValue<DateTimeOffset>(24));
+
+    private static async Task<ShipmentSummaryDto> EnrichShipmentRowAsync(
+        SqlConnection connection, RawShipmentRow row, CancellationToken cancellationToken)
     {
-        var status = reader.GetString(1);
+        string? soCode = null, warehouseName = null, warehouseAddress = null;
+        if (row.OrderId is not null && row.ProductId is not null)
+        {
+            (soCode, warehouseName, warehouseAddress) = await GetSoWarehouseInfoAsync(
+                connection, row.OrderId.Value, row.ProductId.Value, cancellationToken);
+        }
+
         return new ShipmentSummaryDto(
-            reader.GetString(0),
-            status,
-            ToShipmentStatusLabel(status),
-            reader.GetString(2),
-            reader.IsDBNull(3) ? null : reader.GetString(3),
-            reader.IsDBNull(4) ? null : reader.GetString(4),
-            reader.IsDBNull(5) ? null : reader.GetString(5),
-            reader.IsDBNull(6) ? null : reader.GetString(6),
-            reader.IsDBNull(7) ? null : (double)reader.GetDecimal(7),
-            reader.IsDBNull(8) ? null : (double)reader.GetDecimal(8),
-            reader.IsDBNull(9) ? null : (double)reader.GetDecimal(9),
-            reader.IsDBNull(10) ? null : (double)reader.GetDecimal(10),
-            reader.GetFieldValue<DateTimeOffset>(11),
-            reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12),
-            reader.IsDBNull(13) ? null : reader.GetInt32(13),
-            reader.IsDBNull(14) ? null : reader.GetString(14),
-            reader.IsDBNull(15) ? null : reader.GetString(15),
-            reader.IsDBNull(16) ? null : reader.GetString(16),
-            reader.IsDBNull(17) ? null : reader.GetString(17),
-            reader.IsDBNull(18) ? null : reader.GetString(18),
-            reader.IsDBNull(19) ? null : reader.GetString(19),
-            reader.IsDBNull(20) ? null : reader.GetString(20),
-            reader.IsDBNull(21) ? null : reader.GetFieldValue<DateTimeOffset>(21),
-            reader.IsDBNull(22) ? null : reader.GetFieldValue<DateTimeOffset>(22));
+            row.ShipmentNumber,
+            row.Status,
+            ToShipmentStatusLabel(row.Status),
+            row.DriverName,
+            row.TruckLabel,
+            row.PoliceNumber,
+            row.DestinationLabel,
+            row.DestinationAddress,
+            row.OriginLat,
+            row.OriginLng,
+            row.DestinationLat,
+            row.DestinationLng,
+            row.CreatedAt,
+            row.CompletedAt,
+            row.OrderId,
+            row.PoNumber,
+            warehouseName,
+            warehouseAddress,
+            row.MuatInPhotoUrl,
+            row.MuatOutPhotoUrl,
+            row.Note,
+            row.AssignedBy,
+            row.MuatInCompletedAt,
+            row.MuatOutCompletedAt,
+            row.ProductId,
+            row.ProductCode,
+            row.ProductName,
+            row.QuotaTon,
+            soCode);
+    }
+
+    /// <summary>
+    /// Kode SO + gudang aktif sekarang ditentukan lewat pengajuan SO (so_submission_*, dikelola admin
+    /// console/SuperAdmin) yang dikunci ke (OrderId, ProductId) — bukan lagi `Shipments.WarehouseId`
+    /// (kolom itu tidak pernah lagi diisi sejak fitur "Pilih Gudang per pesanan" diganti SO). Kalau (order_id,
+    /// product_id) pernah masuk >1 pengajuan SO (mis. yang pertama ditolak, lalu direkap ulang), baris dengan
+    /// id terbesar (paling baru) yang menang — sama seperti `OrderController::format()` di admin console.
+    /// </summary>
+    private static async Task<(string? SoCode, string? WarehouseName, string? WarehouseAddress)> GetSoWarehouseInfoAsync(
+        SqlConnection connection, int orderId, int productId, CancellationToken cancellationToken)
+    {
+        int lineId;
+        string? soCode;
+        await using (var lineCommand = connection.CreateCommand())
+        {
+            lineCommand.CommandText = """
+                SELECT TOP 1 l.id, l.so_code
+                FROM dbo.so_submission_line_orders lo
+                INNER JOIN dbo.so_submission_lines l ON l.id = lo.line_id
+                WHERE lo.order_id = @OrderId AND lo.product_id = @ProductId AND l.status = 'approved'
+                ORDER BY lo.id DESC;
+                """;
+            lineCommand.Parameters.AddWithValue("@OrderId", orderId);
+            lineCommand.Parameters.AddWithValue("@ProductId", productId);
+
+            await using var reader = await lineCommand.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                return (null, null, null);
+            }
+
+            // so_submission_lines.id is BIGINT (Laravel's default bigIncrements primary key).
+            lineId = (int)reader.GetInt64(0);
+            soCode = reader.IsDBNull(1) ? null : reader.GetString(1);
+        }
+
+        var names = new List<string>();
+        var addresses = new List<string>();
+        await using (var gudangCommand = connection.CreateCommand())
+        {
+            gudangCommand.CommandText = """
+                SELECT g.nama_gudang, g.alamat_gudang
+                FROM dbo.so_submission_line_gudangs slg
+                INNER JOIN dbo.gudang_submissions g ON g.id = slg.gudang_submission_id
+                WHERE slg.line_id = @LineId;
+                """;
+            gudangCommand.Parameters.AddWithValue("@LineId", lineId);
+
+            await using var reader = await gudangCommand.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                names.Add(reader.GetString(0));
+                if (!reader.IsDBNull(1))
+                {
+                    addresses.Add(reader.GetString(1));
+                }
+            }
+        }
+
+        return (
+            soCode,
+            names.Count > 0 ? string.Join(" / ", names) : null,
+            addresses.Count > 0 ? string.Join(" / ", addresses) : null);
     }
 
     public static async Task<TransportirDashboardSummaryDto> GetTransportirDashboardSummaryAsync(
@@ -1090,6 +1261,7 @@ static class CommerceDatabase
 
     private static string ToShipmentStatusLabel(string status) => status switch
     {
+        "belum_ditugaskan" => "Belum Ditugaskan",
         "siap_muat" => "Siap Muat",
         "dalam_perjalanan" => "Dalam Perjalanan",
         "selesai" => "Selesai",
@@ -1167,14 +1339,16 @@ static class CommerceDatabase
                 updateShipment.Parameters.AddWithValue("@Id", shipmentId);
                 await updateShipment.ExecuteNonQueryAsync(cancellationToken);
 
-                var userEmail = await UpdateOrderForShipmentEventAsync(
-                    connection, (SqlTransaction)transaction, orderId.Value,
-                    orderStatus: "shipping", legacyStatus: "shipping", setDeliveredAt: false, cancellationToken);
+                var (changed, _, userEmail) = await RecomputeOrderStatusAsync(
+                    connection, (SqlTransaction)transaction, orderId.Value, cancellationToken);
 
-                await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId.Value,
-                    "Dalam Perjalanan", "Kendaraan berangkat dari gudang.", "shipping", true, 30, cancellationToken);
-                await AddNotificationAsync(connection, (SqlTransaction)transaction,
-                    "Pesanan dalam perjalanan", $"Shipment {shipmentNumber} sudah berangkat dari gudang.", userEmail, cancellationToken);
+                if (changed)
+                {
+                    await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId.Value,
+                        "Dalam Perjalanan", "Kendaraan berangkat dari gudang.", "shipping", true, 30, cancellationToken);
+                    await AddNotificationAsync(connection, (SqlTransaction)transaction,
+                        "Pesanan dalam perjalanan", $"Shipment {shipmentNumber} sudah berangkat dari gudang.", userEmail, cancellationToken);
+                }
             }
             else
             {
@@ -1200,14 +1374,16 @@ static class CommerceDatabase
                 updateShipment.Parameters.AddWithValue("@Id", shipmentId);
                 await updateShipment.ExecuteNonQueryAsync(cancellationToken);
 
-                var userEmail = await UpdateOrderForShipmentEventAsync(
-                    connection, (SqlTransaction)transaction, orderId.Value,
-                    orderStatus: "delivered", legacyStatus: "delivered", setDeliveredAt: true, cancellationToken);
+                var (changed, _, userEmail) = await RecomputeOrderStatusAsync(
+                    connection, (SqlTransaction)transaction, orderId.Value, cancellationToken);
 
-                await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId.Value,
-                    "Pemesanan Selesai", "Barang telah diserahterimakan di kios tujuan.", "delivered", true, 40, cancellationToken);
-                await AddNotificationAsync(connection, (SqlTransaction)transaction,
-                    "Pesanan selesai", $"Shipment {shipmentNumber} telah sampai di tujuan.", userEmail, cancellationToken);
+                if (changed)
+                {
+                    await AddOrderEventAsync(connection, (SqlTransaction)transaction, orderId.Value,
+                        "Pesanan Selesai", "Barang telah diserahterimakan di kios tujuan.", "delivered", true, 40, cancellationToken);
+                    await AddNotificationAsync(connection, (SqlTransaction)transaction,
+                        "Pesanan selesai", $"Shipment {shipmentNumber} telah sampai di tujuan.", userEmail, cancellationToken);
+                }
             }
 
             await transaction.CommitAsync(cancellationToken);
@@ -1222,31 +1398,77 @@ static class CommerceDatabase
             ?? throw new InvalidOperationException("Shipment tidak ditemukan setelah pembaruan status.");
     }
 
-    private static async Task<string?> UpdateOrderForShipmentEventAsync(
+    /// <summary>
+    /// Recomputes Orders.OrderStatus from the aggregate of every Shipments row tied to the order,
+    /// mirroring Order::getEffectiveOrderStatusAttribute() on the admin console (Laravel) side: a single
+    /// order can now have several Shipments rows (multi-truk/multi-mitra), so "delivered" must wait until
+    /// ALL of them are "selesai" instead of flipping on the first truck to finish.
+    /// </summary>
+    private static async Task<(bool Changed, string NewStatus, string? UserEmail)> RecomputeOrderStatusAsync(
         SqlConnection connection,
         SqlTransaction transaction,
         int orderId,
-        string orderStatus,
-        string legacyStatus,
-        bool setDeliveredAt,
         CancellationToken cancellationToken)
     {
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = $"""
+        await using var readCommand = connection.CreateCommand();
+        readCommand.Transaction = transaction;
+        readCommand.CommandText = "SELECT OrderStatus FROM dbo.Orders WHERE Id = @OrderId;";
+        readCommand.Parameters.AddWithValue("@OrderId", orderId);
+        var currentStatus = (string?)await readCommand.ExecuteScalarAsync(cancellationToken);
+
+        if (currentStatus == "cancelled")
+        {
+            return (false, currentStatus, null);
+        }
+
+        var shipmentStatuses = new List<string>();
+        await using (var shipmentsCommand = connection.CreateCommand())
+        {
+            shipmentsCommand.Transaction = transaction;
+            shipmentsCommand.CommandText = "SELECT Status FROM dbo.Shipments WHERE OrderId = @OrderId;";
+            shipmentsCommand.Parameters.AddWithValue("@OrderId", orderId);
+            await using var reader = await shipmentsCommand.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                shipmentStatuses.Add(reader.GetString(0));
+            }
+        }
+
+        var newStatus = shipmentStatuses.Contains("dalam_perjalanan")
+            ? "shipping"
+            : shipmentStatuses.Count > 0 && shipmentStatuses.All(status => status == "selesai")
+                ? "delivered"
+                : "processing";
+
+        if (newStatus == currentStatus)
+        {
+            return (false, newStatus, null);
+        }
+
+        var legacyStatus = newStatus switch
+        {
+            "processing" => "paid",
+            _ => newStatus,
+        };
+
+        await using var updateCommand = connection.CreateCommand();
+        updateCommand.Transaction = transaction;
+        updateCommand.CommandText = $"""
             UPDATE dbo.Orders
             SET OrderStatus = @OrderStatus,
                 Status = @LegacyStatus,
-                DeliveredAt = {(setDeliveredAt ? "COALESCE(DeliveredAt, SYSUTCDATETIME())" : "DeliveredAt")},
+                DeliveredAt = {(newStatus == "delivered" ? "COALESCE(DeliveredAt, SYSUTCDATETIME())" : "DeliveredAt")},
                 UpdatedAt = SYSUTCDATETIME()
             OUTPUT INSERTED.UserEmail
             WHERE Id = @OrderId;
             """;
-        command.Parameters.AddWithValue("@OrderStatus", orderStatus);
-        command.Parameters.AddWithValue("@LegacyStatus", legacyStatus);
-        command.Parameters.AddWithValue("@OrderId", orderId);
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        return result is string email ? email : null;
+        updateCommand.Parameters.AddWithValue("@OrderStatus", newStatus);
+        updateCommand.Parameters.AddWithValue("@LegacyStatus", legacyStatus);
+        updateCommand.Parameters.AddWithValue("@OrderId", orderId);
+        var result = await updateCommand.ExecuteScalarAsync(cancellationToken);
+        var userEmail = result is string email ? email : null;
+
+        return (true, newStatus, userEmail);
     }
 
     public static async Task<IReadOnlyList<NotificationDto>> GetNotificationsAsync(
@@ -1366,9 +1588,9 @@ static class CommerceDatabase
         IF NOT EXISTS (SELECT 1 FROM dbo.Orders WHERE PoNumber = 'PO-2026-10-9842')
         BEGIN
             INSERT INTO dbo.Orders
-            (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, ShippingAmount, TotalAmount, PaidAt)
+            (PoNumber, UserEmail, Status, Vendor, PaymentMethod, Subtotal, TotalAmount, PaidAt)
             VALUES
-            ('PO-2026-10-9842', NULL, 'shipping', 'PT Global Logistik Nusantara', 'Bank Transfer (Mandiri)', 12150000, 250000, 12400000, SYSUTCDATETIME());
+            ('PO-2026-10-9842', NULL, 'shipping', 'PT Global Logistik Nusantara', 'Bank Transfer (Mandiri)', 12150000, 12400000, SYSUTCDATETIME());
 
             DECLARE @OrderId INT = SCOPE_IDENTITY();
 
@@ -1580,7 +1802,7 @@ static class CommerceDatabase
     {
         "processing" => "Sedang Diproses",
         "shipping" => "Dalam Perjalanan",
-        "delivered" => "Pemesanan Selesai",
+        "delivered" => "Pesanan Selesai",
         "cancelled" => "Dibatalkan",
         _ => "Menunggu Pembayaran"
     };

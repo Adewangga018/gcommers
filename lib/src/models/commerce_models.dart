@@ -13,7 +13,6 @@ class Product {
     required this.status,
     required this.rating,
     required this.specification,
-    this.biayaPengirimanPerKg = 50,
     this.pajakPphPersen = 0.25,
   });
 
@@ -32,7 +31,6 @@ class Product {
       status: json['status'] as String? ?? 'Aktif',
       rating: (json['rating'] as num?)?.toDouble() ?? 0,
       specification: json['specification'] as String?,
-      biayaPengirimanPerKg: (json['biayaPengirimanPerKg'] as num?)?.toDouble() ?? 50,
       pajakPphPersen: (json['pajakPphPersen'] as num?)?.toDouble() ?? 0.25,
     );
   }
@@ -50,7 +48,6 @@ class Product {
   final String status;
   final double rating;
   final String? specification;
-  final double biayaPengirimanPerKg;
   final double pajakPphPersen;
 }
 
@@ -133,7 +130,6 @@ class OrderDetail {
     required this.vendor,
     required this.paymentMethod,
     required this.subtotal,
-    required this.shippingAmount,
     required this.totalAmount,
     required this.createdAt,
     required this.paidAt,
@@ -150,6 +146,9 @@ class OrderDetail {
     this.deliveryKodePos,
     this.deliveryLatitude,
     this.deliveryLongitude,
+    this.driverName,
+    this.truckLabel,
+    this.policeNumber,
   });
 
   factory OrderDetail.fromJson(Map<String, dynamic> json) {
@@ -160,7 +159,6 @@ class OrderDetail {
       vendor: json['vendor'] as String,
       paymentMethod: json['paymentMethod'] as String,
       subtotal: (json['subtotal'] as num).toDouble(),
-      shippingAmount: (json['shippingAmount'] as num).toDouble(),
       totalAmount: (json['totalAmount'] as num).toDouble(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       paidAt: json['paidAt'] == null ? null : DateTime.parse(json['paidAt'] as String),
@@ -181,6 +179,9 @@ class OrderDetail {
       deliveryKodePos: json['deliveryKodePos'] as String?,
       deliveryLatitude: (json['deliveryLatitude'] as num?)?.toDouble(),
       deliveryLongitude: (json['deliveryLongitude'] as num?)?.toDouble(),
+      driverName: json['driverName'] as String?,
+      truckLabel: json['truckLabel'] as String?,
+      policeNumber: json['policeNumber'] as String?,
     );
   }
 
@@ -190,7 +191,6 @@ class OrderDetail {
   final String vendor;
   final String paymentMethod;
   final double subtotal;
-  final double shippingAmount;
   final double totalAmount;
   final DateTime createdAt;
   final DateTime? paidAt;
@@ -207,6 +207,9 @@ class OrderDetail {
   final String? deliveryKodePos;
   final double? deliveryLatitude;
   final double? deliveryLongitude;
+  final String? driverName;
+  final String? truckLabel;
+  final String? policeNumber;
 }
 
 class OrderItem {
@@ -316,6 +319,11 @@ class ShipmentSummary {
     this.assignedBy,
     this.muatInCompletedAt,
     this.muatOutCompletedAt,
+    this.productId,
+    this.productCode,
+    this.productName,
+    this.quotaTon,
+    this.soCode,
   });
 
   factory ShipmentSummary.fromJson(Map<String, dynamic> json) {
@@ -346,6 +354,11 @@ class ShipmentSummary {
           json['muatInCompletedAt'] == null ? null : DateTime.parse(json['muatInCompletedAt'] as String),
       muatOutCompletedAt:
           json['muatOutCompletedAt'] == null ? null : DateTime.parse(json['muatOutCompletedAt'] as String),
+      productId: json['productId'] as int?,
+      productCode: json['productCode'] as String?,
+      productName: json['productName'] as String?,
+      quotaTon: (json['quotaTon'] as num?)?.toDouble(),
+      soCode: json['soCode'] as String?,
     );
   }
 
@@ -373,6 +386,11 @@ class ShipmentSummary {
   final String? assignedBy;
   final DateTime? muatInCompletedAt;
   final DateTime? muatOutCompletedAt;
+  final int? productId;
+  final String? productCode;
+  final String? productName;
+  final double? quotaTon;
+  final String? soCode;
 }
 
 class TransportirDashboardSummary {

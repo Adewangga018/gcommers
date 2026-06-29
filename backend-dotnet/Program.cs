@@ -394,9 +394,9 @@ auth.MapPost("/upload-ktp", async (HttpRequest request, IWebHostEnvironment envi
     return Results.Ok(new UploadKtpResponse(safeName, $"/uploads/ktp/{safeName}"));
 });
 
-app.MapGet("/dashboard/summary", async (IConfiguration configuration, CancellationToken cancellationToken) =>
+app.MapGet("/dashboard/summary", async (string? userEmail, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
-    var summary = await CommerceDatabase.GetDashboardSummaryAsync(configuration, cancellationToken);
+    var summary = await CommerceDatabase.GetDashboardSummaryAsync(configuration, userEmail, cancellationToken);
     return Results.Ok(summary);
 });
 

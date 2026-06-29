@@ -1,110 +1,81 @@
-﻿import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 
 import '../models/auth_models.dart';
+import '../models/commerce_models.dart';
+import '../services/commerce_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/formatters.dart';
 import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 
-class TransportirOrdersPage extends StatelessWidget {
+class TransportirOrdersPage extends StatefulWidget {
   const TransportirOrdersPage({super.key, this.session});
 
   final AuthSession? session;
 
-  static const List<TransportirOrderRecord> _orders = [
-    TransportirOrderRecord(
-      invoiceNumber: 'INV-2023-1102',
-      invoiceLabel: 'INVOICE',
-      statusLabel: 'Proses Bank',
-      statusColor: Color(0xFF8A5A12),
-      statusBackground: Color(0xFFF7E9D2),
-      createdAtLabel: '24 Okt 2023',
-      totalAmountLabel: 'Rp 45.000.000',
-      clientName: 'PT. Pembangunan Jaya Perkasa',
-      buyerName: 'Kios Makmur Jaya',
-      buyerAddress: 'Jl. Sudirman No. 45, Kecamatan Sukabumi, Kota Bandar Lampung.',
-      bptpReference: 'BPTP-23-4412',
-      totalItemsLabel: '3 Jenis Pupuk (35 TON)',
-      shipmentNoticeTitle: 'Pengiriman Dipecah (Split Delivery)',
-      shipmentNoticeBody: 'Akses jalan sempit, armada kecil dikerahkan untuk menyelesaikan pengiriman.',
-      shipments: [
-        TransportirShipmentRecord(
-          shipmentNumber: 'SJ-001',
-          truckLabel: 'Truk A (Nopol: BB 8108 HA)',
-          driverName: 'Hotma',
-          statusLabel: 'Delivered',
-          statusColor: Color(0xFF2F6C3F),
-          statusBackground: Color(0xFFE2F0E6),
-          items: [
-            TransportirShipmentItem(name: 'UREA DO. 3640134773UR / BA.2', quantityText: '15,00'),
-            TransportirShipmentItem(name: 'NPK DO. 3640134774NK / BA.2', quantityText: '10,00'),
-          ],
-          deliveryDateLabel: '24 Okt 2023',
-          recipientName: 'Kios Makmur Jaya',
-          destinationAddress: 'Jl. Raya Tano Tombangan Angko, Tapanuli Selatan',
-          transportirName: 'PT Logistik Utama',
-          policeNumber: 'B 1234 YXZ',
-          totalQuantityLabel: '25,00 TON',
-          qrHint: 'Tunjukkan QR ini ke petugas gudang atau penerima untuk dipindai',
-        ),
-        TransportirShipmentRecord(
-          shipmentNumber: 'SJ-002',
-          truckLabel: 'Truk B (Nopol: BB 9021 XB)',
-          driverName: 'Budi',
-          statusLabel: 'In Transit',
-          statusColor: Color(0xFF8A5A12),
-          statusBackground: Color(0xFFF7E9D2),
-          items: [
-            TransportirShipmentItem(name: 'ZA DO. 3640134775ZA / BA.2', quantityText: '10,00'),
-          ],
-          deliveryDateLabel: '25 Okt 2023',
-          recipientName: 'Kios Makmur Jaya',
-          destinationAddress: 'Jl. Raya Tano Tombangan Angko, Tapanuli Selatan',
-          transportirName: 'PT Logistik Utama',
-          policeNumber: 'B 9021 XB',
-          totalQuantityLabel: '10,00 TON',
-          qrHint: 'Tunjukkan QR ini ke petugas gudang atau penerima untuk dipindai',
-        ),
-      ],
-    ),
-    TransportirOrderRecord(
-      invoiceNumber: 'INV-2023-1184',
-      invoiceLabel: 'INVOICE',
-      statusLabel: 'Terkirim',
-      statusColor: Color(0xFF2F6C3F),
-      statusBackground: Color(0xFFE2F0E6),
-      createdAtLabel: '19 Okt 2023',
-      totalAmountLabel: 'Rp 33.500.000',
-      clientName: 'PT. Cahaya Agro Mandiri',
-      buyerName: 'Gudang Tani Sejahtera',
-      buyerAddress: 'Jl. Anggrek No. 12, Metro Pusat, Lampung',
-      bptpReference: 'BPTP-23-4498',
-      totalItemsLabel: '2 Jenis Pupuk (21 TON)',
-      shipmentNoticeTitle: 'Pengiriman Selesai',
-      shipmentNoticeBody: 'Seluruh surat jalan pada pemesanan ini telah diverifikasi dan dikirim.',
-      shipments: [
-        TransportirShipmentRecord(
-          shipmentNumber: 'SJ-003',
-          truckLabel: 'Truk C (Nopol: BE 9911 AC)',
-          driverName: 'Agus',
-          statusLabel: 'Delivered',
-          statusColor: Color(0xFF2F6C3F),
-          statusBackground: Color(0xFFE2F0E6),
-          items: [
-            TransportirShipmentItem(name: 'Urea Subsidi / BA.2', quantityText: '12,00'),
-            TransportirShipmentItem(name: 'NPK Phonska / BA.2', quantityText: '9,00'),
-          ],
-          deliveryDateLabel: '19 Okt 2023',
-          recipientName: 'Gudang Tani Sejahtera',
-          destinationAddress: 'Jl. Anggrek No. 12, Metro Pusat, Lampung',
-          transportirName: 'PT Logistik Utama',
-          policeNumber: 'BE 9911 AC',
-          totalQuantityLabel: '21,00 TON',
-          qrHint: 'Tunjukkan QR ini ke petugas gudang atau penerima untuk dipindai',
-        ),
-      ],
-    ),
-  ];
+  @override
+  State<TransportirOrdersPage> createState() => _TransportirOrdersPageState();
+}
+
+class _TransportirOrdersPageState extends State<TransportirOrdersPage> {
+  final _service = CommerceService();
+  late Future<List<TransportirAssignedOrder>> _ordersFuture;
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _ordersFuture = _load();
+    // Polling ringan agar pesanan baru/perubahan status dari admin transport & sesama
+    // sopir terlihat tanpa menunggu pull-to-refresh manual (lihat ORDER_FLOW_CONTRACT.md §1.5).
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refresh().catchError((_) {}));
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<List<TransportirAssignedOrder>> _load() async {
+    final email = widget.session?.email;
+    if (email == null || email.isEmpty) {
+      throw Exception('Sesi berakhir, silakan login ulang.');
+    }
+    final shipments = await _service.getShipments(transportirEmail: email);
+
+    // Group surat jalan that share the same PO under one order card (covers split/partial delivery).
+    final byPo = <String, List<ShipmentSummary>>{};
+    for (final shipment in shipments) {
+      final key = (shipment.poNumber?.isNotEmpty ?? false) ? shipment.poNumber! : shipment.shipmentNumber;
+      byPo.putIfAbsent(key, () => []).add(shipment);
+    }
+
+    final orders = <TransportirAssignedOrder>[];
+    for (final entry in byPo.entries) {
+      final hasPo = entry.value.first.poNumber?.isNotEmpty ?? false;
+      OrderDetail? detail;
+      if (hasPo) {
+        try {
+          detail = await _service.getOrderDetail(entry.key);
+        } catch (_) {
+          detail = null;
+        }
+      }
+      orders.add(TransportirAssignedOrder(poNumber: entry.key, detail: detail, shipments: entry.value));
+    }
+
+    orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return orders;
+  }
+
+  Future<void> _refresh() async {
+    final future = _load();
+    setState(() => _ordersFuture = future);
+    await future;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,47 +87,141 @@ class TransportirOrdersPage extends StatelessWidget {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.ink),
-          onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: session),
+          onPressed: () => Navigator.of(context).pushReplacementNamed('/transportir-home', arguments: widget.session),
         ),
         title: Text('GCommers', style: AppTheme.title(size: 18)),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: FutureBuilder<List<TransportirAssignedOrder>>(
+          future: _ordersFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
+                children: [
+                  Icon(Icons.error_outline, color: Colors.grey.shade400, size: 48),
+                  const SizedBox(height: 12),
+                  Text('Gagal memuat pesanan: ${snapshot.error}', textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade600)),
+                ],
+              );
+            }
 
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-        children: [
-          const Text(
-            'Daftar Pemesanan',
-            style: TextStyle(fontSize: 30 / 2, fontWeight: FontWeight.w900, color: Color(0xFF0F261F)),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Kelola pemesanan BPTP dan tagihan invoices.',
-            style: TextStyle(fontSize: 16, color: Color(0xFF5E7D66), height: 1.25),
-          ),
-          const SizedBox(height: 18),
-          ..._orders.map(
-            (order) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _TransportirOrderCard(
-                order: order,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => TransportirOrderDetailPage(order: order, session: session),
-                  ),
+            final orders = snapshot.data ?? const [];
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+              children: [
+                const Text(
+                  'Daftar Pemesanan',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F261F)),
                 ),
-              ),
-            ),
-          ),
-        ],
+                const SizedBox(height: 6),
+                const Text(
+                  'Pesanan yang ditugaskan kepada Anda oleh admin transport.',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF5E7D66), height: 1.3),
+                ),
+                const SizedBox(height: 18),
+                if (orders.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 60),
+                    child: Column(
+                      children: [
+                        Icon(Icons.inbox_outlined, color: Colors.grey.shade400, size: 48),
+                        const SizedBox(height: 12),
+                        Text('Belum ada pesanan yang ditugaskan.', style: TextStyle(color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  )
+                else
+                  ...orders.map(
+                    (order) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _TransportirOrderCard(
+                        order: order,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => TransportirOrderDetailPage(order: order, session: widget.session),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
-      bottomNavigationBar: TransportirBottomNav(currentIndex: 1, session: session),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 1, session: widget.session),
     );
   }
 }
+
+/// One assigned order, with the (possibly several) surat jalan/shipments fulfilling it.
+class TransportirAssignedOrder {
+  const TransportirAssignedOrder({
+    required this.poNumber,
+    required this.detail,
+    required this.shipments,
+  });
+
+  final String poNumber;
+  final OrderDetail? detail;
+  final List<ShipmentSummary> shipments;
+
+  bool get isPartial => shipments.length > 1;
+
+  String get statusLabel => detail?.orderStatusLabel ?? shipments.first.statusLabel;
+  String? get orderStatus => detail?.orderStatus;
+
+  DateTime get createdAt =>
+      detail?.createdAt ?? shipments.map((s) => s.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+
+  double get totalAmount => detail?.totalAmount ?? 0;
+}
+
+String _productLabel(ShipmentSummary shipment) {
+  final parts = [shipment.productCode, shipment.productName].whereType<String>().where((s) => s.isNotEmpty);
+  return parts.isEmpty ? '-' : parts.join(' · ');
+}
+
+Color _orderStatusColor(String? orderStatus) => switch (orderStatus) {
+      'processing' => const Color(0xFF8A5A12),
+      'shipping' => const Color(0xFF2F6C3F),
+      'delivered' => const Color(0xFF0E8F61),
+      'cancelled' => const Color(0xFFB3261E),
+      _ => const Color(0xFF6B8C73),
+    };
+
+Color _orderStatusBackground(String? orderStatus) => switch (orderStatus) {
+      'processing' => const Color(0xFFF7E9D2),
+      'shipping' => const Color(0xFFDCEDE1),
+      'delivered' => const Color(0xFFDFF6EC),
+      'cancelled' => const Color(0xFFFBE3E1),
+      _ => const Color(0xFFEAF2EC),
+    };
+
+Color _shipmentStatusColor(String status) => switch (status) {
+      'dalam_perjalanan' => const Color(0xFF8A5A12),
+      'selesai' => const Color(0xFF2F6C3F),
+      _ => const Color(0xFF5E7D66),
+    };
+
+Color _shipmentStatusBackground(String status) => switch (status) {
+      'dalam_perjalanan' => const Color(0xFFF7E9D2),
+      'selesai' => const Color(0xFFE2F0E6),
+      _ => const Color(0xFFEAF2EC),
+    };
+
 class TransportirOrderDetailPage extends StatelessWidget {
   const TransportirOrderDetailPage({super.key, required this.order, this.session});
 
-  final TransportirOrderRecord order;
+  final TransportirAssignedOrder order;
   final AuthSession? session;
 
   @override
@@ -177,34 +242,14 @@ class TransportirOrderDetailPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
         children: [
-          _DetailHeaderCard(order: order),
-          const SizedBox(height: 14),
-          _NoticeCard(title: order.shipmentNoticeTitle, body: order.shipmentNoticeBody),
-          const SizedBox(height: 20),
-          const Text(
-            'Daftar Surat Jalan',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F261F)),
-          ),
-          const SizedBox(height: 14),
-          ...order.shipments.map(
-            (shipment) => Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _ShipmentSummaryCard(
-                shipment: shipment,
-                order: order,
-                session: session,
-                onOpen: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => TransportirShipmentDetailPage(
-                      order: order,
-                      shipment: shipment,
-                      session: session,
-                    ),
-                  ),
-                ),
-              ),
+          if (order.isPartial) ...[
+            const _NoticeCard(
+              title: 'Pengiriman Dipecah (Split Delivery)',
+              body: 'Pesanan ini dikirim melalui beberapa truk terpisah.',
             ),
-          ),
+            const SizedBox(height: 14),
+          ],
+          _OrderLoadCard(order: order),
         ],
       ),
       bottomNavigationBar: TransportirBottomNav(currentIndex: 1, session: session),
@@ -212,388 +257,20 @@ class TransportirOrderDetailPage extends StatelessWidget {
   }
 }
 
-class TransportirShipmentDetailPage extends StatelessWidget {
-  const TransportirShipmentDetailPage({super.key, required this.order, required this.shipment, this.session});
+/// Satu kartu gabungan: tujuan kios di paling atas, lalu nomor pesanan, lalu daftar
+/// muatan (per truk) yang ditugaskan ke sopir ini saja — tidak menampilkan info
+/// pesanan/harga yang bukan urusan sopir (lihat ORDER_FLOW_CONTRACT.md).
+class _OrderLoadCard extends StatelessWidget {
+  const _OrderLoadCard({required this.order});
 
-  final TransportirOrderRecord order;
-  final TransportirShipmentRecord shipment;
-  final AuthSession? session;
-
-  @override
-  Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF2F6C3F);
-    const Color primaryPurple = Color(0xFF2F6C3F);
-    const Color bgLight = Color(0xFFFFFFFF);
-
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.ink),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text('GCommers', style: AppTheme.title(size: 18)),
-        centerTitle: true,
-        actions: [
-          TextButton.icon(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur cetak sedang disiapkan.'))),
-            icon: const Icon(Icons.print_outlined, color: primaryBlue),
-            label: const Text('Cetak', style: TextStyle(color: primaryBlue, fontWeight: FontWeight.w800)),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFB5D4BC)),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 8)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Tanggal', style: TextStyle(color: Colors.black54, fontSize: 12)),
-                              const SizedBox(height: 4),
-                              Text(shipment.deliveryDateLabel, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
-                              const SizedBox(height: 12),
-                              const Text('Pengemudi', style: TextStyle(color: Colors.black54, fontSize: 12)),
-                              const SizedBox(height: 4),
-                              Text(shipment.driverName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Transportir', style: TextStyle(color: Colors.black54, fontSize: 12)),
-                              const SizedBox(height: 4),
-                              Text(shipment.transportirName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
-                              const SizedBox(height: 12),
-                              const Text('Plat Nomor', style: TextStyle(color: Colors.black54, fontSize: 12)),
-                              const SizedBox(height: 4),
-                              Text(shipment.policeNumber, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    const Divider(height: 1),
-                    const SizedBox(height: 12),
-                    _KeyText(label: 'Nomor Invoice', value: order.invoiceNumber),
-                    const SizedBox(height: 12),
-                    _KeyText(label: 'Surat Jalan', value: shipment.shipmentNumber),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFB5D4BC)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Tujuan (Kios)', style: TextStyle(color: primaryBlue, fontSize: 15, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF2EC),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(shipment.recipientName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
-                          const SizedBox(height: 4),
-                          Text(shipment.destinationAddress, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 14, height: 1.35)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFB5D4BC), style: BorderStyle.solid),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text('PINDAI UNTUK KONFIRMASI', style: TextStyle(color: Color(0xFF5E7D66), fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                          const SizedBox(height: 16),
-                          Container(
-                            width: 104,
-                            height: 104,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: const [
-                                BoxShadow(color: Color(0x12000000), blurRadius: 12, offset: Offset(0, 6)),
-                              ],
-                            ),
-                            child: Center(
-                              child: QrImageView(
-                                data: shipment.shipmentNumber,
-                                version: QrVersions.auto,
-                                size: 88,
-                                backgroundColor: Colors.white,
-                                eyeStyle: const QrEyeStyle(
-                                  eyeShape: QrEyeShape.square,
-                                  color: primaryPurple,
-                                ),
-                                dataModuleStyle: const QrDataModuleStyle(
-                                  dataModuleShape: QrDataModuleShape.square,
-                                  color: Color(0xFF0F261F),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            shipment.shipmentNumber,
-                            style: const TextStyle(color: primaryPurple, fontSize: 12, fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            shipment.qrHint,
-                            style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 13, height: 1.35),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFB5D4BC)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Daftar Barang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 12),
-                    const Divider(height: 1),
-                    const SizedBox(height: 10),
-                    ...shipment.items.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _ShipmentItemRow(item: item),
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    const SizedBox(height: 12),
-                    _KeyText(label: 'Total Quantity', value: shipment.totalQuantityLabel, valueColor: primaryPurple),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: TransportirBottomNav(currentIndex: 1, session: session),
-    );
-  }
-}
-
-class TransportirOrderRecord {
-  const TransportirOrderRecord({
-    required this.invoiceNumber,
-    required this.invoiceLabel,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.statusBackground,
-    required this.createdAtLabel,
-    required this.totalAmountLabel,
-    required this.clientName,
-    required this.buyerName,
-    required this.buyerAddress,
-    required this.bptpReference,
-    required this.totalItemsLabel,
-    required this.shipmentNoticeTitle,
-    required this.shipmentNoticeBody,
-    required this.shipments,
-  });
-
-  final String invoiceNumber;
-  final String invoiceLabel;
-  final String statusLabel;
-  final Color statusColor;
-  final Color statusBackground;
-  final String createdAtLabel;
-  final String totalAmountLabel;
-  final String clientName;
-  final String buyerName;
-  final String buyerAddress;
-  final String bptpReference;
-  final String totalItemsLabel;
-  final String shipmentNoticeTitle;
-  final String shipmentNoticeBody;
-  final List<TransportirShipmentRecord> shipments;
-}
-
-class TransportirShipmentRecord {
-  const TransportirShipmentRecord({
-    required this.shipmentNumber,
-    required this.truckLabel,
-    required this.driverName,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.statusBackground,
-    required this.items,
-    required this.deliveryDateLabel,
-    required this.recipientName,
-    required this.destinationAddress,
-    required this.transportirName,
-    required this.policeNumber,
-    required this.totalQuantityLabel,
-    required this.qrHint,
-  });
-
-  final String shipmentNumber;
-  final String truckLabel;
-  final String driverName;
-  final String statusLabel;
-  final Color statusColor;
-  final Color statusBackground;
-  final List<TransportirShipmentItem> items;
-  final String deliveryDateLabel;
-  final String recipientName;
-  final String destinationAddress;
-  final String transportirName;
-  final String policeNumber;
-  final String totalQuantityLabel;
-  final String qrHint;
-}
-
-class TransportirShipmentItem {
-  const TransportirShipmentItem({required this.name, required this.quantityText});
-
-  final String name;
-  final String quantityText;
-}
-
-class _TransportirOrderCard extends StatelessWidget {
-  const _TransportirOrderCard({required this.order, required this.onTap});
-
-  final TransportirOrderRecord order;
-  final VoidCallback onTap;
+  final TransportirAssignedOrder order;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFB5D4BC)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2F0E6),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF2F6C3F)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(order.invoiceLabel, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-                        const SizedBox(height: 3),
-                        Text(order.invoiceNumber, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
-                      ],
-                    ),
-                  ),
-                  _StatusPill(label: order.statusLabel, foreground: order.statusColor, background: order.statusBackground),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(child: _KeyText(label: 'Tanggal', value: order.createdAtLabel)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _KeyText(label: 'Nilai Tagihan', value: order.totalAmountLabel, valueColor: const Color(0xFF2F6C3F))),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _KeyText(label: 'Klien', value: order.clientName),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: OutlinedButton(
-                  onPressed: onTap,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF2F6C3F),
-                    side: const BorderSide(color: Color(0xFFB5D4BC)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Lihat Detail', style: TextStyle(fontWeight: FontWeight.w800)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+    final firstShipment = order.shipments.first;
+    final buyerName = firstShipment.destinationLabel ?? 'Kios Tujuan';
+    final buyerAddress = order.detail?.deliveryAddress ?? firstShipment.destinationAddress ?? '-';
 
-class _DetailHeaderCard extends StatelessWidget {
-  const _DetailHeaderCard({required this.order});
-
-  final TransportirOrderRecord order;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -605,6 +282,33 @@ class _DetailHeaderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text('TUJUAN', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: const Color(0xFFDCEDE1), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.store_outlined, color: Color(0xFF2F6C3F), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(buyerName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
+                    const SizedBox(height: 2),
+                    Text(buyerAddress, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 13, height: 1.35)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -612,27 +316,94 @@ class _DetailHeaderCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Nomor Invoice', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 12)),
+                    const Text('Nomor Pesanan', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 12)),
                     const SizedBox(height: 4),
-                    Text('#${order.invoiceNumber}', style: const TextStyle(fontSize: 26 / 2, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
+                    Text('#${order.poNumber}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
                   ],
                 ),
               ),
-              _StatusPill(label: 'Partial Delivery', foreground: const Color(0xFF8A5A12), background: const Color(0xFFF7E9D2)),
+              _StatusPill(
+                label: order.statusLabel,
+                foreground: _orderStatusColor(order.orderStatus),
+                background: _orderStatusBackground(order.orderStatus),
+              ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          _KeyText(label: 'Referensi BPTP', value: order.bptpReference),
-          const SizedBox(height: 10),
-          _KeyText(label: 'Tujuan Kios', value: order.buyerName),
-          const SizedBox(height: 4),
-          Text(order.buyerAddress, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 14, height: 1.35)),
-          const SizedBox(height: 10),
-          _KeyText(label: 'Total Item', value: order.totalItemsLabel),
+          if (order.isPartial) ...[
+            const Text('Daftar Muatan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
+            const SizedBox(height: 12),
+          ],
+          for (var i = 0; i < order.shipments.length; i++) ...[
+            _LoadEntry(shipment: order.shipments[i]),
+            if (i != order.shipments.length - 1) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+            ],
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// Satu muatan (1 truk/SJ) — hanya info yang relevan untuk sopir: produk, tonase,
+/// kode SO, kendaraan, dan siapa admin transport yang menugaskan. Tidak ada harga
+/// maupun nomor surat jalan (lihat permintaan UI terbaru).
+class _LoadEntry extends StatelessWidget {
+  const _LoadEntry({required this.shipment});
+
+  final ShipmentSummary shipment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(_productLabel(shipment),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
+            ),
+            _StatusPill(
+              label: shipment.statusLabel,
+              foreground: _shipmentStatusColor(shipment.status),
+              background: _shipmentStatusBackground(shipment.status),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _InfoLineRow(
+          icon: Icons.scale_outlined,
+          label: 'Tonase',
+          value: shipment.quotaTon != null ? '${shipment.quotaTon} Ton' : '-',
+        ),
+        const SizedBox(height: 8),
+        _InfoLineRow(
+          icon: Icons.qr_code_2_outlined,
+          label: 'Kode SO',
+          value: shipment.soCode ?? 'Belum tersedia',
+        ),
+        const SizedBox(height: 8),
+        _InfoLineRow(
+          icon: Icons.local_shipping_outlined,
+          label: 'Kendaraan',
+          value: '${shipment.truckLabel ?? 'Kendaraan belum diatur'} • ${shipment.driverName.isEmpty ? '-' : shipment.driverName}',
+        ),
+        if (shipment.assignedBy != null) ...[
+          const SizedBox(height: 8),
+          _InfoLineRow(icon: Icons.admin_panel_settings_outlined, label: 'Ditugaskan Oleh', value: shipment.assignedBy!),
+        ],
+        if (shipment.note != null) ...[
+          const SizedBox(height: 8),
+          Text(shipment.note!, style: const TextStyle(fontSize: 12, color: Color(0xFF5E7D66))),
+        ],
+      ],
     );
   }
 }
@@ -674,176 +445,114 @@ class _NoticeCard extends StatelessWidget {
   }
 }
 
-class _ShipmentSummaryCard extends StatelessWidget {
-  const _ShipmentSummaryCard({required this.shipment, required this.order, required this.session, required this.onOpen});
+class _InfoLineRow extends StatelessWidget {
+  const _InfoLineRow({required this.icon, required this.label, required this.value});
 
-  final TransportirShipmentRecord shipment;
-  final TransportirOrderRecord order;
-  final AuthSession? session;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFB5D4BC)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCEDE1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.description_outlined, color: Color(0xFF2F6C3F)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Surat Jalan #${shipment.shipmentNumber}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
-                      const SizedBox(height: 3),
-                      Text('${shipment.truckLabel} • Supir: ${shipment.driverName}', style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 13, height: 1.2)),
-                    ],
-                  ),
-                ),
-                _StatusPill(label: shipment.statusLabel, foreground: shipment.statusColor, background: shipment.statusBackground),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text('Produk', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 13)),
-                Text('Jumlah (TON)', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 13)),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-            child: Column(
-              children: [
-                ...shipment.items.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 7),
-                          child: Icon(Icons.circle, size: 8, color: Color(0xFF5E7D66)),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(item.name, style: const TextStyle(color: Color(0xFF0F261F), fontSize: 14, height: 1.3)),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(item.quantityText, style: const TextStyle(color: Color(0xFF0F261F), fontSize: 15, fontWeight: FontWeight.w800)),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Admin-determined delivery info
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFB5D4BC)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.admin_panel_settings_outlined,
-                          color: Color(0xFF2F6C3F), size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Ditentukan Admin',
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF2F6C3F),
-                                    fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${order.shipments.length > 1 ? "Partial Delivery" : "Pengiriman Langsung"}'
-                              '  ·  ${shipment.totalQuantityLabel}',
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF0F261F),
-                                  fontWeight: FontWeight.w800),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: order.shipments.length > 1
-                              ? const Color(0xFFFFF3E0)
-                              : const Color(0xFFDFF6EC),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          order.shipments.length > 1 ? 'PARTIAL' : 'LANGSUNG',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: order.shipments.length > 1
-                                ? const Color(0xFFE65100)
-                                : const Color(0xFF0E8F61),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ShipmentItemRow extends StatelessWidget {
-  const _ShipmentItemRow({required this.item});
-
-  final TransportirShipmentItem item;
+  final IconData icon;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 6),
-          child: Icon(Icons.circle, size: 8, color: Color(0xFF5E7D66)),
-        ),
-        const SizedBox(width: 10),
+        Icon(icon, size: 16, color: const Color(0xFF6B8C73)),
+        const SizedBox(width: 8),
         Expanded(
-          child: Text(item.name, style: const TextStyle(color: Color(0xFF0F261F), fontSize: 14, height: 1.35)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B8C73))),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F261F))),
+            ],
+          ),
         ),
-        const SizedBox(width: 10),
-        Text(item.quantityText, style: const TextStyle(color: Color(0xFF0F261F), fontSize: 15, fontWeight: FontWeight.w800)),
       ],
+    );
+  }
+}
+
+class _TransportirOrderCard extends StatelessWidget {
+  const _TransportirOrderCard({required this.order, required this.onTap});
+
+  final TransportirAssignedOrder order;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _orderStatusColor(order.orderStatus);
+    final bg = _orderStatusBackground(order.orderStatus);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFB5D4BC)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2F0E6),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF2F6C3F)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('PESANAN', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+                        const SizedBox(height: 3),
+                        Text(order.poNumber, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
+                      ],
+                    ),
+                  ),
+                  _StatusPill(label: order.statusLabel, foreground: color, background: bg),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: _KeyText(label: 'Tanggal', value: shortDateTime(order.createdAt))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _KeyText(label: 'Nilai Tagihan', value: formatCurrency(order.totalAmount), valueColor: const Color(0xFF2F6C3F))),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _KeyText(label: 'Truk Pengiriman', value: '${order.shipments.length} pengiriman'),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: OutlinedButton(
+                  onPressed: onTap,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF2F6C3F),
+                    side: const BorderSide(color: Color(0xFFB5D4BC)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Lihat Detail', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -890,4 +599,3 @@ class _StatusPill extends StatelessWidget {
     );
   }
 }
-

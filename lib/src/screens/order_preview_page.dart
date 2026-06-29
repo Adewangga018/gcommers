@@ -74,17 +74,7 @@ class _OrderPreviewPageState extends State<OrderPreviewPage> {
     return total;
   }
 
-  double get _shipping {
-    var total = 0.0;
-    for (final product in widget.args.products) {
-      final quantity = widget.args.quantities[product.id] ?? 0;
-      if (quantity <= 0) continue;
-      total += product.biayaPengirimanPerKg * quantity * 1000;
-    }
-    return total;
-  }
-
-  double get _total => _subtotal + _shipping;
+  double get _total => _subtotal;
 
   bool get _hasAddress {
     final current = _current;
@@ -186,8 +176,6 @@ class _OrderPreviewPageState extends State<OrderPreviewPage> {
                             const Divider(height: 16),
                           ],
                           _totalRow('Subtotal', _subtotal),
-                          const SizedBox(height: 6),
-                          _totalRow('Ongkir', _shipping),
                           const Divider(height: 16),
                           _totalRow('Total', _total, emphasize: true),
                         ],

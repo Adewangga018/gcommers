@@ -12,7 +12,6 @@ public sealed record ProductDto(
     string Status,
     decimal Rating,
     string? Specification,
-    decimal BiayaPengirimanPerKg = 50m,
     decimal PajakPphPersen = 0.25m);
 
 public sealed record UpsertProductRegionPriceRequest(
@@ -66,7 +65,6 @@ public sealed record OrderDetailDto(
     string Vendor,
     string PaymentMethod,
     decimal Subtotal,
-    decimal ShippingAmount,
     decimal TotalAmount,
     DateTimeOffset CreatedAt,
     DateTimeOffset? PaidAt,
@@ -82,7 +80,10 @@ public sealed record OrderDetailDto(
     string? DeliveryKelurahan = null,
     string? DeliveryKodePos = null,
     double? DeliveryLatitude = null,
-    double? DeliveryLongitude = null);
+    double? DeliveryLongitude = null,
+    string? DriverName = null,
+    string? TruckLabel = null,
+    string? PoliceNumber = null);
 
 public sealed record OrderItemDto(
     string ProductName,
@@ -140,7 +141,12 @@ public sealed record ShipmentSummaryDto(
     string? Note,
     string? AssignedBy,
     DateTimeOffset? MuatInCompletedAt,
-    DateTimeOffset? MuatOutCompletedAt);
+    DateTimeOffset? MuatOutCompletedAt,
+    int? ProductId,
+    string? ProductCode,
+    string? ProductName,
+    decimal? QuotaTon,
+    string? SoCode);
 
 public sealed record ShipmentPhotoUploadResponse(
     string ShipmentNumber,

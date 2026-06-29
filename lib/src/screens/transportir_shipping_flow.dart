@@ -1,5 +1,4 @@
 ﻿import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -8,64 +7,29 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/auth_models.dart';
+import '../models/commerce_models.dart';
+import '../services/commerce_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/formatters.dart';
 import '../widgets/transportir_bottom_nav.dart';
 
 class TransportirShipmentsPage extends StatefulWidget {
   const TransportirShipmentsPage({super.key, this.session});
   final AuthSession? session;
 
-  /// Public list of all shipments — used by the dashboard to find the active one.
-  static const List<TransportirShipmentCardData> shipments = [
-    TransportirShipmentCardData(
-      shipmentNumber: 'SJ-20231024-001',
-      statusLabel: 'Siap Muat',
-      statusColor: Color(0xFF2F6C3F),
-      statusBackground: Color(0xFFDCEDE1),
-      scheduleLabel: 'Hari ini, 09.00 WIB',
-      origin: 'Gudang GCS – Jl. KIG Raya Selatan Blok A5, Kebomas, Kab. Gresik, Jawa Timur 61123',
-      destination: 'Kios Tani Makmur – Jl. Raya Driyorejo No. 12, Driyorejo, Kab. Gresik, Jawa Timur 61177',
-      destinationSubtitle: 'Kios Tani Makmur, Driyorejo – Gresik',
-      originLatLng: LatLng(-7.1553, 112.6547),
-      destinationLatLng: LatLng(-7.3450, 112.5734),
-      actionPrimaryLabel: 'Load In',
-      actionSecondaryLabel: '',
-      actionSecondaryKind: TransportirShipmentActionKind.none,
-    ),
-    TransportirShipmentCardData(
-      shipmentNumber: 'SJ-20231024-002',
-      statusLabel: 'Dalam Perjalanan',
-      statusColor: Color(0xFFB86B22),
-      statusBackground: Color(0xFFF4E0CB),
-      scheduleLabel: 'Est. Tiba: 14.30 WIB',
-      origin: 'Gudang GCS – Jl. KIG Raya Selatan Blok A5, Kebomas, Kab. Gresik, Jawa Timur 61123',
-      destination: 'Kios Sumber Tani – Jl. Rungkut Industri VIII No. 8, Rungkut, Kota Surabaya, Jawa Timur 60293',
-      destinationSubtitle: 'Kios Sumber Tani, Rungkut – Surabaya',
-      originLatLng: LatLng(-7.1553, 112.6547),
-      destinationLatLng: LatLng(-7.3130, 112.7963),
-      actionPrimaryLabel: 'Lacak',
-      actionSecondaryLabel: 'Load Out',
-      actionSecondaryKind: TransportirShipmentActionKind.loadOut,
-    ),
-  ];
-
   @override
   State<TransportirShipmentsPage> createState() => _TransportirShipmentsPageState();
 }
 
 class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
-  static List<TransportirShipmentCardData> get _shipments =>
-      TransportirShipmentsPage.shipments;
-
-  final Map<String, ShipmentProgress> _shipmentProgress = {};
+  final _service = CommerceService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  bool _isLoadingProgress = true;
+  late Future<List<TransportirShipmentCardData>> _shipmentsFuture;
+  Timer? _pollTimer;
 
   @override
   void initState() {
@@ -75,45 +39,43 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
         _searchQuery = _searchController.text;
       });
     });
-    _loadProgress();
+    _shipmentsFuture = _load();
+    // Polling ringan agar status load-in/load-out terlihat hampir real-time tanpa
+    // websocket (lihat ORDER_FLOW_CONTRACT.md §1.5 — cukup level status, bukan GPS live).
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refresh().catchError((_) {}));
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadProgress() async {
-    final loaded = <String, ShipmentProgress>{};
-    for (final shipment in _shipments) {
-      loaded[shipment.shipmentNumber] = await loadShipmentProgress(shipment.shipmentNumber);
+  Future<List<TransportirShipmentCardData>> _load() async {
+    final email = widget.session?.email;
+    if (email == null || email.isEmpty) {
+      throw Exception('Sesi berakhir, silakan login ulang.');
     }
-    if (!mounted) return;
-    setState(() {
-      _shipmentProgress.addAll(loaded);
-      _isLoadingProgress = false;
-    });
+    final shipments = await _service.getShipments(transportirEmail: email);
+    return shipments.map((s) => TransportirShipmentCardData(shipment: s)).toList();
   }
 
-  List<TransportirShipmentCardData> _buildFilteredShipments() {
+  Future<void> _refresh() async {
+    final future = _load();
+    setState(() => _shipmentsFuture = future);
+    await future;
+  }
+
+  List<TransportirShipmentCardData> _applyFilter(List<TransportirShipmentCardData> all) {
     final query = _searchQuery.trim().toLowerCase();
-    if (query.isEmpty) return _shipments;
-    return _shipments.where((shipment) {
+    if (query.isEmpty) return all;
+    return all.where((shipment) {
       return shipment.shipmentNumber.toLowerCase().contains(query) ||
           shipment.origin.toLowerCase().contains(query) ||
           shipment.destination.toLowerCase().contains(query) ||
           shipment.destinationSubtitle.toLowerCase().contains(query);
     }).toList();
-  }
-
-  ShipmentProgress _progressFor(String shipmentNumber) {
-    return _shipmentProgress[shipmentNumber] ?? ShipmentProgress(shipmentNumber: shipmentNumber);
-  }
-
-  Future<void> _saveProgress(ShipmentProgress progress) async {
-    setState(() => _shipmentProgress[progress.shipmentNumber] = progress);
-    await saveShipmentProgress(progress);
   }
 
   @override
@@ -130,128 +92,147 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
         ),
         title: Text('GCommers', style: AppTheme.title(size: 18)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-        children: [
-          // Page header
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: FutureBuilder<List<TransportirShipmentCardData>>(
+          future: _shipmentsFuture,
+          builder: (context, snapshot) {
+            final loading = snapshot.connectionState == ConnectionState.waiting;
+            final all = snapshot.data ?? const [];
+            final visible = _applyFilter(all);
+
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              children: [
+                // Page header
+                Row(
                   children: [
-                    const Text(
-                      'Daftar Pengiriman',
-                      style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F261F)),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Kelola dan pantau status muatan',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Daftar Pengiriman',
+                            style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0F261F)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Kelola dan pantau status muatan',
+                            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Search bar
-          Container(
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFB5D4BC)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x08000000), 
-                  blurRadius: 8, 
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TextField(
-              controller: _searchController,
-              textAlignVertical: TextAlignVertical.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF0F261F),
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none, // Menghilangkan border default TextField
-                hintText: 'Cari nomor surat jalan…',
-                hintStyle: const TextStyle(
-                  color: Color(0xFF6B8C73), 
-                  fontSize: 14,
-                ),
-                contentPadding: EdgeInsets.zero, // Wajib zero agar sejajar dengan icon
-                
-                // Ikon Kiri (Search)
-                prefixIcon: const Icon(
-                  Icons.search_rounded, 
-                  color: Color(0xFF6B8C73), 
-                  size: 22,
-                ),
-                
-                // Ikon Kanan (Clear) - Otomatis hilang jika kosong
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(
-                          Icons.cancel, // Menggunakan icon cancel bawaan yang sudah membulat
-                          color: Color(0xFFB5D4BC),
-                          size: 20,
-                        ),
-                        onPressed: _searchController.clear,
-                        splashRadius: 20, // Memperkecil efek sentuhan agar tetap rapi
-                      )
-                    : null,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          if (_isLoadingProgress)
-            const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 20), child: CircularProgressIndicator()))
-          else ..._buildFilteredShipments().map(
-            (shipment) {
-              final progress = _progressFor(shipment.shipmentNumber);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ShipmentSummaryCard(
-                  shipment: shipment,
-                  session: widget.session,
-                  progress: progress,
-                  onProgressUpdated: _saveProgress,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => TransportirShipmentDetailPage(
-                          shipment: shipment,
-                          progress: progress,
-                          session: widget.session,
-                        ),
+                const SizedBox(height: 16),
+                // Search bar
+                Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFB5D4BC)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x08000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
                       ),
-                    );
-                  },
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF0F261F),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      border: InputBorder.none, // Menghilangkan border default TextField
+                      hintText: 'Cari nomor surat jalan…',
+                      hintStyle: const TextStyle(
+                        color: Color(0xFF6B8C73),
+                        fontSize: 14,
+                      ),
+                      contentPadding: EdgeInsets.zero, // Wajib zero agar sejajar dengan icon
+
+                      // Ikon Kiri (Search)
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: Color(0xFF6B8C73),
+                        size: 22,
+                      ),
+
+                      // Ikon Kanan (Clear) - Otomatis hilang jika kosong
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.cancel, // Menggunakan icon cancel bawaan yang sudah membulat
+                                color: Color(0xFFB5D4BC),
+                                size: 20,
+                              ),
+                              onPressed: _searchController.clear,
+                              splashRadius: 20, // Memperkecil efek sentuhan agar tetap rapi
+                            )
+                          : null,
+                    ),
+                  ),
                 ),
-              );
-            },
-          ),
-          if (!_isLoadingProgress && _buildFilteredShipments().isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40),
-              child: Column(
-                children: const [
-                  Icon(Icons.search_off, color: Color(0xFF6B8C73), size: 42),
-                  SizedBox(height: 12),
-                  Text('Tidak ada pengiriman yang cocok.', style: TextStyle(color: Color(0xFF6B8C73), fontSize: 15)),
+                const SizedBox(height: 18),
+                if (loading)
+                  const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 20), child: CircularProgressIndicator()))
+                else if (snapshot.hasError)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: Text('Gagal memuat pengiriman: ${snapshot.error}', textAlign: TextAlign.center)),
+                  )
+                else ...[
+                  ...visible.map(
+                    (shipment) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _ShipmentSummaryCard(
+                        shipment: shipment,
+                        session: widget.session,
+                        onRefresh: _refresh,
+                        onTap: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => TransportirShipmentDetailPage(
+                                shipment: shipment,
+                                session: widget.session,
+                              ),
+                            ),
+                          );
+                          _refresh();
+                        },
+                      ),
+                    ),
+                  ),
+                  if (visible.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.search_off, color: Color(0xFF6B8C73), size: 42),
+                          const SizedBox(height: 12),
+                          Text(
+                            all.isEmpty ? 'Belum ada pengiriman yang ditugaskan.' : 'Tidak ada pengiriman yang cocok.',
+                            style: const TextStyle(color: Color(0xFF6B8C73), fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
-              ),
-            ),
-        ],
+              ],
+            );
+          },
+        ),
       ),
       bottomNavigationBar: TransportirBottomNav(currentIndex: 2, session: widget.session),
     );
@@ -259,34 +240,16 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
 }
 
 class TransportirShipmentDetailPage extends StatelessWidget {
-  const TransportirShipmentDetailPage(
-      {super.key, required this.shipment, required this.progress, this.session});
+  const TransportirShipmentDetailPage({super.key, required this.shipment, this.session});
 
   final TransportirShipmentCardData shipment;
-  final ShipmentProgress progress;
   final AuthSession? session;
 
   static const Color _primary = Color(0xFF2F6C3F);
-  static const Color _done = Color(0xFF16C38A);
 
-  String get _currentStatusLabel {
-    if (progress.completed) return 'Selesai';
-    if (progress.muatKeluarCompleted) return 'Menuju Tujuan';
-    if (progress.muatMasukCompleted) return 'Dalam Perjalanan';
-    return shipment.statusLabel;
-  }
-
-  Color get _currentStatusColor {
-    if (progress.completed) return _done;
-    if (progress.muatMasukCompleted) return const Color(0xFFB86B22);
-    return shipment.statusColor;
-  }
-
-  Color get _currentStatusBg {
-    if (progress.completed) return const Color(0xFFD5F3E2);
-    if (progress.muatMasukCompleted) return const Color(0xFFF4E0CB);
-    return shipment.statusBackground;
-  }
+  String get _currentStatusLabel => shipment.statusLabel;
+  Color get _currentStatusColor => shipment.statusColor;
+  Color get _currentStatusBg => shipment.statusBackground;
 
   @override
   Widget build(BuildContext context) {
@@ -365,6 +328,12 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 _infoRow(Icons.store_outlined, 'Tujuan', shipment.destination),
                 const SizedBox(height: 10),
                 _infoRow(Icons.schedule_rounded, 'Jadwal', shipment.scheduleLabel),
+                const SizedBox(height: 10),
+                _infoRow(Icons.inventory_2_outlined, 'Produk', shipment.productLabel),
+                const SizedBox(height: 10),
+                _infoRow(Icons.scale_outlined, 'Tonase', shipment.quotaLabel),
+                const SizedBox(height: 10),
+                _infoRow(Icons.qr_code_2_outlined, 'Kode SO', shipment.soCodeLabel),
               ],
             ),
           ),
@@ -390,37 +359,37 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 _TimelineItem(
                   icon: Icons.inventory_2_outlined,
                   title: 'Load In',
-                  subtitle: progress.muatMasukCompleted
+                  subtitle: shipment.muatInDone
                       ? 'Foto tersimpan — barang dimuat ke kendaraan'
                       : 'Menunggu proses pemuatan',
-                  done: progress.muatMasukCompleted,
+                  done: shipment.muatInDone,
                   isLast: false,
                 ),
                 _TimelineItem(
                   icon: Icons.local_shipping_outlined,
                   title: 'Dalam Perjalanan',
-                  subtitle: progress.muatMasukCompleted
+                  subtitle: shipment.muatInDone
                       ? 'Kendaraan berangkat menuju tujuan'
                       : 'Belum dimulai',
-                  done: progress.muatMasukCompleted,
+                  done: shipment.muatInDone,
                   isLast: false,
                 ),
                 _TimelineItem(
                   icon: Icons.move_to_inbox_outlined,
                   title: 'Load Out',
-                  subtitle: progress.muatKeluarCompleted
+                  subtitle: shipment.muatOutDone
                       ? 'Foto tersimpan — barang tiba di tujuan'
                       : 'Menunggu konfirmasi tiba',
-                  done: progress.muatKeluarCompleted,
+                  done: shipment.muatOutDone,
                   isLast: false,
                 ),
                 _TimelineItem(
                   icon: Icons.check_circle_outline_rounded,
                   title: 'Selesai',
-                  subtitle: progress.completed
+                  subtitle: shipment.completed
                       ? 'Pengiriman berhasil diselesaikan'
                       : 'Estimasi: ${shipment.scheduleLabel}',
-                  done: progress.completed,
+                  done: shipment.completed,
                   isLast: true,
                 ),
               ],
@@ -455,16 +424,16 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                         Expanded(
                           child: _ProofPhotoSection(
                             label: 'Load In',
-                            photoBase64: progress.muatMasukPhotoBase64,
-                            done: progress.muatMasukCompleted,
+                            photoUrl: shipment.shipment.muatInPhotoUrl,
+                            done: shipment.muatInDone,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _ProofPhotoSection(
                             label: 'Load Out',
-                            photoBase64: progress.muatKeluarPhotoBase64,
-                            done: progress.muatKeluarCompleted,
+                            photoUrl: shipment.shipment.muatOutPhotoUrl,
+                            done: shipment.muatOutDone,
                           ),
                         ),
                       ],
@@ -474,20 +443,19 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                     children: [
                       _ProofPhotoSection(
                         label: 'Load In',
-                        photoBase64: progress.muatMasukPhotoBase64,
-                        done: progress.muatMasukCompleted,
+                        photoUrl: shipment.shipment.muatInPhotoUrl,
+                        done: shipment.muatInDone,
                       ),
                       const SizedBox(height: 14),
                       _ProofPhotoSection(
                         label: 'Load Out',
-                        photoBase64: progress.muatKeluarPhotoBase64,
-                        done: progress.muatKeluarCompleted,
+                        photoUrl: shipment.shipment.muatOutPhotoUrl,
+                        done: shipment.muatOutDone,
                       ),
                     ],
                   );
                 }),
-                if (progress.statusDetail.isNotEmpty &&
-                    progress.statusDetail != 'Menunggu proses muat') ...[
+                if (shipment.shipment.note?.isNotEmpty ?? false) ...[
                   const SizedBox(height: 14),
                   const Divider(height: 1, color: Color(0xFFDEEBE2)),
                   const SizedBox(height: 12),
@@ -507,17 +475,9 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                                     fontWeight: FontWeight.w800,
                                     color: Color(0xFF5E7D66))),
                             const SizedBox(height: 4),
-                            Text(progress.statusDetail,
+                            Text(shipment.shipment.note!,
                                 style: const TextStyle(
                                     fontSize: 13, color: Color(0xFF5E7D66))),
-                            if (progress.deliveryNote.isNotEmpty &&
-                                progress.deliveryNote !=
-                                    'Detail pengiriman akan muncul di sini.') ...[
-                              const SizedBox(height: 4),
-                              Text(progress.deliveryNote,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Color(0xFF6B8C73))),
-                            ],
                           ],
                         ),
                       ),
@@ -529,7 +489,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
-          // Back button
+          // Action buttons
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -538,12 +498,10 @@ class TransportirShipmentDetailPage extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primary,
                 foregroundColor: Colors.white,
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
-              child: const Text('Kembali',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              child: const Text('Kembali', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             ),
           ),
         ],
@@ -722,17 +680,17 @@ class _TimelineItem extends StatelessWidget {
 class _ProofPhotoSection extends StatelessWidget {
   const _ProofPhotoSection({
     required this.label,
-    required this.photoBase64,
+    required this.photoUrl,
     required this.done,
   });
 
   final String label;
-  final String? photoBase64;
+  final String? photoUrl;
   final bool done;
 
   @override
   Widget build(BuildContext context) {
-    final hasPhoto = photoBase64 != null && photoBase64!.isNotEmpty;
+    final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -774,8 +732,8 @@ class _ProofPhotoSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: hasPhoto
-                ? Image.memory(
-                    _decodePhoto(photoBase64!),
+                ? Image.network(
+                    '${CommerceService().baseUrl}$photoUrl',
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
@@ -786,14 +744,6 @@ class _ProofPhotoSection extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Uint8List _decodePhoto(String base64str) {
-    try {
-      return base64Decode(base64str);
-    } catch (_) {
-      return Uint8List(0);
-    }
   }
 
   Widget _placeholder() {
@@ -876,6 +826,12 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
                 _KeyValue(label: 'Tujuan', value: shipment.destination),
                 const SizedBox(height: 12),
                 _KeyValue(label: 'Jadwal', value: shipment.scheduleLabel),
+                const SizedBox(height: 12),
+                _KeyValue(label: 'Produk', value: shipment.productLabel),
+                const SizedBox(height: 12),
+                _KeyValue(label: 'Tonase', value: shipment.quotaLabel),
+                const SizedBox(height: 12),
+                _KeyValue(label: 'Kode SO', value: shipment.soCodeLabel),
               ],
             ),
           ),
@@ -919,50 +875,24 @@ class TransportirShipmentTrackingPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => TransportirSuratJalanPage(shipment: shipment, session: session),
-                      ),
-                    ),
-                    icon: const Icon(Icons.description_outlined, size: 18),
-                    label: const Text('Surat Jalan', style: TextStyle(fontWeight: FontWeight.w800)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: primaryPurple,
-                      side: const BorderSide(color: primaryPurple),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => TransportirShipmentProofPage(shipment: shipment, session: session),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => TransportirShipmentProofPage(shipment: shipment, session: session),
-                      ),
-                    ),
-                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                    label: const Text('Bukti Muat', style: TextStyle(fontWeight: FontWeight.w800)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: primaryPurple,
-                      side: const BorderSide(color: primaryPurple),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
+              icon: const Icon(Icons.camera_alt_outlined, size: 18),
+              label: const Text('Bukti Muat', style: TextStyle(fontWeight: FontWeight.w800)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: primaryPurple,
+                side: const BorderSide(color: primaryPurple),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -1137,180 +1067,74 @@ class TransportirShipmentProofPage extends StatelessWidget {
   }
 }
 
-class ShipmentProgress {
-  ShipmentProgress({
-    required this.shipmentNumber,
-    this.muatMasukCompleted = false,
-    this.muatKeluarCompleted = false,
-    this.muatMasukPhotoBase64,
-    this.muatKeluarPhotoBase64,
-    this.statusDetail = 'Menunggu proses muat',
-    this.deliveryNote = 'Detail pengiriman akan muncul di sini.',
-  });
-
-  final String shipmentNumber;
-  final bool muatMasukCompleted;
-  final bool muatKeluarCompleted;
-  final String? muatMasukPhotoBase64;
-  final String? muatKeluarPhotoBase64;
-  final String statusDetail;
-  final String deliveryNote;
-
-  bool get completed => muatKeluarCompleted;
-
-  ShipmentProgress copyWith({
-    bool? muatMasukCompleted,
-    bool? muatKeluarCompleted,
-    String? muatMasukPhotoBase64,
-    String? muatKeluarPhotoBase64,
-    String? statusDetail,
-    String? deliveryNote,
-  }) {
-    return ShipmentProgress(
-      shipmentNumber: shipmentNumber,
-      muatMasukCompleted: muatMasukCompleted ?? this.muatMasukCompleted,
-      muatKeluarCompleted: muatKeluarCompleted ?? this.muatKeluarCompleted,
-      muatMasukPhotoBase64: muatMasukPhotoBase64 ?? this.muatMasukPhotoBase64,
-      muatKeluarPhotoBase64: muatKeluarPhotoBase64 ?? this.muatKeluarPhotoBase64,
-      statusDetail: statusDetail ?? this.statusDetail,
-      deliveryNote: deliveryNote ?? this.deliveryNote,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'shipmentNumber': shipmentNumber,
-        'muatMasukCompleted': muatMasukCompleted,
-        'muatKeluarCompleted': muatKeluarCompleted,
-        'muatMasukPhotoBase64': muatMasukPhotoBase64,
-        'muatKeluarPhotoBase64': muatKeluarPhotoBase64,
-        'statusDetail': statusDetail,
-        'deliveryNote': deliveryNote,
-      };
-
-  factory ShipmentProgress.fromJson(Map<String, dynamic> json) => ShipmentProgress(
-        shipmentNumber: json['shipmentNumber'] as String,
-        muatMasukCompleted: json['muatMasukCompleted'] as bool? ?? false,
-        muatKeluarCompleted: json['muatKeluarCompleted'] as bool? ?? false,
-        muatMasukPhotoBase64: json['muatMasukPhotoBase64'] as String?,
-        muatKeluarPhotoBase64: json['muatKeluarPhotoBase64'] as String?,
-        statusDetail: json['statusDetail'] as String? ?? 'Menunggu proses muat',
-        deliveryNote: json['deliveryNote'] as String? ?? 'Detail pengiriman akan muncul di sini.',
-      );
-}
-
-class TransportirMuatResult {
-  TransportirMuatResult({
-    required this.muatType,
-    required this.photoBase64,
-    required this.timestamp,
-  });
-
-  final String muatType;
-  final String photoBase64;
-  final DateTime timestamp;
-}
-
-Future<ShipmentProgress> loadShipmentProgress(String shipmentNumber) async {
-  final prefs = await SharedPreferences.getInstance();
-  final stored = prefs.getString('shipment_progress_$shipmentNumber');
-  if (stored == null) {
-    return ShipmentProgress(shipmentNumber: shipmentNumber);
-  }
-  try {
-    final map = jsonDecode(stored) as Map<String, dynamic>;
-    return ShipmentProgress.fromJson(map);
-  } catch (_) {
-    return ShipmentProgress(shipmentNumber: shipmentNumber);
-  }
-}
-
-Future<void> saveShipmentProgress(ShipmentProgress progress) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('shipment_progress_${progress.shipmentNumber}', jsonEncode(progress.toJson()));
-}
-
 class TransportirShipmentCardData {
-  const TransportirShipmentCardData({
-    required this.shipmentNumber,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.statusBackground,
-    required this.scheduleLabel,
-    required this.origin,
-    required this.destination,
-    required this.destinationSubtitle,
-    required this.actionPrimaryLabel,
-    required this.actionSecondaryLabel,
-    required this.actionSecondaryKind,
-    this.originLatLng,
-    this.destinationLatLng,
-    this.completed = false,
-  });
+  const TransportirShipmentCardData({required this.shipment});
 
-  final String shipmentNumber;
-  final String statusLabel;
-  final Color statusColor;
-  final Color statusBackground;
-  final String scheduleLabel;
-  final String origin;
-  final String destination;
-  final String destinationSubtitle;
-  final String actionPrimaryLabel;
-  final String actionSecondaryLabel;
-  final TransportirShipmentActionKind actionSecondaryKind;
+  final ShipmentSummary shipment;
+
+  String get shipmentNumber => shipment.shipmentNumber;
+  String get statusLabel => shipment.statusLabel;
+  Color get statusColor => _shipmentCardStatusColor(shipment.status);
+  Color get statusBackground => _shipmentCardStatusBackground(shipment.status);
+  String get scheduleLabel => shortDateTime(shipment.createdAt);
+  String get origin => shipment.warehouseName ?? 'Gudang belum ditentukan';
+  String get destination => shipment.destinationLabel ?? 'Kios Tujuan';
+  String get destinationSubtitle => shipment.destinationAddress ?? '';
+
+  String get productLabel {
+    final parts = [shipment.productCode, shipment.productName].whereType<String>().where((s) => s.isNotEmpty);
+    return parts.isEmpty ? '-' : parts.join(' · ');
+  }
+
+  String get quotaLabel => shipment.quotaTon != null ? '${shipment.quotaTon} Ton' : '-';
+  String get soCodeLabel => shipment.soCode ?? 'Belum tersedia';
+
   /// Precise GPS coordinates — when set the map uses these directly (no geocoding needed).
-  final LatLng? originLatLng;
-  final LatLng? destinationLatLng;
-  final bool completed;
+  LatLng? get originLatLng =>
+      shipment.originLat != null && shipment.originLng != null ? LatLng(shipment.originLat!, shipment.originLng!) : null;
+  LatLng? get destinationLatLng => shipment.destinationLat != null && shipment.destinationLng != null
+      ? LatLng(shipment.destinationLat!, shipment.destinationLng!)
+      : null;
+
+  bool get muatInDone => shipment.muatInCompletedAt != null;
+  bool get muatOutDone => shipment.muatOutCompletedAt != null;
+  bool get completed => shipment.status == 'selesai';
 }
 
-enum TransportirShipmentActionKind { none, proof, loadOut }
+Color _shipmentCardStatusColor(String status) => switch (status) {
+      'dalam_perjalanan' => const Color(0xFFB86B22),
+      'selesai' => const Color(0xFF16C38A),
+      _ => const Color(0xFF2F6C3F),
+    };
+
+Color _shipmentCardStatusBackground(String status) => switch (status) {
+      'dalam_perjalanan' => const Color(0xFFF4E0CB),
+      'selesai' => const Color(0xFFD5F3E2),
+      _ => const Color(0xFFDCEDE1),
+    };
 
 class _ShipmentSummaryCard extends StatelessWidget {
   const _ShipmentSummaryCard({
     required this.shipment,
     required this.session,
-    required this.progress,
-    required this.onProgressUpdated,
+    required this.onRefresh,
     required this.onTap,
   });
 
   final TransportirShipmentCardData shipment;
   final AuthSession? session;
-  final ShipmentProgress progress;
-  final ValueChanged<ShipmentProgress> onProgressUpdated;
+  final Future<void> Function() onRefresh;
   final VoidCallback onTap;
 
-  bool get muatMasukDone => progress.muatMasukCompleted;
-  bool get muatKeluarDone => progress.muatKeluarCompleted;
-  bool get completed => progress.completed;
+  bool get muatInDone => shipment.muatInDone;
+  bool get muatOutDone => shipment.muatOutDone;
+  bool get completed => shipment.completed;
 
-  String get _primaryLabel {
-    if (!muatMasukDone && shipment.actionPrimaryLabel == 'Load In') return 'Load In';
-    return 'Lacak';
-  }
+  String get _primaryLabel => muatInDone ? 'Lacak' : 'Load In';
 
-  bool get _showSecondary => !completed && (muatMasukDone || shipment.actionSecondaryKind != TransportirShipmentActionKind.none);
+  bool get _showSecondary => !completed && muatInDone;
 
-  String get _secondaryLabel => muatMasukDone ? 'Load Out' : shipment.actionSecondaryLabel;
-
-  String get _statusLabel {
-    if (completed) return 'Selesai';
-    if (muatMasukDone) return 'Dalam Perjalanan';
-    return shipment.statusLabel;
-  }
-
-  Color get _statusColor {
-    if (completed) return const Color(0xFF16C38A);
-    if (muatMasukDone) return const Color(0xFFB86B22);
-    return shipment.statusColor;
-  }
-
-  Color get _statusBg {
-    if (completed) return const Color(0xFFD5F3E2);
-    if (muatMasukDone) return const Color(0xFFF4E0CB);
-    return shipment.statusBackground;
-  }
+  String get _secondaryLabel => 'Load Out';
 
   @override
   Widget build(BuildContext context) {
@@ -1358,7 +1182,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              _StatusChip(label: _statusLabel, foreground: _statusColor, background: _statusBg),
+                              _StatusChip(label: shipment.statusLabel, foreground: shipment.statusColor, background: shipment.statusBackground),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
@@ -1397,7 +1221,7 @@ class _ShipmentSummaryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (muatMasukDone || muatKeluarDone) ...[
+              if (muatInDone) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Container(
@@ -1416,21 +1240,20 @@ class _ShipmentSummaryCard extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            _DetailStatusChip(label: 'Load In', active: muatMasukDone),
-                            _DetailStatusChip(label: 'Load Out', active: muatKeluarDone),
+                            _DetailStatusChip(label: 'Load In', active: muatInDone),
+                            _DetailStatusChip(label: 'Load Out', active: muatOutDone),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        Text(progress.statusDetail, style: const TextStyle(fontSize: 12, color: Color(0xFF5E7D66))),
-                        const SizedBox(height: 6),
-                        Text(progress.deliveryNote, style: const TextStyle(fontSize: 12, color: Color(0xFF5E7D66))),
-                        if (progress.muatMasukPhotoBase64 != null || progress.muatKeluarPhotoBase64 != null) ...[
+                        if (shipment.shipment.muatInPhotoUrl != null || shipment.shipment.muatOutPhotoUrl != null) ...[
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              if (progress.muatMasukPhotoBase64 != null) _PhotoPreview(label: 'Masuk', photoBase64: progress.muatMasukPhotoBase64!),
-                              if (progress.muatMasukPhotoBase64 != null && progress.muatKeluarPhotoBase64 != null) const SizedBox(width: 10),
-                              if (progress.muatKeluarPhotoBase64 != null) _PhotoPreview(label: 'Keluar', photoBase64: progress.muatKeluarPhotoBase64!),
+                              if (shipment.shipment.muatInPhotoUrl != null)
+                                _PhotoPreview(label: 'Masuk', photoUrl: shipment.shipment.muatInPhotoUrl!),
+                              if (shipment.shipment.muatInPhotoUrl != null && shipment.shipment.muatOutPhotoUrl != null)
+                                const SizedBox(width: 10),
+                              if (shipment.shipment.muatOutPhotoUrl != null)
+                                _PhotoPreview(label: 'Keluar', photoUrl: shipment.shipment.muatOutPhotoUrl!),
                             ],
                           ),
                         ],
@@ -1481,53 +1304,28 @@ class _ShipmentSummaryCard extends StatelessWidget {
       return;
     }
 
-    final result = await Navigator.of(context).push<TransportirMuatResult?>(
-      MaterialPageRoute<TransportirMuatResult?>(
+    final uploaded = await Navigator.of(context).push<bool?>(
+      MaterialPageRoute<bool?>(
         builder: (_) => TransportirMuatKameraPage(muatType: 'masuk', shipment: shipment, session: session),
       ),
     );
-
-    if (result != null && result.muatType == 'masuk') {
-      final updated = progress.copyWith(
-        muatMasukCompleted: true,
-        muatMasukPhotoBase64: result.photoBase64,
-        statusDetail: 'Foto muat masuk berhasil disimpan.',
-        deliveryNote: 'Kendaraan meninggalkan gudang menuju tujuan.',
-      );
-      onProgressUpdated(updated);
+    if (uploaded == true) {
+      await onRefresh();
     }
   }
 
   Future<void> _handleSecondary(BuildContext context) async {
     if (completed) return;
 
-    if (muatMasukDone || shipment.actionSecondaryKind == TransportirShipmentActionKind.loadOut) {
-      final result = await Navigator.of(context).push<TransportirMuatResult?>(
-        MaterialPageRoute<TransportirMuatResult?>(
-          builder: (_) => TransportirMuatKameraPage(muatType: 'keluar', shipment: shipment, session: session),
-        ),
-      );
-      if (result != null && result.muatType == 'keluar') {
-        final updated = progress.copyWith(
-          muatKeluarCompleted: true,
-          muatKeluarPhotoBase64: result.photoBase64,
-          statusDetail: 'Pesanan selesai dan foto muat keluar tersimpan.',
-          deliveryNote: 'Surat jalan dan bukti muat keluar telah diarsipkan.',
-        );
-        onProgressUpdated(updated);
-      }
-      return;
-    }
-
-    if (shipment.actionSecondaryKind == TransportirShipmentActionKind.proof) {
-      if (context.mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => TransportirShipmentProofPage(shipment: shipment, session: session)),
-        );
-      }
+    final uploaded = await Navigator.of(context).push<bool?>(
+      MaterialPageRoute<bool?>(
+        builder: (_) => TransportirMuatKameraPage(muatType: 'keluar', shipment: shipment, session: session),
+      ),
+    );
+    if (uploaded == true) {
+      await onRefresh();
     }
   }
-
 }
 
 class _DetailStatusChip extends StatelessWidget {
@@ -1557,14 +1355,13 @@ class _DetailStatusChip extends StatelessWidget {
 }
 
 class _PhotoPreview extends StatelessWidget {
-  const _PhotoPreview({required this.label, required this.photoBase64});
+  const _PhotoPreview({required this.label, required this.photoUrl});
 
   final String label;
-  final String photoBase64;
+  final String photoUrl;
 
   @override
   Widget build(BuildContext context) {
-    final bytes = base64Decode(photoBase64);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -1573,7 +1370,10 @@ class _PhotoPreview extends StatelessWidget {
           height: 58,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(image: MemoryImage(bytes), fit: BoxFit.cover),
+            image: DecorationImage(
+              image: NetworkImage('${CommerceService().baseUrl}$photoUrl'),
+              fit: BoxFit.cover,
+            ),
           ),
         ),
         const SizedBox(height: 6),
@@ -1781,405 +1581,6 @@ class _WarehousePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// ────────────────────────────────────────────────────────────
-// Surat Jalan Page
-// ────────────────────────────────────────────────────────────
-
-class TransportirSuratJalanPage extends StatelessWidget {
-  const TransportirSuratJalanPage({super.key, required this.shipment, this.session});
-
-  final TransportirShipmentCardData shipment;
-  final AuthSession? session;
-
-  static const _primaryPurple = Color(0xFF2F6C3F);
-
-  @override
-  Widget build(BuildContext context) {
-    final sjNumber = shipment.shipmentNumber;
-    final now = DateTime.now();
-    final tanggal =
-        '${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}';
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: _primaryPurple),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Surat Jalan', style: TextStyle(color: _primaryPurple, fontWeight: FontWeight.w800)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share_outlined, color: _primaryPurple),
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Fitur berbagi sedang disiapkan.')),
-            ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: _SuratJalanDocument(
-          sjNumber: sjNumber,
-          tanggal: tanggal,
-          shipment: shipment,
-          session: session,
-        ),
-      ),
-      bottomNavigationBar: TransportirBottomNav(currentIndex: 2, session: session),
-    );
-  }
-}
-
-class _SuratJalanDocument extends StatelessWidget {
-  const _SuratJalanDocument({
-    required this.sjNumber,
-    required this.tanggal,
-    required this.shipment,
-    this.session,
-  });
-
-  final String sjNumber;
-  final String tanggal;
-  final TransportirShipmentCardData shipment;
-  final AuthSession? session;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFB5D4BC)),
-        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(sjNumber, tanggal),
-          const Divider(height: 1, thickness: 1.5),
-          _buildMeta(),
-          const Divider(height: 1, thickness: 1.5),
-          _buildFooter(sjNumber),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(String dateStr) {
-    try {
-      final date = DateTime.parse(dateStr);
-      const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
-                      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-      return '${date.day} ${months[date.month - 1]} ${date.year}';
-    } catch (e) {
-      return dateStr;
-    }
-  }
-
-  Widget _buildHeader(String sjNumber, String tanggal) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Logo and company header
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset('gcs.png', width: 120, height: 120, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 120, height: 120,
-                      decoration: BoxDecoration(color: const Color(0xFF2F6C3F), borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.business, color: Colors.white, size: 56),
-                    )),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('PT. GRESIK CIPTA SEJAHTERA',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
-                    const SizedBox(height: 6),
-                    const Text('Jl. KIG Raya Selatan Blok A5 - Gresik',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5E7D66))),
-                    const SizedBox(height: 3),
-                    const Text('Telp. (031) 3985543, 3984822, 3973239',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5E7D66))),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text('No. Dokumen', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF5E7D66))),
-                  Text(sjNumber.replaceFirst('SJ-', ''),
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Divider(height: 1, thickness: 1.5, color: Color(0xFFDEEBE2)),
-          const SizedBox(height: 18),
-          const Text('SURAT PENGANTAR',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.3, color: Color(0xFF0F261F))),
-          const Text('Surat Jalan Pengiriman Barang',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B8C73))),
-          const SizedBox(height: 18),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _MetaRow(label: 'Tanggal Pengiriman', value: _formatDate(tanggal)),
-                    const SizedBox(height: 8),
-                    _MetaRow(label: 'No. Polisi Kendaraan', value: session?.policeNumber ?? 'N 9456 UU'),
-                    const SizedBox(height: 8),
-                    _MetaRow(label: 'Barang Dari', value: 'PETROKIMIA GRESIK, PT'),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Pengiriman kepada Yth.',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B8C73))),
-                  Text(shipment.destination.split(',').first,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: 180,
-                    child: Text(shipment.destination,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF5E7D66), height: 1.5)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMeta() {
-    return Table(
-      border: const TableBorder(
-        top: BorderSide(width: 1.5),
-        bottom: BorderSide(width: 1.5),
-        verticalInside: BorderSide(color: Color(0xFFB5D4BC)),
-      ),
-      columnWidths: const {
-        0: FixedColumnWidth(28),
-        1: FlexColumnWidth(3),
-        2: FixedColumnWidth(60),
-        3: FixedColumnWidth(60),
-      },
-      children: [
-        _tableHeaderRow(['NO', 'URAIAN BARANG', 'JUMLAH', 'SATUAN']),
-        _tableDataRow(['1', 'PHONSKA DO. 3101490463PH / BA.1', '1,00', 'TON']),
-      ],
-    );
-  }
-
-  TableRow _tableHeaderRow(List<String> cells) {
-    return TableRow(
-      decoration: const BoxDecoration(color: Color(0xFFFFFFFF)),
-      children: cells.map((c) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        child: Text(c, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF2F6C3F))),
-      )).toList(),
-    );
-  }
-
-  TableRow _tableDataRow(List<String> cells) {
-    return TableRow(
-      children: cells.map((c) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Text(c, style: const TextStyle(fontSize: 12, color: Color(0xFF0F261F))),
-      )).toList(),
-    );
-  }
-
-  Widget _buildFooter(String sjNumber) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Delivery note
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Dikirim ke alamat tersebut untuk memenuhi permintaan',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF5E7D66))),
-                    const SizedBox(height: 6),
-                    Text('Pemilik : ${shipment.destination.split(',').first}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F261F))),
-                    const SizedBox(height: 2),
-                    const Text('Telp   : 081334045678',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF0F261F))),
-                    const SizedBox(height: 8),
-                    const Text('GP : GPP PAKISAJI - PG',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F261F))),
-                  ],
-                ),
-              ),
-              // QR Code
-              Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFF2F6C3F), width: 2),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 8, offset: Offset(0, 3))],
-                    ),
-                    child: QrImageView(
-                      data: sjNumber,
-                      version: QrVersions.auto,
-                      size: 110,
-                      backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Color(0xFF2F6C3F),
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Color(0xFF0F261F),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF2EC),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      sjNumber,
-                      style: const TextStyle(fontSize: 9, color: Color(0xFF2F6C3F), fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text('Scan untuk konfirmasi', style: TextStyle(fontSize: 8, color: Color(0xFF6B8C73))),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Terbilang
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFB5D4BC)),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('Terbilang :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
-                SizedBox(height: 2),
-                Text('# Satu Juta Enam Ratus Sembilan Puluh Lima Ribu Tujuh Ratus Enam Puluh Rupiah #',
-                    style: TextStyle(fontSize: 10, color: Color(0xFF5E7D66))),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Catatan
-          const Text('Catatan :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF0F261F))),
-          const SizedBox(height: 4),
-          ...const [
-            '1. Dilarang menjual di atas HET, sesuai SK mentan.',
-            '2. Dilarang menjual antar kios, industri, dan di luar peruntukannya.',
-            '3. Harap menyimpan surat pengantar ini sebagai arsip.',
-            '4. Surat pengantar ini sebagai Nota Penjualan.',
-          ].map((note) => Padding(
-            padding: const EdgeInsets.only(bottom: 3),
-            child: Text(note, style: const TextStyle(fontSize: 10, color: Color(0xFF5E7D66))),
-          )),
-          const SizedBox(height: 16),
-          // Tanda Tangan
-          Row(
-            children: [
-              _TandaTangan(label: 'Penerima'),
-              _TandaTangan(label: 'Tanda Tangan,\nSopir/Pembawa',
-                  name: session?.transportirName ?? session?.displayName ?? 'NANANG'),
-              _TandaTangan(label: 'Pengirim'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 130,
-          child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B8C73))),
-        ),
-        const Text(': ', style: TextStyle(fontSize: 12, color: Color(0xFF6B8C73))),
-        Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F261F)))),
-      ],
-    );
-  }
-}
-
-class _TandaTangan extends StatelessWidget {
-  const _TandaTangan({required this.label, this.name});
-
-  final String label;
-  final String? name;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10, color: Color(0xFF5E7D66))),
-          const SizedBox(height: 44),
-          if (name != null)
-            Text(name!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900,
-                    decoration: TextDecoration.underline, color: Color(0xFF0F261F))),
-          if (name == null)
-            Container(height: 1, color: const Color(0xFFB5D4BC)),
-        ],
-      ),
-    );
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════
 // Muat Kamera Page  (embedded in-app camera — Muat Masuk / Keluar)
 // ═══════════════════════════════════════════════════════════════
@@ -2302,25 +1703,43 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
   Future<void> _confirm() async {
     final bytes = _capturedBytes;
     if (bytes == null) return;
+    final email = widget.session?.email;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sesi transportir tidak ditemukan. Silakan login ulang.')),
+      );
+      return;
+    }
+
     setState(() => _isProcessing = true);
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$_title berhasil disimpan!'),
-        backgroundColor: const Color(0xFF16C38A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-    Navigator.pop(
-      context,
-      TransportirMuatResult(
-        muatType: widget.muatType,
-        photoBase64: base64Encode(bytes),
-        timestamp: DateTime.now(),
-      ),
-    );
+    try {
+      await CommerceService().uploadShipmentPhoto(
+        shipmentNumber: widget.shipment.shipmentNumber,
+        muatType: widget.muatType == 'masuk' ? 'load-in' : 'load-out',
+        transportirEmail: email,
+        photoBytes: bytes,
+        fileName: '${widget.shipment.shipmentNumber}-${widget.muatType}.jpg',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$_title berhasil disimpan!'),
+          backgroundColor: const Color(0xFF16C38A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengunggah $_title: $e'),
+          backgroundColor: const Color(0xFFEF5350),
+        ),
+      );
+    }
   }
 
   @override

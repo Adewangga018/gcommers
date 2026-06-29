@@ -18,8 +18,6 @@ import 'src/screens/payment_success_page.dart';
 import 'src/screens/history_page.dart';
 import 'src/screens/order_page.dart';
 import 'src/screens/order_history_detail_page.dart';
-import 'src/screens/scan_qr_page.dart';
-import 'src/screens/received_goods_page.dart';
 import 'src/screens/notification_page.dart';
 import 'src/screens/settings_pages.dart';
 import 'src/screens/edit_profile_page.dart';
@@ -93,8 +91,6 @@ class GCommersApp extends StatelessWidget {
           final args = ModalRoute.of(context)?.settings.arguments as OrderPreviewArgs;
           return OrderPreviewPage(args: args);
         },
-        '/scan-qr': (context) => const ScanQrPage(),
-        '/received-goods': (context) => const ReceivedGoodsPage(),
         '/payment': (context) => const PaymentPage(),
         '/payment-success': (context) => const PaymentSuccessPage(),
         '/profile': (context) => const KiosProfilePage(),

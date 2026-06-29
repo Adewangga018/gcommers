@@ -275,13 +275,6 @@ class _OrderPageState extends State<OrderPage> {
                       '${_selectedCount()} item dipilih',
                       style: const TextStyle(color: Colors.black54, fontSize: 12),
                     ),
-                    if (_selectedCount() > 0) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        'Subtotal ${formatCurrency(_estimatedSubtotal())} + Ongkir ${formatCurrency(_estimatedShipping())}',
-                        style: const TextStyle(color: Colors.black45, fontSize: 11),
-                      ),
-                    ],
                     const SizedBox(height: 4),
                     Text(
                       formatCurrency(_estimatedTotal()),
@@ -327,18 +320,7 @@ class _OrderPageState extends State<OrderPage> {
     return total;
   }
 
-  double _estimatedShipping() {
-    // qty dipesan dalam satuan TON; tarif ongkir region dalam Rp/kg (lihat CommerceDatabase.CreateOrderAsync).
-    var total = 0.0;
-    for (final product in _products) {
-      final quantity = _quantities[product.id] ?? 0;
-      if (quantity <= 0) continue;
-      total += product.biayaPengirimanPerKg * quantity * 1000;
-    }
-    return total;
-  }
-
-  num _estimatedTotal() => _estimatedSubtotal() + _estimatedShipping();
+  num _estimatedTotal() => _estimatedSubtotal();
 }
 
 class _TabChip extends StatelessWidget {
@@ -468,11 +450,6 @@ class _ProductCardState extends State<_ProductCard> {
                     Text(
                       '${product.unit} - Stok: ${product.stock}',
                       style: const TextStyle(color: Colors.black54, fontSize: 12),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Ongkir ${formatCurrency(product.biayaPengirimanPerKg)}/kg',
-                      style: const TextStyle(color: Colors.black45, fontSize: 11),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -608,7 +585,6 @@ class ProductDetailPage extends StatelessWidget {
                     _DetailRow(label: 'Kategori', value: product.category),
                     if (product.code.isNotEmpty) _DetailRow(label: 'Kode', value: product.code),
                     _DetailRow(label: 'Harga', value: formatCurrency(product.price)),
-                    _DetailRow(label: 'Biaya Pengiriman', value: '${formatCurrency(product.biayaPengirimanPerKg)}/kg'),
                     _DetailRow(label: 'Stok', value: '${product.stock}'),
                     _DetailRow(label: 'Minimal Pembelian', value: '${product.minimumOrder}'),
                     _DetailRow(label: 'Satuan', value: product.unit),
