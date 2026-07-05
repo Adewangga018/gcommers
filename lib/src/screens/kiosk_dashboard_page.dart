@@ -66,8 +66,6 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
             }
 
             final summary = snapshot.data!;
-            final totalOrders = summary.activeOrderCount + summary.completedOrderCount;
-            final completedFraction = totalOrders == 0 ? 0.0 : summary.completedOrderCount / totalOrders;
 
             return SingleChildScrollView(
               child: Column(
@@ -163,52 +161,35 @@ class _KiosDashboardPageState extends State<KiosDashboardPage> {
                   const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: StatTile(
-                            icon: Icons.shopping_bag_outlined,
-                            label: 'Pesanan Aktif',
-                            value: '${summary.activeOrderCount}',
-                            caption: '${summary.completedOrderCount} selesai bulan ini',
-                            accent: AppTheme.tertiaryGreen,
-                            accentSoft: AppTheme.tertiaryGreenSoft,
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: StatTile(
+                              icon: Icons.shopping_bag_outlined,
+                              label: 'Total Pesanan',
+                              value: '${summary.totalOrderCount}',
+                              caption: '${summary.ordersThisMonth} pesanan bulan ini',
+                              accent: AppTheme.tertiaryGreen,
+                              accentSoft: AppTheme.tertiaryGreenSoft,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: StatTile(
-                            icon: Icons.payments_outlined,
-                            label: 'Total Tagihan',
-                            value: formatCurrency(summary.monthlySales),
-                            caption: 'Bulan berjalan',
-                            accent: AppTheme.tertiaryGold,
-                            accentSoft: AppTheme.tertiaryGoldSoft,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: StatTile(
+                              icon: Icons.payments_outlined,
+                              label: 'Total Harga Produk',
+                              value: formatCurrency(summary.totalSpent),
+                              caption: '${formatCurrency(summary.monthlySales)} bulan ini',
+                              accent: AppTheme.tertiaryGold,
+                              accentSoft: AppTheme.tertiaryGoldSoft,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (totalOrders > 0) ...[
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.paper,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppTheme.border),
-                        ),
-                        child: ProgressBarRow(
-                          label: 'Pesanan selesai',
-                          value: '${summary.completedOrderCount} dari $totalOrders',
-                          fraction: completedFraction,
-                          color: AppTheme.tertiaryGreen,
-                        ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                   const SizedBox(height: 28),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),

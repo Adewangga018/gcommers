@@ -135,6 +135,7 @@ static class CommerceDatabase
                 MuatOutPhotoUrl NVARCHAR(500) NULL,
                 Note NVARCHAR(500) NULL,
                 AssignedBy NVARCHAR(256) NULL,
+                CompanyName NVARCHAR(200) NULL,
 
                 CONSTRAINT UX_Shipments_ShipmentNumber UNIQUE (ShipmentNumber),
                 CONSTRAINT FK_Shipments_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(Id)
@@ -170,6 +171,8 @@ static class CommerceDatabase
                 ALTER TABLE dbo.Shipments ADD Note NVARCHAR(500) NULL;
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'AssignedBy')
                 ALTER TABLE dbo.Shipments ADD AssignedBy NVARCHAR(256) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Shipments') AND name = 'CompanyName')
+                ALTER TABLE dbo.Shipments ADD CompanyName NVARCHAR(200) NULL;
         END
 
         IF OBJECT_ID(N'dbo.ShipmentRouteChecks', N'U') IS NULL
@@ -829,25 +832,32 @@ static class CommerceDatabase
         var (paymentStatus, paymentStatusLabel) = DerivePaymentStatus(detail.PaidAt);
 
         // Shipment baru terhubung setelah admin region menugaskan transportir untuk order ini;
-        // sebelum itu tidak ada baris Shipments dengan OrderId = orderId.
-        string? driverName = null, truckLabel = null, policeNumber = null;
-        await using (var shipmentCommand = connection.CreateCommand())
+        // sebelum itu tidak ada baris Shipments dengan OrderId = orderId. Satu order bisa punya
+        // beberapa baris Shipments (multi-mitra/multi-sopir, lihat SlotIndex) — ambil semuanya
+        // supaya Kiosk bisa menampilkan progres load-in/load-out per mitra & sopir, bukan cuma
+        // sopir yang paling terakhir dibuat.
+        var shipmentRows = new List<RawShipmentRow>();
+        await using (var shipmentsCommand = connection.CreateCommand())
         {
-            shipmentCommand.CommandText = """
-                SELECT TOP 1 DriverName, TruckLabel, PoliceNumber
-                FROM dbo.Shipments
-                WHERE OrderId = @OrderId
-                ORDER BY CreatedAt DESC;
-                """;
-            shipmentCommand.Parameters.AddWithValue("@OrderId", orderId);
-            await using var shipmentReader = await shipmentCommand.ExecuteReaderAsync(cancellationToken);
-            if (await shipmentReader.ReadAsync(cancellationToken))
+            shipmentsCommand.CommandText = ShipmentSelectSql + "WHERE s.OrderId = @OrderId ORDER BY s.CreatedAt;";
+            shipmentsCommand.Parameters.AddWithValue("@OrderId", orderId);
+            await using var shipmentReader = await shipmentsCommand.ExecuteReaderAsync(cancellationToken);
+            while (await shipmentReader.ReadAsync(cancellationToken))
             {
-                driverName = shipmentReader.IsDBNull(0) ? null : shipmentReader.GetString(0);
-                truckLabel = shipmentReader.IsDBNull(1) ? null : shipmentReader.GetString(1);
-                policeNumber = shipmentReader.IsDBNull(2) ? null : shipmentReader.GetString(2);
+                shipmentRows.Add(MapRawShipmentRow(shipmentReader));
             }
         }
+
+        var shipments = new List<ShipmentSummaryDto>(shipmentRows.Count);
+        foreach (var row in shipmentRows)
+        {
+            shipments.Add(await EnrichShipmentRowAsync(connection, row, cancellationToken));
+        }
+
+        var latestShipment = shipmentRows.Count > 0 ? shipmentRows[^1] : null;
+        var driverName = string.IsNullOrEmpty(latestShipment?.DriverName) ? null : latestShipment.DriverName;
+        var truckLabel = latestShipment?.TruckLabel;
+        var policeNumber = latestShipment?.PoliceNumber;
 
         return new OrderDetailDto(
             detail.PoNumber,
@@ -874,7 +884,8 @@ static class CommerceDatabase
             detail.DeliveryLongitude,
             driverName,
             truckLabel,
-            policeNumber);
+            policeNumber,
+            shipments);
     }
 
     public static async Task<PaymentResponse?> PayOrderAsync(
@@ -1027,10 +1038,15 @@ static class CommerceDatabase
         var active = orders.Count(order => order.Status is "pending_payment" or "paid" or "shipping");
         var completed = orders.Count(order => order.Status is "received" or "completed");
         var now = DateTimeOffset.UtcNow;
-        var monthlySales = orders
-            .Where(order => order.CreatedAt.Year == now.Year && order.CreatedAt.Month == now.Month)
-            .Sum(order => order.TotalAmount);
-        return new DashboardSummaryDto(active, completed, monthlySales, orders.Take(5).ToList());
+        var isThisMonth = (OrderSummaryDto order) => order.CreatedAt.Year == now.Year && order.CreatedAt.Month == now.Month;
+        // "Produk yang dibeli" berarti pesanan yang benar-benar jadi transaksi — kecualikan yang belum
+        // dibayar (pending_payment) dan yang dibatalkan, supaya nilainya tidak menghitung pesanan yang
+        // batal jalan.
+        var isPurchased = (OrderSummaryDto order) => order.Status is not ("pending_payment" or "cancelled");
+        var monthlySales = orders.Where(order => isThisMonth(order) && isPurchased(order)).Sum(order => order.TotalAmount);
+        var ordersThisMonth = orders.Count(isThisMonth);
+        var totalSpent = orders.Where(isPurchased).Sum(order => order.TotalAmount);
+        return new DashboardSummaryDto(active, completed, monthlySales, orders.Take(5).ToList(), orders.Count, ordersThisMonth, totalSpent);
     }
 
     public static async Task<IReadOnlyList<ShipmentSummaryDto>> GetShipmentsAsync(
@@ -1097,9 +1113,11 @@ static class CommerceDatabase
                s.DestinationLabel, s.DestinationAddress, s.OriginLat, s.OriginLng, s.DestinationLat, s.DestinationLng,
                s.CreatedAt, s.CompletedAt, s.OrderId, o.PoNumber,
                s.ProductId, s.ProductCode, s.ProductName, s.QuotaTon,
-               s.MuatInPhotoUrl, s.MuatOutPhotoUrl, s.Note, s.AssignedBy, s.MuatInCompletedAt, s.MuatOutCompletedAt
+               s.MuatInPhotoUrl, s.MuatOutPhotoUrl, s.Note, s.AssignedBy, s.MuatInCompletedAt, s.MuatOutCompletedAt,
+               s.CompanyName, au.DisplayName
         FROM dbo.Shipments s
         LEFT JOIN dbo.Orders o ON o.Id = s.OrderId
+        LEFT JOIN dbo.Users au ON au.Email = s.AssignedBy
 
         """;
 
@@ -1111,7 +1129,8 @@ static class CommerceDatabase
         double? DestinationLat, double? DestinationLng, DateTimeOffset CreatedAt, DateTimeOffset? CompletedAt,
         int? OrderId, string? PoNumber, int? ProductId, string? ProductCode, string? ProductName, decimal? QuotaTon,
         string? MuatInPhotoUrl, string? MuatOutPhotoUrl, string? Note, string? AssignedBy,
-        DateTimeOffset? MuatInCompletedAt, DateTimeOffset? MuatOutCompletedAt);
+        DateTimeOffset? MuatInCompletedAt, DateTimeOffset? MuatOutCompletedAt, string? CompanyName,
+        string? AssignedByName);
 
     private static RawShipmentRow MapRawShipmentRow(SqlDataReader reader) => new(
         reader.GetString(0),
@@ -1140,7 +1159,9 @@ static class CommerceDatabase
         reader.IsDBNull(21) ? null : reader.GetString(21),
         reader.IsDBNull(22) ? null : reader.GetString(22),
         reader.IsDBNull(23) ? null : reader.GetFieldValue<DateTimeOffset>(23),
-        reader.IsDBNull(24) ? null : reader.GetFieldValue<DateTimeOffset>(24));
+        reader.IsDBNull(24) ? null : reader.GetFieldValue<DateTimeOffset>(24),
+        reader.IsDBNull(25) ? null : reader.GetString(25),
+        reader.IsDBNull(26) ? null : reader.GetString(26));
 
     private static async Task<ShipmentSummaryDto> EnrichShipmentRowAsync(
         SqlConnection connection, RawShipmentRow row, CancellationToken cancellationToken)
@@ -1157,6 +1178,7 @@ static class CommerceDatabase
             row.Status,
             ToShipmentStatusLabel(row.Status),
             row.DriverName,
+            row.CompanyName,
             row.TruckLabel,
             row.PoliceNumber,
             row.DestinationLabel,
@@ -1181,7 +1203,8 @@ static class CommerceDatabase
             row.ProductCode,
             row.ProductName,
             row.QuotaTon,
-            soCode);
+            soCode,
+            row.AssignedByName);
     }
 
     /// <summary>

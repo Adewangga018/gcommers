@@ -632,7 +632,7 @@ static class ConnectionStringFactory
         var direct = configuration.GetConnectionString("DefaultConnection");
         if (!string.IsNullOrWhiteSpace(direct))
         {
-            return direct;
+            return WithResiliency(new SqlConnectionStringBuilder(direct));
         }
 
         var host = configuration["DB_HOST"];
@@ -668,6 +668,31 @@ static class ConnectionStringFactory
         else
         {
             builder.IntegratedSecurity = true;
+        }
+
+        return WithResiliency(builder);
+    }
+
+    /// <summary>
+    /// DB diakses lewat jaringan LAN yang bisa lintas-subnet (mis. mesin dev di 192.168.101.x,
+    /// SQL Server di 192.168.100.x) sehingga koneksi idle kadang terputus di router. Setelan ini
+    /// membuat SqlClient otomatis menyambung ulang koneksi yang putus (ConnectRetryCount/Interval)
+    /// dan gagal cepat saat server benar-benar tak merespons, alih-alih menggantung lama.
+    /// Nilai yang sudah diset eksplisit di connection string asal tidak ditimpa.
+    /// </summary>
+    private static string WithResiliency(SqlConnectionStringBuilder builder)
+    {
+        if (!builder.ContainsKey("Connect Timeout") && !builder.ContainsKey("Connection Timeout"))
+        {
+            builder.ConnectTimeout = 15;
+        }
+        if (!builder.ContainsKey("ConnectRetryCount"))
+        {
+            builder.ConnectRetryCount = 3;
+        }
+        if (!builder.ContainsKey("ConnectRetryInterval"))
+        {
+            builder.ConnectRetryInterval = 5;
         }
 
         return builder.ConnectionString;

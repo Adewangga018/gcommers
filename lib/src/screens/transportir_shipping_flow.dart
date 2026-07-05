@@ -71,7 +71,8 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
     final query = _searchQuery.trim().toLowerCase();
     if (query.isEmpty) return all;
     return all.where((shipment) {
-      return shipment.shipmentNumber.toLowerCase().contains(query) ||
+      return shipment.poNumberLabel.toLowerCase().contains(query) ||
+          shipment.soCodeLabel.toLowerCase().contains(query) ||
           shipment.origin.toLowerCase().contains(query) ||
           shipment.destination.toLowerCase().contains(query) ||
           shipment.destinationSubtitle.toLowerCase().contains(query);
@@ -155,7 +156,7 @@ class _TransportirShipmentsPageState extends State<TransportirShipmentsPage> {
                     ),
                     decoration: InputDecoration(
                       border: InputBorder.none, // Menghilangkan border default TextField
-                      hintText: 'Cari nomor surat jalan…',
+                      hintText: 'Cari nomor pesanan atau SO…',
                       hintStyle: const TextStyle(
                         color: Color(0xFF6B8C73),
                         fontSize: 14,
@@ -358,7 +359,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 const SizedBox(height: 18),
                 _TimelineItem(
                   icon: Icons.inventory_2_outlined,
-                  title: 'Load In',
+                  title: 'Muat',
                   subtitle: shipment.muatInDone
                       ? 'Foto tersimpan — barang dimuat ke kendaraan'
                       : 'Menunggu proses pemuatan',
@@ -376,7 +377,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                 ),
                 _TimelineItem(
                   icon: Icons.move_to_inbox_outlined,
-                  title: 'Load Out',
+                  title: 'Bongkar',
                   subtitle: shipment.muatOutDone
                       ? 'Foto tersimpan — barang tiba di tujuan'
                       : 'Menunggu konfirmasi tiba',
@@ -423,7 +424,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _ProofPhotoSection(
-                            label: 'Load In',
+                            label: 'Muat',
                             photoUrl: shipment.shipment.muatInPhotoUrl,
                             done: shipment.muatInDone,
                           ),
@@ -431,7 +432,7 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: _ProofPhotoSection(
-                            label: 'Load Out',
+                            label: 'Bongkar',
                             photoUrl: shipment.shipment.muatOutPhotoUrl,
                             done: shipment.muatOutDone,
                           ),
@@ -442,13 +443,13 @@ class TransportirShipmentDetailPage extends StatelessWidget {
                   return Column(
                     children: [
                       _ProofPhotoSection(
-                        label: 'Load In',
+                        label: 'Muat',
                         photoUrl: shipment.shipment.muatInPhotoUrl,
                         done: shipment.muatInDone,
                       ),
                       const SizedBox(height: 14),
                       _ProofPhotoSection(
-                        label: 'Load Out',
+                        label: 'Bongkar',
                         photoUrl: shipment.shipment.muatOutPhotoUrl,
                         done: shipment.muatOutDone,
                       ),
@@ -1087,7 +1088,8 @@ class TransportirShipmentCardData {
   }
 
   String get quotaLabel => shipment.quotaTon != null ? '${shipment.quotaTon} Ton' : '-';
-  String get soCodeLabel => shipment.soCode ?? 'Belum tersedia';
+  String get soCodeLabel => shipment.soCode ?? 'SO belum tersedia';
+  String get poNumberLabel => shipment.poNumber ?? 'Belum ada nomor pesanan';
 
   /// Precise GPS coordinates — when set the map uses these directly (no geocoding needed).
   LatLng? get originLatLng =>
@@ -1130,29 +1132,31 @@ class _ShipmentSummaryCard extends StatelessWidget {
   bool get muatOutDone => shipment.muatOutDone;
   bool get completed => shipment.completed;
 
-  String get _primaryLabel => muatInDone ? 'Lacak' : 'Load In';
-
-  bool get _showSecondary => !completed && muatInDone;
-
-  String get _secondaryLabel => 'Load Out';
+  /// Satu tombol aksi kontekstual (fitur Lacak dihapus): 'Muat' sebelum load-in,
+  /// 'Bongkar' setelah load-in, dan tidak ada tombol saat sudah selesai.
+  String? get _actionLabel {
+    if (completed) return null;
+    if (!muatInDone) return 'Muat';
+    if (!muatOutDone) return 'Bongkar';
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final faded = completed;
     final titleColor = faded ? Colors.grey.shade500 : const Color(0xFF0F261F);
-    final bodyColor = faded ? Colors.grey.shade400 : const Color(0xFF6B8C73);
-    final subTitleColor = faded ? Colors.grey.shade500 : const Color(0xFF0F261F);
+    final accent = faded ? Colors.grey.shade500 : const Color(0xFF2F6C3F);
 
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFB5D4BC)),
             boxShadow: const [
               BoxShadow(color: Color(0x0C000000), blurRadius: 14, offset: Offset(0, 8)),
@@ -1161,132 +1165,118 @@ class _ShipmentSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Header: nomor pesanan + status, lalu kode SO + tanggal ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDCEDE1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.description_outlined, color: faded ? Colors.grey.shade500 : const Color(0xFF2F6C3F), size: 20),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCEDE1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.receipt_long_rounded, color: accent, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _StatusChip(label: shipment.statusLabel, foreground: shipment.statusColor, background: shipment.statusBackground),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  shipment.scheduleLabel,
-                                  style: TextStyle(color: faded ? Colors.grey.shade500 : const Color(0xFF5E7D66), fontSize: 13),
-                                ),
+                              Text(
+                                'NOMOR PESANAN',
+                                style: TextStyle(fontSize: 10, letterSpacing: 0.6, fontWeight: FontWeight.w700, color: Colors.grey.shade500),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                shipment.poNumberLabel,
+                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: titleColor),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            shipment.shipmentNumber,
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: titleColor, decoration: faded ? TextDecoration.lineThrough : TextDecoration.none),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(Icons.location_on_outlined, color: bodyColor, size: 16),
-                              const SizedBox(width: 6),
-                              Expanded(child: Text(shipment.origin, style: TextStyle(color: bodyColor, fontSize: 13))),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text('⋮', style: TextStyle(color: bodyColor, height: 1)),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(Icons.flag_outlined, color: bodyColor, size: 16),
-                              const SizedBox(width: 6),
-                              Expanded(child: Text(shipment.destinationSubtitle, style: TextStyle(color: subTitleColor, fontSize: 14, fontWeight: FontWeight.w800))),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (muatInDone) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF2EC),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Detail Muat', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.grey.shade800)),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _DetailStatusChip(label: 'Load In', active: muatInDone),
-                            _DetailStatusChip(label: 'Load Out', active: muatOutDone),
-                          ],
                         ),
-                        if (shipment.shipment.muatInPhotoUrl != null || shipment.shipment.muatOutPhotoUrl != null) ...[
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              if (shipment.shipment.muatInPhotoUrl != null)
-                                _PhotoPreview(label: 'Masuk', photoUrl: shipment.shipment.muatInPhotoUrl!),
-                              if (shipment.shipment.muatInPhotoUrl != null && shipment.shipment.muatOutPhotoUrl != null)
-                                const SizedBox(width: 10),
-                              if (shipment.shipment.muatOutPhotoUrl != null)
-                                _PhotoPreview(label: 'Keluar', photoUrl: shipment.shipment.muatOutPhotoUrl!),
-                            ],
-                          ),
-                        ],
+                        _StatusChip(label: shipment.statusLabel, foreground: shipment.statusColor, background: shipment.statusBackground),
                       ],
                     ),
-                  ),
-                ),
-                const Divider(height: 1),
-              ],
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _ActionButton(
-                        label: _primaryLabel,
-                        primary: true,
-                        onTap: () => _handlePrimary(context),
-                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _MetaPill(icon: Icons.qr_code_2_rounded, text: shipment.soCodeLabel, faded: faded),
+                        const SizedBox(width: 8),
+                        _MetaPill(icon: Icons.event_rounded, text: shipment.scheduleLabel, faded: faded),
+                      ],
                     ),
-                    if (_showSecondary) ...[
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionButton(
-                          label: _secondaryLabel,
-                          primary: false,
-                          onTap: () => _handleSecondary(context),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
+              const Divider(height: 1, color: Color(0xFFEAF2EC)),
+              // ── Rute + muatan ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: _RouteBlock(
+                  origin: shipment.origin,
+                  destination: shipment.destinationSubtitle.isNotEmpty ? shipment.destinationSubtitle : shipment.destination,
+                  product: shipment.productLabel,
+                  quota: shipment.quotaLabel,
+                  faded: faded,
+                ),
+              ),
+              // ── Progres muatan: Muat → Bongkar ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F8F4),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Progres Muatan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.grey.shade800)),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: _DetailStatusChip(label: 'Muat', active: muatInDone)),
+                          Icon(Icons.arrow_forward_rounded, size: 16, color: muatInDone ? const Color(0xFF2F6C3F) : const Color(0xFFB5D4BC)),
+                          Expanded(child: _DetailStatusChip(label: 'Bongkar', active: muatOutDone)),
+                        ],
+                      ),
+                      if (shipment.shipment.muatInPhotoUrl != null || shipment.shipment.muatOutPhotoUrl != null) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            if (shipment.shipment.muatInPhotoUrl != null)
+                              _PhotoPreview(label: 'Muat', photoUrl: shipment.shipment.muatInPhotoUrl!),
+                            if (shipment.shipment.muatInPhotoUrl != null && shipment.shipment.muatOutPhotoUrl != null)
+                              const SizedBox(width: 10),
+                            if (shipment.shipment.muatOutPhotoUrl != null)
+                              _PhotoPreview(label: 'Bongkar', photoUrl: shipment.shipment.muatOutPhotoUrl!),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              // ── Aksi kontekstual (tanpa Lacak) ──
+              if (_actionLabel != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+                  child: _ActionButton(
+                    label: _actionLabel!,
+                    primary: true,
+                    onTap: () => _handleAction(context),
+                  ),
+                )
+              else
+                const SizedBox(height: 12),
             ],
           ),
         ),
@@ -1294,37 +1284,128 @@ class _ShipmentSummaryCard extends StatelessWidget {
     );
   }
 
-  Future<void> _handlePrimary(BuildContext context) async {
-    if (_primaryLabel == 'Lacak') {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => TransportirMapTrackingPage(shipment: shipment, session: session),
-        ),
-      );
-      return;
-    }
-
+  Future<void> _handleAction(BuildContext context) async {
+    // muatInDone menentukan langkah berikutnya: belum load-in → foto masuk (Muat),
+    // sudah load-in → foto keluar (Bongkar).
+    final muatType = muatInDone ? 'keluar' : 'masuk';
     final uploaded = await Navigator.of(context).push<bool?>(
       MaterialPageRoute<bool?>(
-        builder: (_) => TransportirMuatKameraPage(muatType: 'masuk', shipment: shipment, session: session),
+        builder: (_) => TransportirMuatKameraPage(muatType: muatType, shipment: shipment, session: session),
       ),
     );
     if (uploaded == true) {
       await onRefresh();
     }
   }
+}
 
-  Future<void> _handleSecondary(BuildContext context) async {
-    if (completed) return;
+/// Pill kecil untuk metadata sekunder (kode SO, tanggal) di kartu pengiriman.
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({required this.icon, required this.text, this.faded = false});
 
-    final uploaded = await Navigator.of(context).push<bool?>(
-      MaterialPageRoute<bool?>(
-        builder: (_) => TransportirMuatKameraPage(muatType: 'keluar', shipment: shipment, session: session),
+  final IconData icon;
+  final String text;
+  final bool faded;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = faded ? Colors.grey.shade500 : const Color(0xFF3F6B4C);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDF4EE),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 5),
+          Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+        ],
       ),
     );
-    if (uploaded == true) {
-      await onRefresh();
-    }
+  }
+}
+
+/// Blok rute asal → tujuan bergaya timeline vertikal, plus produk & tonase muatan.
+class _RouteBlock extends StatelessWidget {
+  const _RouteBlock({
+    required this.origin,
+    required this.destination,
+    required this.product,
+    required this.quota,
+    required this.faded,
+  });
+
+  final String origin;
+  final String destination;
+  final String product;
+  final String quota;
+  final bool faded;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelColor = faded ? Colors.grey.shade400 : const Color(0xFF6B8C73);
+    final valueColor = faded ? Colors.grey.shade500 : const Color(0xFF0F261F);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Timeline rail
+              Column(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: faded ? Colors.grey.shade400 : const Color(0xFF2F6C3F),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(child: Container(width: 2, color: const Color(0xFFCADFCF))),
+                  Icon(Icons.location_on, size: 14, color: faded ? Colors.grey.shade400 : const Color(0xFFB86B22)),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ASAL', style: TextStyle(fontSize: 9, letterSpacing: 0.5, fontWeight: FontWeight.w700, color: labelColor)),
+                    const SizedBox(height: 1),
+                    Text(origin, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: valueColor)),
+                    const SizedBox(height: 12),
+                    Text('TUJUAN', style: TextStyle(fontSize: 9, letterSpacing: 0.5, fontWeight: FontWeight.w700, color: labelColor)),
+                    const SizedBox(height: 1),
+                    Text(destination, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: valueColor)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (product != '-') ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.inventory_2_outlined, size: 16, color: labelColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  quota != '-' ? '$product · $quota' : product,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: valueColor),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -1610,7 +1691,7 @@ class _TransportirMuatKameraPageState extends State<TransportirMuatKameraPage>
   bool _isProcessing = false;
   String? _error;
 
-  String get _title => widget.muatType == 'masuk' ? 'Load In' : 'Load Out';
+  String get _title => widget.muatType == 'masuk' ? 'Muat' : 'Bongkar';
   Color get _accentColor =>
       widget.muatType == 'masuk' ? const Color(0xFF16C38A) : const Color(0xFF2F6C3F);
 
@@ -2110,8 +2191,8 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
   }
 
   String get _actionLabel {
-    if (_currentStop == 0) return 'Load In  –  Konfirmasi di Gudang';
-    if (_currentStop == 1) return 'Load Out  –  Konfirmasi di Kios';
+    if (_currentStop == 0) return 'Muat  –  Konfirmasi di Gudang';
+    if (_currentStop == 1) return 'Bongkar  –  Konfirmasi di Kios';
     return 'Pesanan Selesai';
   }
 
@@ -2490,7 +2571,7 @@ class _TransportirMapTrackingPageState extends State<TransportirMapTrackingPage>
                           _atKios
                               ? 'Tiba di Kios'
                               : _currentStop == 0
-                                  ? 'Di Gudang – menunggu Load In'
+                                  ? 'Di Gudang – menunggu Muat'
                                   : 'Dalam Perjalanan ke Kios',
                           style: const TextStyle(
                               color: Color(0xFF0F261F),

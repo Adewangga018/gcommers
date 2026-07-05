@@ -65,9 +65,19 @@ class StatTile extends StatelessWidget {
             child: Icon(icon, color: accent, size: 18),
           ),
           const SizedBox(height: 14),
-          Text(value, style: AppTheme.title(size: 20)),
+          // Nilai bisa panjang (mis. total harga puluhan juta) — scale-down agar tetap 1 baris
+          // dan tidak terpotong di tengah angka.
+          SizedBox(
+            width: double.infinity,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(value, style: AppTheme.title(size: 20), maxLines: 1),
+            ),
+          ),
           const SizedBox(height: 4),
           Text(label, style: AppTheme.body(size: 12, color: AppTheme.muted)),
+          const Spacer(),
           if (caption != null) ...[
             const SizedBox(height: 6),
             Text(caption!, style: AppTheme.body(size: 11, color: accent, weight: FontWeight.w700)),

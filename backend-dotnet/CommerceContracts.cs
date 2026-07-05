@@ -83,7 +83,8 @@ public sealed record OrderDetailDto(
     double? DeliveryLongitude = null,
     string? DriverName = null,
     string? TruckLabel = null,
-    string? PoliceNumber = null);
+    string? PoliceNumber = null,
+    IReadOnlyList<ShipmentSummaryDto>? Shipments = null);
 
 public sealed record OrderItemDto(
     string ProductName,
@@ -115,13 +116,17 @@ public sealed record DashboardSummaryDto(
     int ActiveOrderCount,
     int CompletedOrderCount,
     decimal MonthlySales,
-    IReadOnlyList<OrderSummaryDto> RecentOrders);
+    IReadOnlyList<OrderSummaryDto> RecentOrders,
+    int TotalOrderCount,
+    int OrdersThisMonth,
+    decimal TotalSpent);
 
 public sealed record ShipmentSummaryDto(
     string ShipmentNumber,
     string Status,
     string StatusLabel,
     string DriverName,
+    string? CompanyName,
     string? TruckLabel,
     string? PoliceNumber,
     string? DestinationLabel,
@@ -146,7 +151,8 @@ public sealed record ShipmentSummaryDto(
     string? ProductCode,
     string? ProductName,
     decimal? QuotaTon,
-    string? SoCode);
+    string? SoCode,
+    string? AssignedByName = null);
 
 public sealed record ShipmentPhotoUploadResponse(
     string ShipmentNumber,

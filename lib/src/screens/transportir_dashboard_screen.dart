@@ -1,8 +1,4 @@
-﻿import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../models/auth_models.dart';
 import '../models/commerce_models.dart';
@@ -12,8 +8,10 @@ import '../utils/formatters.dart';
 import '../widgets/infographic_widgets.dart';
 import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
-import 'transportir_shipping_flow.dart';
 
+/// Dashboard transportir — semua metrik diturunkan dari `Shipments` yang
+/// ditugaskan admintransport ke akun ini (bukan `Orders`, yang UserEmail-nya
+/// milik kios). Satu baris Shipment = satu "pesanan masuk" untuk transportir.
 class TransportirDashboardScreen extends StatefulWidget {
   const TransportirDashboardScreen({super.key, this.session});
   final AuthSession? session;
@@ -23,644 +21,8 @@ class TransportirDashboardScreen extends StatefulWidget {
 }
 
 class _TransportirDashboardScreenState extends State<TransportirDashboardScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.paper,
-      appBar: AppBar(
-        backgroundColor: AppTheme.paper,
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        title: Text('GCommers', style: AppTheme.title(size: 18)),
-        actions: [
-          const NotificationBadge(iconColor: AppTheme.ink),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-        children: [
-          _TransportirStatsCard(session: widget.session),
-          const SizedBox(height: 10),
-          _RouteCard(session: widget.session),
-          const SizedBox(height: 12),
-          _NewOrdersCard(
-            session: widget.session,
-            onTapAll: () => Navigator.of(context).pushReplacementNamed(
-              '/transportir-orders',
-              arguments: widget.session,
-            ),
-            onTapOrder: () => Navigator.of(context).pushReplacementNamed(
-              '/transportir-orders',
-              arguments: widget.session,
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: TransportirBottomNav(currentIndex: 0, session: widget.session),
-    );
-  }
-}
-
-// ── Stats Card ─────────────────────────────────────────────────────────────
-
-class _TransportirStatsCard extends StatefulWidget {
-  const _TransportirStatsCard({required this.session});
-  final AuthSession? session;
-
-  @override
-  State<_TransportirStatsCard> createState() => _TransportirStatsCardState();
-}
-
-class _TransportirStatsCardState extends State<_TransportirStatsCard> {
   final _service = CommerceService();
-
-  int _totalPengiriman = 0;
-  int _pemesananAktif = 0;
-  double _tagihanBulanIni = 0;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStats();
-  }
-
-  String _fmtRupiah(double v) {
-    if (v == 0) return 'Rp 0';
-    if (v >= 1000000) return 'Rp ${(v / 1000000).toStringAsFixed(v % 1000000 == 0 ? 0 : 1)}jt';
-    if (v >= 1000) return 'Rp ${(v / 1000).toStringAsFixed(0)}rb';
-    return 'Rp ${v.toStringAsFixed(0)}';
-  }
-
-  Future<void> _loadStats() async {
-    try {
-      final email = widget.session?.email;
-      if (email == null || email.isEmpty) {
-        throw Exception('Sesi berakhir, silakan login ulang.');
-      }
-      final summary = await _service.getTransportirDashboardSummary(transportirEmail: email);
-      final orders = await _service.getOrders(userEmail: email);
-      if (!mounted) return;
-
-      final now = DateTime.now();
-      final thisMonth = orders.where(
-        (o) => o.createdAt.year == now.year && o.createdAt.month == now.month,
-      );
-
-      setState(() {
-        _totalPengiriman = summary.totalShipments;
-        _pemesananAktif = summary.activeShipments;
-        _tagihanBulanIni = thisMonth.fold(0.0, (s, o) => s + o.totalAmount);
-        _loading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final companyName =
-        (widget.session?.companyName?.trim().isNotEmpty ?? false)
-            ? widget.session!.companyName!
-            : 'Transportir';
-    final vehicleLabel =
-        (widget.session?.vehicleType?.trim().isNotEmpty ?? false)
-            ? widget.session!.vehicleType!
-            : 'Kendaraan';
-    final policeNumber =
-        (widget.session?.policeNumber?.trim().isNotEmpty ?? false)
-            ? widget.session!.policeNumber!
-            : '—';
-
-    final totalVal = _loading ? '…' : '$_totalPengiriman';
-    final aktifVal = _loading ? '…' : '$_pemesananAktif';
-    final tagihanVal = _loading ? '…' : _fmtRupiah(_tagihanBulanIni);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: AppTheme.ink,
-        borderRadius: BorderRadius.all(Radius.circular(16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      companyName,
-                      style: AppTheme.title(size: 16, color: Colors.white),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      vehicleLabel,
-                      style: AppTheme.body(size: 13, color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppTheme.tertiaryGold,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  policeNumber,
-                  style: AppTheme.subtitle(size: 13, color: AppTheme.ink).copyWith(letterSpacing: 1),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _StatBox(
-                  label: 'Total Pengiriman',
-                  value: totalVal,
-                  icon: Icons.local_shipping_outlined,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatBox(
-                  label: 'Pemesanan Aktif',
-                  value: aktifVal,
-                  icon: Icons.receipt_long_outlined,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.18)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.account_balance_wallet_outlined,
-                    color: AppTheme.tertiaryGold, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Total Tagihan Bulan Ini',
-                    style: AppTheme.body(size: 13, color: Colors.white70),
-                  ),
-                ),
-                Text(
-                  tagihanVal,
-                  style: AppTheme.title(size: 17, color: AppTheme.tertiaryGold),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value, required this.icon});
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppTheme.tertiaryGreen, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: AppTheme.body(size: 11, color: Colors.white70)),
-                const SizedBox(height: 3),
-                Text(value, style: AppTheme.title(size: 18, color: Colors.white)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Route Card (tracks the active shipment) ───────────────────────────────
-
-class _RouteCard extends StatefulWidget {
-  const _RouteCard({required this.session});
-  final AuthSession? session;
-
-  @override
-  State<_RouteCard> createState() => _RouteCardState();
-}
-
-class _RouteCardState extends State<_RouteCard> {
-  final _service = CommerceService();
-  TransportirShipmentCardData? _activeShipment;
-  bool _loaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadActiveShipment();
-  }
-
-  Future<void> _loadActiveShipment() async {
-    try {
-      final email = widget.session?.email;
-      if (email == null || email.isEmpty) {
-        throw Exception('Sesi berakhir, silakan login ulang.');
-      }
-      final summary = await _service.getTransportirDashboardSummary(transportirEmail: email);
-      if (!mounted) return;
-      setState(() {
-        _activeShipment = summary.activeShipment == null ? null : _toCardData(summary.activeShipment!);
-        _loaded = true;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loaded = true);
-    }
-  }
-
-  TransportirShipmentCardData _toCardData(ShipmentSummary shipment) {
-    return TransportirShipmentCardData(shipment: shipment);
-  }
-
-  void _navigate(BuildContext context) {
-    final shipment = _activeShipment;
-    if (shipment != null) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => TransportirMapTrackingPage(
-            shipment: shipment,
-            session: widget.session,
-          ),
-        ),
-      );
-    } else {
-      Navigator.of(context)
-          .pushReplacementNamed('/transportir-shipments', arguments: widget.session);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final shipment = _activeShipment;
-
-    // Use shipment lat/lng if available, otherwise fall back to GCS coordinates
-    final origin = shipment?.originLatLng ?? const LatLng(-7.1553, 112.6547);
-    final dest = shipment?.destinationLatLng ?? const LatLng(-7.3130, 112.7963);
-
-    // 3 intermediate checkpoint positions
-    LatLng lerp(double t) => LatLng(
-          origin.latitude + (dest.latitude - origin.latitude) * t,
-          origin.longitude + (dest.longitude - origin.longitude) * t,
-        );
-    final checkpointPositions = [lerp(0.25), lerp(0.50), lerp(0.75)];
-    final allRoutePoints = [origin, ...checkpointPositions, dest];
-
-    final midPoint = LatLng(
-      (origin.latitude + dest.latitude) / 2,
-      (origin.longitude + dest.longitude) / 2,
-    );
-
-    final distKm = const Distance().as(LengthUnit.Kilometer, origin, dest);
-
-    // Short display label for the destination (before the dash separator)
-    final destLabel = shipment != null
-        ? (shipment.destinationSubtitle.isNotEmpty
-            ? shipment.destinationSubtitle
-            : shipment.destination)
-        : 'Belum ada pengiriman';
-
-    final statusLabel = shipment != null ? shipment.statusLabel : '—';
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: () => _navigate(context),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFB5D4BC)),
-            boxShadow: const [
-              BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header ──────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: AppTheme.tertiaryGreenSoft,
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: const Icon(Icons.route_rounded,
-                          color: AppTheme.tertiaryGreen, size: 18),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Rute Terkini', style: AppTheme.subtitle(size: 15)),
-                          Text(
-                            shipment != null
-                                ? '${shipment.shipmentNumber} · 3 checkpoint'
-                                : 'Tidak ada pengiriman aktif',
-                            style: AppTheme.body(size: 12, color: AppTheme.muted),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: shipment != null
-                            ? const Color(0xFFDFF6EC)
-                            : const Color(0xFFEAF2EC),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: shipment != null
-                                  ? const Color(0xFF16C38A)
-                                  : const Color(0xFF6B8C73),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            statusLabel.toUpperCase(),
-                            style: TextStyle(
-                                color: shipment != null
-                                    ? const Color(0xFF0E8F61)
-                                    : const Color(0xFF6B8C73),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Tap-to-track chevron
-                    const Padding(
-                      padding: EdgeInsets.only(left: 6),
-                      child: Icon(Icons.chevron_right_rounded,
-                          color: Color(0xFF6B8C73), size: 20),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              // ── Map ─────────────────────────────────────────────
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-                child: SizedBox(
-                  height: 210,
-                  child: Stack(
-                    children: [
-                      FlutterMap(
-                        key: ValueKey(shipment?.shipmentNumber ?? 'none'),
-                        options: MapOptions(
-                          initialCenter: midPoint,
-                          initialZoom: 10.0,
-                          interactionOptions: const InteractionOptions(
-                            flags: InteractiveFlag.none,
-                          ),
-                        ),
-                        children: [
-                          TileLayer(
-                            urlTemplate:
-                                'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                            subdomains: const ['a', 'b', 'c', 'd'],
-                            userAgentPackageName: 'com.gcommers.app',
-                            maxNativeZoom: 19,
-                          ),
-                          PolylineLayer(
-                            polylines: [
-                              Polyline(
-                                points: allRoutePoints,
-                                color: const Color(0xFF0F261F),
-                                strokeWidth: 4,
-                              ),
-                            ],
-                          ),
-                          MarkerLayer(
-                            markers: [
-                              // Checkpoint dots
-                              ...checkpointPositions.map((pos) => Marker(
-                                    point: pos,
-                                    width: 20,
-                                    height: 20,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFA000),
-                                        shape: BoxShape.circle,
-                                        border:
-                                            Border.all(color: Colors.white, width: 2),
-                                      ),
-                                    ),
-                                  )),
-                              // Origin (Gudang)
-                              Marker(
-                                point: origin,
-                                width: 36,
-                                height: 36,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF16C38A),
-                                    shape: BoxShape.circle,
-                                    border:
-                                        Border.all(color: Colors.white, width: 2.5),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                          color: Color(0x5516C38A), blurRadius: 8),
-                                    ],
-                                  ),
-                                  child: const Icon(Icons.warehouse,
-                                      color: Colors.white, size: 16),
-                                ),
-                              ),
-                              // Destination (Kios)
-                              Marker(
-                                point: dest,
-                                width: 36,
-                                height: 36,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFF5050),
-                                    shape: BoxShape.circle,
-                                    border:
-                                        Border.all(color: Colors.white, width: 2.5),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                          color: Color(0x55FF5050), blurRadius: 8),
-                                    ],
-                                  ),
-                                  child: const Icon(Icons.store,
-                                      color: Colors.white, size: 16),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      // Loading shimmer
-                      if (!_loaded)
-                        Container(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      // Bottom info overlay
-                      Positioned(
-                        left: 12,
-                        right: 12,
-                        bottom: 12,
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.96),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [
-                              BoxShadow(
-                                  color: Color(0x33000000),
-                                  blurRadius: 12,
-                                  offset: Offset(0, 3)),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFDCEDE1),
-                                  borderRadius: BorderRadius.circular(9),
-                                ),
-                                child: const Icon(
-                                    Icons.store_mall_directory_outlined,
-                                    color: Color(0xFF2F6C3F),
-                                    size: 18),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Tujuan Kios',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            color: Color(0xFF6B8C73))),
-                                    Text(
-                                      destLabel,
-                                      style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w900,
-                                          color: Color(0xFF0F261F)),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    '${distKm.toStringAsFixed(1)} km',
-                                    style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Color(0xFF0F261F),
-                                        fontWeight: FontWeight.w900),
-                                  ),
-                                  const Text('Jarak total',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: Color(0xFF6B8C73))),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── New Orders Card ─────────────────────────────────────────────────────────
-
-class _NewOrdersCard extends StatefulWidget {
-  const _NewOrdersCard({
-    required this.onTapAll,
-    required this.onTapOrder,
-    required this.session,
-  });
-  final VoidCallback onTapAll;
-  final VoidCallback onTapOrder;
-  final AuthSession? session;
-
-  @override
-  State<_NewOrdersCard> createState() => _NewOrdersCardState();
-}
-
-class _NewOrdersCardState extends State<_NewOrdersCard> {
-  final _service = CommerceService();
-  List<OrderSummary>? _orders;
+  List<ShipmentSummary>? _shipments;
   bool _failed = false;
 
   @override
@@ -675,18 +37,332 @@ class _NewOrdersCardState extends State<_NewOrdersCard> {
       if (email == null || email.isEmpty) {
         throw Exception('Sesi berakhir, silakan login ulang.');
       }
-      final orders = await _service.getOrders(userEmail: email);
-      orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final shipments = await _service.getShipments(transportirEmail: email);
+      shipments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (!mounted) return;
-      setState(() => _orders = orders.take(5).toList());
+      setState(() {
+        _shipments = shipments;
+        _failed = false;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() => _failed = true);
     }
   }
 
+  void _goToOrders() => Navigator.of(context).pushReplacementNamed(
+        '/transportir-orders',
+        arguments: widget.session,
+      );
+
   @override
   Widget build(BuildContext context) {
+    final shipments = _shipments;
+    final loading = shipments == null && !_failed;
+
+    return Scaffold(
+      backgroundColor: AppTheme.paper,
+      appBar: AppBar(
+        backgroundColor: AppTheme.paper,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        title: Text('GCommers', style: AppTheme.title(size: 18)),
+        actions: const [
+          NotificationBadge(iconColor: AppTheme.ink),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+          children: [
+            _HeroCard(session: widget.session, stats: _TransportirStats.from(shipments)),
+            const SizedBox(height: 14),
+            if (loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else if (_failed)
+              _ErrorBox(onRetry: _load)
+            else ...[
+              _SummaryCard(stats: _TransportirStats.from(shipments)),
+              const SizedBox(height: 20),
+              SectionKicker(
+                label: 'Pemesanan Terbaru',
+                action: TextButton(
+                  onPressed: _goToOrders,
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+                  child: Text('LIHAT SEMUA',
+                      style: AppTheme.body(size: 12, color: AppTheme.tertiaryGreen, weight: FontWeight.w800)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _RecentShipments(shipments: shipments!, onTap: _goToOrders),
+            ],
+          ],
+        ),
+      ),
+      bottomNavigationBar: TransportirBottomNav(currentIndex: 0, session: widget.session),
+    );
+  }
+}
+
+// ── Derived stats ────────────────────────────────────────────────────────────
+
+class _TransportirStats {
+  const _TransportirStats({
+    required this.masuk,
+    required this.berjalan,
+    required this.selesai,
+    required this.totalTon,
+  });
+
+  final int masuk;
+  final int berjalan;
+  final int selesai;
+  final double totalTon;
+
+  static _TransportirStats from(List<ShipmentSummary>? shipments) {
+    if (shipments == null) {
+      return const _TransportirStats(masuk: 0, berjalan: 0, selesai: 0, totalTon: 0);
+    }
+    return _TransportirStats(
+      masuk: shipments.length,
+      berjalan: shipments.where((s) => s.status == 'dalam_perjalanan').length,
+      selesai: shipments.where((s) => s.status == 'selesai').length,
+      totalTon: shipments.fold(0.0, (sum, s) => sum + (s.quotaTon ?? 0)),
+    );
+  }
+
+  double get completedFraction => masuk == 0 ? 0 : selesai / masuk;
+}
+
+// ── Hero card ────────────────────────────────────────────────────────────────
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.session, required this.stats});
+
+  final AuthSession? session;
+  final _TransportirStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final companyName = (session?.companyName?.trim().isNotEmpty ?? false) ? session!.companyName! : 'Transportir';
+    final vehicleLabel = (session?.vehicleType?.trim().isNotEmpty ?? false) ? session!.vehicleType! : 'Kendaraan';
+    final policeNumber = (session?.policeNumber?.trim().isNotEmpty ?? false) ? session!.policeNumber! : '—';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF15382A), AppTheme.ink],
+        ),
+        boxShadow: const [
+          BoxShadow(color: Color(0x2215382A), blurRadius: 18, offset: Offset(0, 8)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.local_shipping_rounded, color: AppTheme.tertiaryGold, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Halo,', style: AppTheme.body(size: 12, color: Colors.white60)),
+                    const SizedBox(height: 1),
+                    Text(
+                      companyName,
+                      style: AppTheme.title(size: 17, color: Colors.white),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(vehicleLabel, style: AppTheme.body(size: 12, color: Colors.white70)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: AppTheme.tertiaryGold, borderRadius: BorderRadius.circular(8)),
+                child: Text(policeNumber,
+                    style: AppTheme.subtitle(size: 13, color: AppTheme.ink).copyWith(letterSpacing: 1)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroStat(
+                  icon: Icons.inbox_rounded,
+                  label: 'Pesanan Masuk',
+                  value: '${stats.masuk}',
+                  accent: AppTheme.tertiaryGold,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _HeroStat(
+                  icon: Icons.local_shipping_outlined,
+                  label: 'Berjalan',
+                  value: '${stats.berjalan}',
+                  accent: const Color(0xFFF0B457),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _HeroStat(
+                  icon: Icons.check_circle_outline_rounded,
+                  label: 'Selesai',
+                  value: '${stats.selesai}',
+                  accent: const Color(0xFF16C38A),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({required this.icon, required this.label, required this.value, required this.accent});
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: accent, size: 20),
+          const SizedBox(height: 10),
+          Text(value, style: AppTheme.title(size: 20, color: Colors.white)),
+          const SizedBox(height: 2),
+          Text(label, style: AppTheme.body(size: 10.5, color: Colors.white60), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Summary card (progress + tonase) ─────────────────────────────────────────
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.stats});
+
+  final _TransportirStats stats;
+
+  String _fmtTon(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.paper,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: ProgressBarRow(
+                  label: 'Progres Pengiriman',
+                  value: '${stats.selesai}/${stats.masuk} selesai',
+                  fraction: stats.completedFraction,
+                  color: AppTheme.tertiaryGreen,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: AppTheme.border),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: AppTheme.tertiaryGoldSoft, borderRadius: BorderRadius.circular(11)),
+                child: const Icon(Icons.scale_rounded, color: AppTheme.tertiaryGold, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Total Muatan Ditugaskan', style: AppTheme.body(size: 13, color: AppTheme.muted)),
+              ),
+              Text('${_fmtTon(stats.totalTon)} Ton', style: AppTheme.title(size: 18, color: AppTheme.ink)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Recent shipments ─────────────────────────────────────────────────────────
+
+class _RecentShipments extends StatelessWidget {
+  const _RecentShipments({required this.shipments, required this.onTap});
+
+  final List<ShipmentSummary> shipments;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (shipments.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+        decoration: BoxDecoration(
+          color: AppTheme.paper,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.inbox_outlined, color: AppTheme.muted, size: 40),
+            const SizedBox(height: 10),
+            Text('Belum ada pesanan yang ditugaskan.',
+                style: AppTheme.body(size: 13, color: AppTheme.muted), textAlign: TextAlign.center),
+          ],
+        ),
+      );
+    }
+
+    final recent = shipments.take(5).toList();
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.paper,
@@ -695,137 +371,87 @@ class _NewOrdersCardState extends State<_NewOrdersCard> {
       ),
       child: Column(
         children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 8, 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: AppTheme.tertiaryGreenSoft,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: const Icon(Icons.receipt_long_outlined,
-                      color: AppTheme.ink, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text('Pemesanan Terbaru', style: AppTheme.subtitle(size: 15)),
-                ),
-                TextButton(
-                  onPressed: widget.onTapAll,
-                  style: TextButton.styleFrom(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-                  child: Text(
-                    'LIHAT SEMUA',
-                    style: AppTheme.body(size: 12, color: AppTheme.tertiaryGreen, weight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppTheme.border),
-          // Order rows
-          if (_orders == null && !_failed)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else if (_failed)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('Gagal memuat pesanan.', style: AppTheme.body(size: 13, color: AppTheme.muted)),
-            )
-          else if (_orders!.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('Belum ada pesanan.', style: AppTheme.body(size: 13, color: AppTheme.muted)),
-            )
-          else
-            ..._orders!.map(
-              (o) => _OrderRow(order: o, onTap: widget.onTapOrder),
-            ),
-          // Footer button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
-            child: SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: OutlinedButton.icon(
-                onPressed: widget.onTapAll,
-                icon: const Icon(Icons.list_alt_rounded, size: 18),
-                label: Text('Lihat Semua Pemesanan', style: AppTheme.body(size: 14, weight: FontWeight.w800)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.ink,
-                  side: const BorderSide(color: AppTheme.border),
-                  shape:
-                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ),
+          for (var i = 0; i < recent.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: AppTheme.border),
+            _ShipmentRow(shipment: recent[i], onTap: onTap),
+          ],
         ],
       ),
     );
   }
 }
 
-class _OrderRow extends StatelessWidget {
-  const _OrderRow({required this.order, required this.onTap});
+class _ShipmentRow extends StatelessWidget {
+  const _ShipmentRow({required this.shipment, required this.onTap});
 
-  final OrderSummary order;
+  final ShipmentSummary shipment;
   final VoidCallback onTap;
+
+  String get _poLabel => shipment.poNumber ?? shipment.shipmentNumber;
+
+  String get _muatanLabel {
+    final product = shipment.productName;
+    if (product == null || product.isEmpty) return 'Muatan belum diatur';
+    if (shipment.quotaTon != null) {
+      final ton = shipment.quotaTon! == shipment.quotaTon!.roundToDouble()
+          ? shipment.quotaTon!.toStringAsFixed(0)
+          : shipment.quotaTon!.toStringAsFixed(1);
+      return '$product · $ton Ton';
+    }
+    return product;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(order.status);
+    final statusColor = _shipmentStatusColor(shipment.status);
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppTheme.tertiaryGreenSoft,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.receipt_long_rounded,
-                  color: AppTheme.tertiaryGreen, size: 20),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(color: AppTheme.tertiaryGreenSoft, borderRadius: BorderRadius.circular(11)),
+              child: const Icon(Icons.receipt_long_rounded, color: AppTheme.tertiaryGreen, size: 20),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(order.poNumber, style: AppTheme.subtitle(size: 13)),
-                      ),
-                      StatusChip(label: order.statusLabel, color: statusColor),
+                      Expanded(child: Text(_poLabel, style: AppTheme.subtitle(size: 14))),
+                      StatusChip(label: shipment.statusLabel, color: statusColor),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.inventory_2_outlined, size: 13, color: AppTheme.muted),
+                      const SizedBox(width: 5),
+                      Expanded(child: Text(_muatanLabel, style: AppTheme.body(size: 12, color: AppTheme.muted))),
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(formatCurrency(order.totalAmount),
-                      style: AppTheme.body(size: 12, color: AppTheme.muted)),
-                  const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.inventory_2_outlined,
-                          size: 12, color: AppTheme.muted),
-                      const SizedBox(width: 4),
-                      Text('${order.itemCount} item',
-                          style: AppTheme.body(size: 11, color: AppTheme.muted)),
-                      const Spacer(),
-                      Text(formatDateTime(order.createdAt),
-                          style: AppTheme.body(size: 11, color: AppTheme.muted)),
+                      const Icon(Icons.flag_outlined, size: 13, color: AppTheme.muted),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          shipment.destinationLabel ?? shipment.destinationAddress ?? 'Kios tujuan',
+                          style: AppTheme.body(size: 12, color: AppTheme.muted),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(shortDateTime(shipment.createdAt), style: AppTheme.body(size: 11, color: AppTheme.muted)),
                     ],
                   ),
                 ],
@@ -838,11 +464,46 @@ class _OrderRow extends StatelessWidget {
   }
 }
 
-Color _statusColor(String status) {
-  return switch (status) {
-    'pending_payment' => AppTheme.tertiaryGold,
-    'paid' || 'shipping' => AppTheme.tertiaryGreen,
-    'received' || 'completed' || 'delivered' => const Color(0xFF059669),
-    _ => AppTheme.muted,
-  };
+class _ErrorBox extends StatelessWidget {
+  const _ErrorBox({required this.onRetry});
+
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.paper,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off_rounded, color: AppTheme.muted, size: 40),
+          const SizedBox(height: 10),
+          Text('Gagal memuat data pengiriman.', style: AppTheme.body(size: 13, color: AppTheme.muted)),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => onRetry(),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Coba Lagi'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.ink,
+              side: const BorderSide(color: AppTheme.border),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+Color _shipmentStatusColor(String status) => switch (status) {
+      'dalam_perjalanan' => const Color(0xFFB86B22),
+      'selesai' => const Color(0xFF16C38A),
+      'siap_muat' => AppTheme.tertiaryGreen,
+      _ => AppTheme.muted,
+    };

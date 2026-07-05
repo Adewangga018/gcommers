@@ -165,12 +165,15 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('Status Pengiriman', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 14),
-                        ...order.timeline.map((item) => _StatusStep(item: item)),
+                        const SizedBox(height: 18),
+                        if (order.orderStatus == 'cancelled')
+                          _CancelledStatusBanner(note: order.orderStatusNote)
+                        else
+                          _ShipmentStatusTracker(stage: _deliveryStage(order)),
                       ],
                     ),
                   ),
-                  if (order.driverName != null) ...[
+                  if (order.shipments.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Container(
                       width: double.infinity,
@@ -183,12 +186,18 @@ class _OrderHistoryDetailPageState extends State<OrderHistoryDetailPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Informasi Pengiriman', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                          const Text('Mitra & Sopir Pengiriman', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 4),
+                          Text(
+                            order.shipments.length > 1
+                                ? 'Pesanan ini dikirim oleh ${order.shipments.length} mitra transportir. Status "Pesanan Selesai" baru muncul setelah semua mitra menyelesaikan load-out.'
+                                : 'Detail sopir yang bertugas mengantarkan pesanan ini.',
+                            style: const TextStyle(color: Colors.black54, fontSize: 12),
+                          ),
                           const SizedBox(height: 12),
-                          _KeyValue(label: 'Sopir', value: order.driverName!),
-                          if (order.truckLabel != null) ...[
-                            const SizedBox(height: 10),
-                            _KeyValue(label: 'Kendaraan', value: order.truckLabel!),
+                          for (var i = 0; i < order.shipments.length; i++) ...[
+                            if (i > 0) const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
+                            _ShipmentCard(shipment: order.shipments[i]),
                           ],
                         ],
                       ),
@@ -291,38 +300,219 @@ class _KeyValue extends StatelessWidget {
   }
 }
 
-class _StatusStep extends StatelessWidget {
-  const _StatusStep({required this.item});
+/// Tahap pengiriman untuk tracker "Status Pengiriman":
+/// -1 belum dibayar, 0 diproses (belum ada sopir yang load-in),
+/// 1 dalam perjalanan (minimal 1 sopir sudah load-in),
+/// 2 selesai — **hanya** kalau SEMUA baris Shipments (semua mitra & sopir) sudah load-out,
+/// bukan cuma satu (order bisa dikirim >1 mitra sekaligus, lihat _ShipmentCard).
+String _formatQuotaTon(double value) {
+  return value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(2);
+}
 
-  final OrderTimeline item;
+int _deliveryStage(OrderDetail order) {
+  if (order.paymentStatus != 'paid') return -1;
+  if (order.shipments.isEmpty) return 0;
+  final allLoadedOut = order.shipments.every((s) => s.muatOutCompletedAt != null);
+  if (allLoadedOut) return 2;
+  final anyLoadedIn = order.shipments.any((s) => s.muatInCompletedAt != null);
+  return anyLoadedIn ? 1 : 0;
+}
+
+class _CancelledStatusBanner extends StatelessWidget {
+  const _CancelledStatusBanner({this.note});
+
+  final String? note;
 
   @override
   Widget build(BuildContext context) {
-    final color = item.isActive ? const Color(0xFF2F6C3F) : const Color(0xFFB5D4BC);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDECEC),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: Icon(_timelineIcon(item.eventType), color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
+          const Icon(Icons.cancel_rounded, color: Color(0xFFC0392B), size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 2),
-                Text(item.subtitle, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                const Text('Pesanan Dibatalkan', style: TextStyle(color: Color(0xFFC0392B), fontWeight: FontWeight.w800, fontSize: 14)),
+                if (note != null && note!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(note!, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Tracker bundar bergaya Shopee: Pesanan Diproses -> Dalam Perjalanan -> Pesanan Selesai,
+/// dihubungkan dengan anak panah yang menyala mengikuti [stage] (lihat _deliveryStage).
+class _ShipmentStatusTracker extends StatelessWidget {
+  const _ShipmentStatusTracker({required this.stage});
+
+  final int stage;
+
+  static const _stages = [
+    (icon: Icons.receipt_long_rounded, label: 'Pesanan\nDiproses'),
+    (icon: Icons.local_shipping_rounded, label: 'Dalam\nPerjalanan'),
+    (icon: Icons.task_alt_rounded, label: 'Pesanan\nSelesai'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    const activeColor = Color(0xFF2F6C3F);
+    const inactiveColor = Color(0xFFDCEDE1);
+    const inactiveIconColor = Color(0xFF7FA98A);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < _stages.length; i++) ...[
+          if (i > 0)
+            SizedBox(
+              height: 40,
+              child: Center(
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: i <= stage ? activeColor : inactiveColor,
+                ),
+              ),
+            ),
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: i <= stage ? activeColor : inactiveColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _stages[i].icon,
+                    color: i <= stage ? Colors.white : inactiveIconColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _stages[i].label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: i == stage ? FontWeight.w800 : FontWeight.w600,
+                    color: i <= stage ? Colors.black87 : Colors.black38,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ShipmentCard extends StatelessWidget {
+  const _ShipmentCard({required this.shipment});
+
+  final ShipmentSummary shipment;
+
+  @override
+  Widget build(BuildContext context) {
+    const primaryGreen = Color(0xFF2F6C3F);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    shipment.companyName?.trim().isNotEmpty == true ? shipment.companyName! : 'Mitra belum diketahui',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Sopir: ${shipment.driverName.isNotEmpty ? shipment.driverName : '-'}'
+                    '${shipment.truckLabel != null ? ' • ${shipment.truckLabel}' : ''}',
+                    style: const TextStyle(color: Colors.black54, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: const Color(0xFFDCEDE1), borderRadius: BorderRadius.circular(999)),
+              child: Text(
+                shipment.statusLabel,
+                style: const TextStyle(color: primaryGreen, fontSize: 11, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+        if (shipment.productName != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.inventory_2_outlined, size: 14, color: Colors.black45),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  shipment.quotaTon != null
+                      ? 'Muatan: ${shipment.productName} • ${_formatQuotaTon(shipment.quotaTon!)} Ton'
+                      : 'Muatan: ${shipment.productName}',
+                  style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 10),
+        _MuatStep(label: 'Load-in (muat di gudang)', completedAt: shipment.muatInCompletedAt),
+        const SizedBox(height: 6),
+        _MuatStep(label: 'Load-out (serah terima di kios)', completedAt: shipment.muatOutCompletedAt),
+      ],
+    );
+  }
+}
+
+class _MuatStep extends StatelessWidget {
+  const _MuatStep({required this.label, required this.completedAt});
+
+  final String label;
+  final DateTime? completedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = completedAt != null;
+    final color = done ? const Color(0xFF2F6C3F) : Colors.black38;
+    return Row(
+      children: [
+        Icon(done ? Icons.check_circle : Icons.radio_button_unchecked, color: color, size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(label, style: TextStyle(color: done ? Colors.black87 : Colors.black45, fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
+        Text(
+          done ? formatDateTime(completedAt!) : 'Menunggu',
+          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
+        ),
+      ],
     );
   }
 }
@@ -381,10 +571,3 @@ class _SummaryLine extends StatelessWidget {
     );
   }
 }
-
-IconData _timelineIcon(String eventType) => switch (eventType) {
-      'paid' => Icons.payments_outlined,
-      'shipping' => Icons.local_shipping_outlined,
-      'received' => Icons.inventory_2_outlined,
-      _ => Icons.check_circle,
-    };

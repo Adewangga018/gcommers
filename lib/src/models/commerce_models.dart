@@ -103,6 +103,9 @@ class DashboardSummary {
     required this.completedOrderCount,
     required this.monthlySales,
     required this.recentOrders,
+    this.totalOrderCount = 0,
+    this.ordersThisMonth = 0,
+    this.totalSpent = 0,
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -113,6 +116,9 @@ class DashboardSummary {
       recentOrders: (json['recentOrders'] as List<dynamic>)
           .map((item) => OrderSummary.fromJson(item as Map<String, dynamic>))
           .toList(),
+      totalOrderCount: json['totalOrderCount'] as int? ?? 0,
+      ordersThisMonth: json['ordersThisMonth'] as int? ?? 0,
+      totalSpent: (json['totalSpent'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -120,6 +126,9 @@ class DashboardSummary {
   final int completedOrderCount;
   final double monthlySales;
   final List<OrderSummary> recentOrders;
+  final int totalOrderCount;
+  final int ordersThisMonth;
+  final double totalSpent;
 }
 
 class OrderDetail {
@@ -149,6 +158,7 @@ class OrderDetail {
     this.driverName,
     this.truckLabel,
     this.policeNumber,
+    this.shipments = const [],
   });
 
   factory OrderDetail.fromJson(Map<String, dynamic> json) {
@@ -182,6 +192,10 @@ class OrderDetail {
       driverName: json['driverName'] as String?,
       truckLabel: json['truckLabel'] as String?,
       policeNumber: json['policeNumber'] as String?,
+      shipments: (json['shipments'] as List<dynamic>?)
+              ?.map((item) => ShipmentSummary.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 
@@ -210,6 +224,7 @@ class OrderDetail {
   final String? driverName;
   final String? truckLabel;
   final String? policeNumber;
+  final List<ShipmentSummary> shipments;
 }
 
 class OrderItem {
@@ -299,6 +314,7 @@ class ShipmentSummary {
     required this.status,
     required this.statusLabel,
     required this.driverName,
+    this.companyName,
     required this.truckLabel,
     required this.policeNumber,
     required this.destinationLabel,
@@ -324,6 +340,7 @@ class ShipmentSummary {
     this.productName,
     this.quotaTon,
     this.soCode,
+    this.assignedByName,
   });
 
   factory ShipmentSummary.fromJson(Map<String, dynamic> json) {
@@ -332,6 +349,7 @@ class ShipmentSummary {
       status: json['status'] as String,
       statusLabel: json['statusLabel'] as String,
       driverName: json['driverName'] as String,
+      companyName: json['companyName'] as String?,
       truckLabel: json['truckLabel'] as String?,
       policeNumber: json['policeNumber'] as String?,
       destinationLabel: json['destinationLabel'] as String?,
@@ -359,6 +377,7 @@ class ShipmentSummary {
       productName: json['productName'] as String?,
       quotaTon: (json['quotaTon'] as num?)?.toDouble(),
       soCode: json['soCode'] as String?,
+      assignedByName: json['assignedByName'] as String?,
     );
   }
 
@@ -366,6 +385,7 @@ class ShipmentSummary {
   final String status;
   final String statusLabel;
   final String driverName;
+  final String? companyName;
   final String? truckLabel;
   final String? policeNumber;
   final String? destinationLabel;
@@ -391,6 +411,7 @@ class ShipmentSummary {
   final String? productName;
   final double? quotaTon;
   final String? soCode;
+  final String? assignedByName;
 }
 
 class TransportirDashboardSummary {

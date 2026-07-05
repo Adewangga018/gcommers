@@ -7,6 +7,7 @@ import '../models/commerce_models.dart';
 import '../services/commerce_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
+import '../widgets/infographic_widgets.dart';
 import '../widgets/transportir_bottom_nav.dart';
 import 'settings_pages.dart';
 
@@ -139,17 +140,26 @@ class _TransportirOrdersPageState extends State<TransportirOrdersPage> {
                     ),
                   )
                 else
-                  ...orders.map(
-                    (order) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _TransportirOrderCard(
-                        order: order,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => TransportirOrderDetailPage(order: order, session: widget.session),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFB5D4BC)),
+                    ),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < orders.length; i++) ...[
+                          if (i > 0) const Divider(height: 1, color: Color(0xFFE2EFE6)),
+                          _TransportirOrderRow(
+                            order: orders[i],
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => TransportirOrderDetailPage(order: orders[i], session: widget.session),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        ],
+                      ],
                     ),
                   ),
               ],
@@ -395,9 +405,13 @@ class _LoadEntry extends StatelessWidget {
           label: 'Kendaraan',
           value: '${shipment.truckLabel ?? 'Kendaraan belum diatur'} • ${shipment.driverName.isEmpty ? '-' : shipment.driverName}',
         ),
-        if (shipment.assignedBy != null) ...[
+        if (shipment.assignedByName != null || shipment.assignedBy != null) ...[
           const SizedBox(height: 8),
-          _InfoLineRow(icon: Icons.admin_panel_settings_outlined, label: 'Ditugaskan Oleh', value: shipment.assignedBy!),
+          _InfoLineRow(
+            icon: Icons.admin_panel_settings_outlined,
+            label: 'Ditugaskan Oleh',
+            value: shipment.assignedByName?.trim().isNotEmpty == true ? shipment.assignedByName! : shipment.assignedBy!,
+          ),
         ],
         if (shipment.note != null) ...[
           const SizedBox(height: 8),
@@ -474,105 +488,88 @@ class _InfoLineRow extends StatelessWidget {
   }
 }
 
-class _TransportirOrderCard extends StatelessWidget {
-  const _TransportirOrderCard({required this.order, required this.onTap});
+/// Baris pesanan bergaya sama dengan "Pemesanan Terbaru" di dashboard: ikon,
+/// nomor pesanan + status, muatan (produk · tonase), lalu tujuan kios + tanggal.
+class _TransportirOrderRow extends StatelessWidget {
+  const _TransportirOrderRow({required this.order, required this.onTap});
 
   final TransportirAssignedOrder order;
   final VoidCallback onTap;
 
+  String get _muatanLabel {
+    if (order.shipments.length > 1) {
+      final total = order.shipments.fold(0.0, (sum, s) => sum + (s.quotaTon ?? 0));
+      return '${order.shipments.length} muatan${total > 0 ? ' · ${_fmtTon(total)} Ton' : ''}';
+    }
+    final shipment = order.shipments.first;
+    final product = shipment.productName;
+    if (product == null || product.isEmpty) return 'Muatan belum diatur';
+    return shipment.quotaTon != null ? '$product · ${_fmtTon(shipment.quotaTon!)} Ton' : product;
+  }
+
+  String get _destinationLabel {
+    final s = order.shipments.first;
+    return s.destinationLabel ?? order.detail?.deliveryAddress ?? s.destinationAddress ?? 'Kios tujuan';
+  }
+
+  static String _fmtTon(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+
   @override
   Widget build(BuildContext context) {
-    final color = _orderStatusColor(order.orderStatus);
-    final bg = _orderStatusBackground(order.orderStatus);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFB5D4BC)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(color: AppTheme.tertiaryGreenSoft, borderRadius: BorderRadius.circular(11)),
+              child: const Icon(Icons.receipt_long_rounded, color: AppTheme.tertiaryGreen, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2F0E6),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF2F6C3F)),
+                  Row(
+                    children: [
+                      Expanded(child: Text(order.poNumber, style: AppTheme.subtitle(size: 14))),
+                      StatusChip(label: order.statusLabel, color: _orderStatusColor(order.orderStatus)),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('PESANAN', style: TextStyle(color: Color(0xFF5E7D66), fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-                        const SizedBox(height: 3),
-                        Text(order.poNumber, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F261F))),
-                      ],
-                    ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.inventory_2_outlined, size: 13, color: AppTheme.muted),
+                      const SizedBox(width: 5),
+                      Expanded(child: Text(_muatanLabel, style: AppTheme.body(size: 12, color: AppTheme.muted))),
+                    ],
                   ),
-                  _StatusPill(label: order.statusLabel, foreground: color, background: bg),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      const Icon(Icons.flag_outlined, size: 13, color: AppTheme.muted),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(_destinationLabel,
+                            style: AppTheme.body(size: 12, color: AppTheme.muted),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(shortDateTime(order.createdAt), style: AppTheme.body(size: 11, color: AppTheme.muted)),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(child: _KeyText(label: 'Tanggal', value: shortDateTime(order.createdAt))),
-                  const SizedBox(width: 12),
-                  Expanded(child: _KeyText(label: 'Nilai Tagihan', value: formatCurrency(order.totalAmount), valueColor: const Color(0xFF2F6C3F))),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _KeyText(label: 'Truk Pengiriman', value: '${order.shipments.length} pengiriman'),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: OutlinedButton(
-                  onPressed: onTap,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF2F6C3F),
-                    side: const BorderSide(color: Color(0xFFB5D4BC)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Lihat Detail', style: TextStyle(fontWeight: FontWeight.w800)),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _KeyText extends StatelessWidget {
-  const _KeyText({required this.label, required this.value, this.valueColor});
-
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Color(0xFF5E7D66), fontSize: 12)),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: valueColor ?? const Color(0xFF0F261F))),
-      ],
     );
   }
 }
